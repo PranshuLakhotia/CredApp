@@ -39,6 +39,31 @@ export interface RegisterRequest {
   };
 }
 
+// Form data types for UI components
+export interface LoginFormData {
+  email: string;
+  password: string;
+  remember_me?: boolean;
+}
+
+export interface RegisterFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  password: string;
+  confirmPassword: string;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+}
+
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;

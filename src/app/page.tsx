@@ -3,7 +3,9 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Box, CircularProgress } from '@mui/material';
+import { Box } from '@mui/material';
+import LoadingAnimation from '@/components/LoadingAnimation';
+
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -11,26 +13,22 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading) {
+      const timer = setTimeout(() => {
       if (isAuthenticated) {
         router.push('/dashboard');
       } else {
         router.push('/auth/login');
       }
+      }, 2000);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Show loading spinner while checking authentication
+  // Show custom loading animation while checking authentication
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      }}
-    >
-      <CircularProgress size={60} sx={{ color: 'white' }} />
-    </Box>
+    <div className="mt-64 md:mt-24 flex items-center justify-center h-full w-full">
+    <LoadingAnimation 
+      />
+    </div>
   );
 }

@@ -11,14 +11,15 @@ type AuthAction =
   | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'SET_USER'; payload: User }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'INIT_COMPLETE' };
 
 // Initial state
 const initialState: AuthState = {
   user: null,
   tokens: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true, // Start with loading true to prevent flash of login screen
   error: null,
 };
 
@@ -60,6 +61,11 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         ...state,
         error: null,
       };
+    case 'INIT_COMPLETE':
+      return {
+        ...state,
+        isLoading: false,
+      };
     default:
       return state;
   }
@@ -88,23 +94,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      // Temporarily disabled mock user to test real auth
-      // const mockUser = {
-      //   id: '1',
-      //   email: 'test@example.com',
-      //   full_name: 'Test User',
-      //   is_active: true,
-      //   is_verified: true,
-      //   is_superuser: false,
-      //   created_at: new Date().toISOString(),
-      //   updated_at: new Date().toISOString(),
-      //   role: 'learner' as const, // Added for dashboard functionality
-      // };
-      // dispatch({ type: 'SET_USER', payload: mockUser });
-      // return;
-
-      // Real auth logic (commented out for testing)
-      /*
       const token = AuthService.getAccessToken();
       if (token) {
         try {
@@ -119,11 +108,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
           dispatch({ type: 'AUTH_SUCCESS', payload: { user, tokens } });
         } catch (error) {
           console.error('Auth initialization failed:', error);
-          AuthService.logout();
-          dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired' });
+          // If access token is invalid, try to refresh
+          const refreshToken = AuthService.getRefreshToken();
+          if (refreshToken) {
+            try {
+              const newTokens = await AuthService.refreshToken();
+              AuthService.storeTokens(newTokens);
+              const user = await AuthService.getCurrentUser();
+              dispatch({ type: 'AUTH_SUCCESS', payload: { user, tokens: newTokens } });
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
+              AuthService.logout();
+              dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired' });
+            }
+          } else {
+            AuthService.logout();
+            dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired' });
+          }
         }
+      } else {
+        // No token found, initialization complete
+        dispatch({ type: 'INIT_COMPLETE' });
       }
-      */
     };
 
     initializeAuth();

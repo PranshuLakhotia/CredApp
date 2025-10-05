@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import LoadingAnimation from '@/components/LoadingAnimation';
 import { 
   Box, 
   Drawer,
@@ -20,7 +21,8 @@ import {
   Chip,
   Menu,
   MenuItem,
-  IconButton
+  IconButton,
+  CircularProgress
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -48,24 +50,36 @@ const roleColors = {
 };
 
 export default function DashboardPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<'learner' | 'employer' | 'institution' | 'admin'>('learner');
   const [selectedNavItem, setSelectedNavItem] = useState('Overview');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  // Simplified auth check
+  // Auth check with loading state
   React.useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/auth/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
+  // Show loading while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="mt-64 md:mt-24 flex items-center justify-center h-full w-full">
+    <LoadingAnimation 
+      />
+    </div>
+    );
+  }
+
+  // Show loading if not authenticated (will redirect)
   if (!isAuthenticated) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        Loading...
-      </Box>
+      <div className="mt-64 md:mt-24 flex items-center justify-center h-full w-full">
+    <LoadingAnimation 
+      />
+    </div>
     );
   }
 
