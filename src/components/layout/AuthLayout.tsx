@@ -39,32 +39,6 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
                 <Box
                   sx={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    color: 'white',
-                  }}
-                >
-                  {/* CredHub Logo */}
-                  <Box sx={{ mb: 4 }}>
-                    <Typography
-                      variant="h3"
-                      sx={{
-                        fontWeight: 700,
-                        mb: 1,
-                        background: 'linear-gradient(45deg, #fff 30%, #e3f2fd 90%)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}
-                    >
-                      CredHub
-                    </Typography>
-                    <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                      Your Digital Credential Platform
-                    </Typography>
-                  </Box>
-
                   {/* Illustration */}
                   {illustration && (
                     <Box
@@ -150,7 +124,7 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
                         WebkitTextFillColor: 'transparent',
                       }}
                     >
-                      CredHub
+                      Credify
                     </Typography>
                   </Box>
                 )}

@@ -1,404 +1,275 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Box, Typography, Button } from '@mui/material';
 import {
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Typography,
-  Box,
-  Divider,
-  Chip,
-  useTheme,
-} from '@mui/material';
-import {
-  Dashboard,
-  School,
-  Work,
-  Business,
-  Analytics,
-  VerifiedUser,
-  Assignment,
-  People,
-  TrendingUp,
-  Search,
-  BookmarkBorder,
-  History,
-  Settings,
-  Help,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Download,
+  Share2,
+  PieChart,
+  Badge,
+  Key,
   Folder,
-  Timeline,
-  Assessment,
-  GroupWork,
-  AccountBalance,
-  WorkspacePremium,
-  ManageAccounts,
-} from '@mui/icons-material';
+  BarChart3,
+  Users,
+  Settings,
+  HelpCircle,
+  FileText,
+  MessageCircle,
+} from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserRole } from '@/types/auth';
 
-const drawerWidth = 280;
-
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  path: string;
-  badge?: string | number;
-  roles: UserRole[];
-}
-
-const menuItems: MenuItem[] = [
-  // Learner Menu Items
-  {
-    id: 'learner-overview',
-    label: 'Overview',
-    icon: <Dashboard />,
-    path: '/dashboard',
-    roles: ['learner'],
-  },
-  {
-    id: 'credentials',
-    label: 'My Credentials',
-    icon: <WorkspacePremium />,
-    path: '/dashboard/credentials',
-    roles: ['learner'],
-  },
-  {
-    id: 'skill-progress',
-    label: 'Skill Progress',
-    icon: <TrendingUp />,
-    path: '/dashboard/skills',
-    roles: ['learner'],
-  },
-  {
-    id: 'nsqf-pathway',
-    label: 'NSQF Pathway',
-    icon: <Timeline />,
-    path: '/dashboard/pathway',
-    roles: ['learner'],
-  },
-  {
-    id: 'recommendations',
-    label: 'Recommendations',
-    icon: <School />,
-    path: '/dashboard/recommendations',
-    badge: '3',
-    roles: ['learner'],
-  },
-  {
-    id: 'digital-cv',
-    label: 'Digital CV',
-    icon: <Assignment />,
-    path: '/dashboard/cv',
-    roles: ['learner'],
-  },
-
-  // Employer Menu Items
-  {
-    id: 'employer-overview',
-    label: 'Overview',
-    icon: <Dashboard />,
-    path: '/dashboard',
-    roles: ['employer'],
-  },
-  {
-    id: 'candidate-search',
-    label: 'Find Candidates',
-    icon: <Search />,
-    path: '/dashboard/candidates',
-    roles: ['employer'],
-  },
-  {
-    id: 'bulk-verification',
-    label: 'Bulk Verification',
-    icon: <VerifiedUser />,
-    path: '/dashboard/verification',
-    roles: ['employer'],
-  },
-  {
-    id: 'saved-candidates',
-    label: 'Saved Profiles',
-    icon: <BookmarkBorder />,
-    path: '/dashboard/saved',
-    badge: '12',
-    roles: ['employer'],
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: <Analytics />,
-    path: '/dashboard/analytics',
-    roles: ['employer'],
-  },
-  {
-    id: 'verification-history',
-    label: 'Verification History',
-    icon: <History />,
-    path: '/dashboard/history',
-    roles: ['employer'],
-  },
-
-  // Institution Menu Items
-  {
-    id: 'institution-overview',
-    label: 'Overview',
-    icon: <Dashboard />,
-    path: '/dashboard',
-    roles: ['institution'],
-  },
-  {
-    id: 'credential-issuance',
-    label: 'Issue Credentials',
-    icon: <WorkspacePremium />,
-    path: '/dashboard/issue',
-    roles: ['institution'],
-  },
-  {
-    id: 'learner-analytics',
-    label: 'Learner Analytics',
-    icon: <People />,
-    path: '/dashboard/learners',
-    roles: ['institution'],
-  },
-  {
-    id: 'nsqf-compliance',
-    label: 'NSQF Compliance',
-    icon: <VerifiedUser />,
-    path: '/dashboard/compliance',
-    roles: ['institution'],
-  },
-  {
-    id: 'api-integration',
-    label: 'API Integration',
-    icon: <Settings />,
-    path: '/dashboard/api',
-    roles: ['institution'],
-  },
-  {
-    id: 'revenue-analytics',
-    label: 'Revenue Analytics',
-    icon: <Assessment />,
-    path: '/dashboard/revenue',
-    roles: ['institution'],
-  },
-
-  // Admin Menu Items
-  {
-    id: 'admin-overview',
-    label: 'System Overview',
-    icon: <Dashboard />,
-    path: '/dashboard',
-    roles: ['admin'],
-  },
-  {
-    id: 'user-management',
-    label: 'User Management',
-    icon: <ManageAccounts />,
-    path: '/dashboard/users',
-    roles: ['admin'],
-  },
-  {
-    id: 'institution-management',
-    label: 'Institutions',
-    icon: <AccountBalance />,
-    path: '/dashboard/institutions',
-    roles: ['admin'],
-  },
-  {
-    id: 'system-analytics',
-    label: 'System Analytics',
-    icon: <Analytics />,
-    path: '/dashboard/system-analytics',
-    roles: ['admin'],
-  },
-];
-
 interface DashboardSidebarProps {
-  open: boolean;
-  onClose: () => void;
+  sidebarExpanded: boolean;
+  setSidebarExpanded: (expanded: boolean) => void;
   userRole: UserRole;
-  isMobile: boolean;
 }
 
-export default function DashboardSidebar({ open, onClose, userRole, isMobile }: DashboardSidebarProps) {
+export default function DashboardSidebar({ 
+  sidebarExpanded, 
+  setSidebarExpanded, 
+  userRole 
+}: DashboardSidebarProps) {
+  const [openDashboards, setOpenDashboards] = useState(true);
+  const [openPages, setOpenPages] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const theme = useTheme();
-
-  const filteredMenuItems = menuItems.filter(item => item.roles.includes(userRole));
 
   const handleNavigation = (path: string) => {
     router.push(path);
-    if (isMobile) {
-      onClose();
-    }
   };
-
-  const getRoleInfo = (role: UserRole) => {
-    switch (role) {
-      case 'learner':
-        return {
-          title: 'Learner Portal',
-          subtitle: 'Manage your credentials',
-          color: theme.palette.primary.main,
-        };
-      case 'employer':
-        return {
-          title: 'Employer Portal',
-          subtitle: 'Find verified talent',
-          color: theme.palette.secondary.main,
-        };
-      case 'institution':
-        return {
-          title: 'Institution Portal',
-          subtitle: 'Issue & manage credentials',
-          color: theme.palette.warning.main,
-        };
-      case 'admin':
-        return {
-          title: 'Admin Portal',
-          subtitle: 'System administration',
-          color: theme.palette.error.main,
-        };
-      default:
-        return {
-          title: 'CredHub',
-          subtitle: 'Dashboard',
-          color: theme.palette.grey[500],
-        };
-    }
-  };
-
-  const roleInfo = getRoleInfo(userRole);
-
-  const drawerContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}` }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: roleInfo.color }}>
-          {roleInfo.title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {roleInfo.subtitle}
-        </Typography>
-      </Box>
-
-      {/* Navigation Menu */}
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        <List sx={{ px: 2, py: 1 }}>
-          {filteredMenuItems.map((item) => {
-            const isActive = pathname === item.path;
-            
-            return (
-              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
-                  onClick={() => handleNavigation(item.path)}
-                  sx={{
-                    borderRadius: 2,
-                    minHeight: 48,
-                    backgroundColor: isActive ? alpha(roleInfo.color, 0.1) : 'transparent',
-                    color: isActive ? roleInfo.color : 'text.primary',
-                    '&:hover': {
-                      backgroundColor: alpha(roleInfo.color, 0.05),
-                    },
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 40,
-                      color: isActive ? roleInfo.color : 'text.secondary',
-                    }}
-                  >
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{
-                      fontSize: '0.875rem',
-                      fontWeight: isActive ? 600 : 400,
-                    }}
-                  />
-                  {item.badge && (
-                    <Chip
-                      label={item.badge}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: '0.75rem',
-                        backgroundColor: roleInfo.color,
-                        color: 'white',
-                      }}
-                    />
-                  )}
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
-      </Box>
-
-      {/* Footer */}
-      <Box sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-        <List>
-          <ListItem disablePadding>
-            <ListItemButton
-              onClick={() => handleNavigation('/dashboard/settings')}
-              sx={{ borderRadius: 2, minHeight: 40 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <Settings />
-              </ListItemIcon>
-              <ListItemText
-                primary="Settings"
-                primaryTypographyProps={{ fontSize: '0.875rem' }}
-              />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              onClick={() => handleNavigation('/dashboard/help')}
-              sx={{ borderRadius: 2, minHeight: 40 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <Help />
-              </ListItemIcon>
-              <ListItemText
-                primary="Help & Support"
-                primaryTypographyProps={{ fontSize: '0.875rem' }}
-              />
-            </ListItemButton>
-          </ListItem>
-        </List>
-      </Box>
-    </Box>
-  );
 
   return (
-    <Drawer
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box',
-          borderRight: `1px solid ${theme.palette.divider}`,
-        },
-      }}
-      variant={isMobile ? 'temporary' : 'persistent'}
-      anchor="left"
-      open={open}
-      onClose={onClose}
-    >
-      {drawerContent}
-    </Drawer>
-  );
-}
+    <div className={`${sidebarExpanded ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}>
+      {/* Logo & User */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          {sidebarExpanded ? (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">C</span>
+              </div>
+              <span className="font-semibold text-gray-900">Credify</span>
+            </div>
+          ) : (
+            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center mx-auto">
+              <span className="text-white font-bold text-sm">C</span>
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            {sidebarExpanded ? (
+              <ChevronLeft size={16} className="text-gray-600" />
+            ) : (
+              <ChevronRight size={16} className="text-gray-600" />
+            )}
+          </button>
+        </div>
+        
+        {sidebarExpanded && (
+          <>
+            <button className="w-full text-left text-sm text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2 hover:bg-gray-50 rounded-md px-2 transition-colors">
+              <Download size={16} />
+              Download Portfolio
+            </button>
+            <button className="w-full text-left text-sm text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2 hover:bg-gray-50 rounded-md px-2 transition-colors">
+              <Share2 size={16} />
+              Share Profile
+            </button>
+          </>
+        )}
+      </div>
 
-// Helper function for alpha transparency
-function alpha(color: string, opacity: number): string {
-  return `${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`;
+      {/* Navigation - GitHub-like tree */}
+      <div className="flex-1 overflow-y-auto py-4">
+        <div className="px-4">
+          {/* DASHBOARDS Section */}
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">
+              {sidebarExpanded ? 'DASHBOARDS' : ''}
+            </h3>
+            
+            <button
+              onClick={() => handleNavigation(`/dashboard/${userRole}`)}
+              className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                pathname === `/dashboard/${userRole}` 
+                  ? 'bg-blue-50 text-blue-700 font-medium' 
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <PieChart size={16} className={pathname === `/dashboard/${userRole}` ? 'text-blue-600' : 'text-gray-600'} />
+              {sidebarExpanded && <span>Overview</span>}
+            </button>
+
+            <button
+              onClick={() => handleNavigation(`/dashboard/${userRole}/analytics`)}
+              className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                pathname === `/dashboard/${userRole}/analytics` 
+                  ? 'bg-blue-50 text-blue-700 font-medium' 
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <BarChart3 size={16} className={pathname === `/dashboard/${userRole}/analytics` ? 'text-blue-600' : 'text-gray-600'} />
+              {sidebarExpanded && <span>Analytics</span>}
+            </button>
+
+            <button
+              onClick={() => handleNavigation(`/dashboard/${userRole}/credentials`)}
+              className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                pathname === `/dashboard/${userRole}/credentials` 
+                  ? 'bg-blue-50 text-blue-700 font-medium' 
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Badge size={16} className={pathname === `/dashboard/${userRole}/credentials` ? 'text-blue-600' : 'text-gray-600'} />
+              {sidebarExpanded && <span>Credentials</span>}
+            </button>
+          </div>
+          <div className="mt-8" />
+          {sidebarExpanded && <p className="text-sm text-gray-500 mb-4 ml-2 font-medium">PAGES</p>}
+          
+          <button
+            onClick={() => setOpenPages(!openPages)}
+            className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+          >
+            {openPages ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            <Folder size={16} className="text-gray-600" />
+            {sidebarExpanded && <span className="font-medium">User Profile</span>}
+          </button>
+          
+          {openPages && sidebarExpanded && (
+            <div className="mt-2 space-y-1">
+              <button 
+                onClick={() => handleNavigation('/dashboard/profile')}
+                className={`w-full flex items-center gap-2 px-6 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/profile' 
+                    ? 'bg-blue-50 text-blue-700' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Overview
+              </button>
+              <button 
+                onClick={() => handleNavigation('/dashboard/profile/credentials')}
+                className={`w-full flex items-center gap-2 px-6 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/profile/credentials' 
+                    ? 'bg-blue-50 text-blue-700' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Credentials
+              </button>
+              <button 
+                onClick={() => handleNavigation('/dashboard/profile/pathways')}
+                className={`w-full flex items-center gap-2 px-6 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/profile/pathways' 
+                    ? 'bg-blue-50 text-blue-700' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Pathways
+              </button>
+            </div>
+          )}
+
+          {/* Additional sections based on user role */}
+          {/* {userRole === 'learner' && (
+            <>
+              <div className="mt-6" />
+              <button
+                onClick={() => handleNavigation('/dashboard/skills')}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/skills' 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Key size={16} className={pathname === '/dashboard/skills' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Skills</span>}
+              </button>
+            </>
+          )} */}
+
+          {userRole === 'employer' && (
+            <>
+              <div className="mt-6" />
+              <button
+                onClick={() => handleNavigation('/dashboard/candidates')}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/candidates' 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Users size={16} className={pathname === '/dashboard/candidates' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Candidates</span>}
+              </button>
+            </>
+          )}
+
+          {/* Additional Navigation Items */}
+          <div className="mt-6" />
+          
+          <button
+            onClick={() => handleNavigation('/dashboard/settings')}
+            className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+              pathname === '/dashboard/settings' 
+                ? 'bg-blue-50 text-blue-700 font-medium' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ChevronRight size={16} />
+            <Settings size={16} className={pathname === '/dashboard/settings' ? 'text-blue-600' : 'text-gray-600'} />
+            {sidebarExpanded && <span>Settings</span>}
+          </button>
+
+          <button
+            onClick={() => handleNavigation('/dashboard/blog')}
+            className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+              pathname === '/dashboard/blog' 
+                ? 'bg-blue-50 text-blue-700 font-medium' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ChevronRight size={16} />
+            <FileText size={16} className={pathname === '/dashboard/blog' ? 'text-blue-600' : 'text-gray-600'} />
+            {sidebarExpanded && <span>Blog</span>}
+          </button>
+
+          <button
+            onClick={() => handleNavigation('/dashboard/social')}
+            className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+              pathname === '/dashboard/social' 
+                ? 'bg-blue-50 text-blue-700 font-medium' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ChevronRight size={16} />
+            <MessageCircle size={16} className={pathname === '/dashboard/social' ? 'text-blue-600' : 'text-gray-600'} />
+            {sidebarExpanded && <span>Social</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-200 p-4">        
+        <button
+          onClick={() => handleNavigation('/dashboard/help')}
+          className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+            pathname === '/dashboard/help' 
+              ? 'bg-blue-50 text-blue-700 font-medium' 
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <HelpCircle size={16} className={pathname === '/dashboard/help' ? 'text-blue-600' : 'text-gray-600'} />
+          {sidebarExpanded && <span>Help & Support</span>}
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -70,10 +70,56 @@ api.interceptors.response.use(
 );
 
 export class AuthService {
+  // Test backend connectivity
+  static async testConnection(): Promise<any> {
+    try {
+      console.log('Testing backend connection...');
+      // Try different common health endpoints
+      let response;
+      try {
+        response = await api.get('/api/v1/health');
+      } catch (e) {
+        try {
+          response = await api.get('/health');
+        } catch (e2) {
+          try {
+            response = await api.get('/');
+          } catch (e3) {
+            response = await api.get('/api/v1/');
+          }
+        }
+      }
+      console.log('Backend connection test - Success:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Backend connection test - Failed:', error);
+      console.error('Backend connection test - Error status:', error.response?.status);
+      console.error('Backend connection test - Error data:', error.response?.data);
+      throw error;
+    }
+  }
   // Register new user
   static async register(data: RegisterRequest): Promise<LoginResponse> {
-    const response: AxiosResponse<LoginResponse> = await api.post('/api/v1/auth/register', data);
-    return response.data;
+    try {
+      console.log('AuthService.register - API URL:', api.defaults.baseURL);
+      console.log('AuthService.register - Full URL:', `${api.defaults.baseURL}/api/v1/auth/register`);
+      console.log('AuthService.register - Sending data:', JSON.stringify(data, null, 2));
+      console.log('AuthService.register - Request headers:', api.defaults.headers);
+      
+      const response: AxiosResponse<LoginResponse> = await api.post('/api/v1/auth/register', data);
+      console.log('AuthService.register - Response status:', response.status);
+      console.log('AuthService.register - Response headers:', response.headers);
+      console.log('AuthService.register - Response data:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('AuthService.register - Full error object:', error);
+      console.error('AuthService.register - Error message:', error.message);
+      console.error('AuthService.register - Error response:', error.response);
+      console.error('AuthService.register - Error status:', error.response?.status);
+      console.error('AuthService.register - Error data:', error.response?.data);
+      console.error('AuthService.register - Error headers:', error.response?.headers);
+      throw error;
+    }
   }
 
   // Login user

@@ -35,6 +35,10 @@ import {
   Assignment,
   People,
   TrendingUp,
+  LightMode,
+  DarkMode,
+  Refresh,
+  Apps,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '@/hooks/useAuth';
@@ -127,16 +131,28 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, title }: DashboardLayoutProps) {
-  const [open, setOpen] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   const { user, logout } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Provide default user data if not logged in
+  const currentUser = user || {
+    id: 'default-user',
+    full_name: 'Demo User',
+    email: 'demo@credify.com',
+    role: 'learner' as const,
+    is_verified: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
   const handleDrawerToggle = () => {
-    setOpen(!open);
+    setSidebarExpanded(!sidebarExpanded);
   };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -160,6 +176,20 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
     handleProfileMenuClose();
   };
 
+  const handleThemeToggle = () => {
+    setIsDarkMode(!isDarkMode);
+    // You can implement actual theme switching logic here
+  };
+
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
+  const handleAppsMenu = () => {
+    // You can implement apps menu logic here
+    console.log('Apps menu clicked');
+  };
+
   const getRoleDisplayName = (role: UserRole) => {
     switch (role) {
       case 'learner': return 'Learner';
@@ -181,76 +211,125 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* App Bar */}
-      <AppBarStyled position="fixed" open={open && !isMobile}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerToggle}
-            edge="start"
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {title || 'CredHub Dashboard'}
-          </Typography>
-
-          {/* Search Bar */}
-          <Search>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Search credentials, skills..."
-              inputProps={{ 'aria-label': 'search' }}
-            />
-          </Search>
-
-          {/* Notifications */}
-          <IconButton
-            size="large"
-            color="inherit"
-            onClick={handleNotificationOpen}
-            sx={{ ml: 2 }}
-          >
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-
-          {/* Profile Menu */}
-          <IconButton
-            size="large"
-            edge="end"
-            aria-label="account of current user"
-            onClick={handleProfileMenuOpen}
-            color="inherit"
-            sx={{ ml: 2 }}
-          >
-            <Avatar sx={{ width: 32, height: 32, bgcolor: getRoleColor(user?.role || 'learner') }}>
-              {user?.full_name?.charAt(0).toUpperCase()}
-            </Avatar>
-          </IconButton>
-        </Toolbar>
-      </AppBarStyled>
-
+    <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <DashboardSidebar
-        open={open}
-        onClose={() => setOpen(false)}
-        userRole={user?.role || 'learner'}
-        isMobile={isMobile}
+        sidebarExpanded={sidebarExpanded}
+        setSidebarExpanded={setSidebarExpanded}
+        userRole={currentUser.role}
       />
 
-      {/* Main Content */}
-      <Main open={open && !isMobile}>
-        <Toolbar />
-        {children}
-      </Main>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navigation Bar */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                {title || 'Dashboard Overview'}
+              </Typography>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Search Bar */}
+              <Search>
+                <SearchIconWrapper>
+                  <SearchIcon />
+                </SearchIconWrapper>
+                <StyledInputBase
+                  placeholder="Search credentials, skills..."
+                  inputProps={{ 'aria-label': 'search' }}
+                />
+              </Search>
+
+              {/* Theme Toggle */}
+              <IconButton
+                size="medium"
+                color="inherit"
+                onClick={handleThemeToggle}
+                sx={{ 
+                  color: '#6b7280',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    color: '#374151'
+                  }
+                }}
+              >
+                {isDarkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+              </IconButton>
+
+              {/* Refresh */}
+              <IconButton
+                size="medium"
+                color="inherit"
+                onClick={handleRefresh}
+                sx={{ 
+                  color: '#6b7280',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    color: '#374151'
+                  }
+                }}
+              >
+                <Refresh fontSize="small" />
+              </IconButton>
+
+              {/* Apps Menu */}
+              <IconButton
+                size="medium"
+                color="inherit"
+                onClick={handleAppsMenu}
+                sx={{ 
+                  color: '#6b7280',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    color: '#374151'
+                  }
+                }}
+              >
+                <Apps fontSize="small" />
+              </IconButton>
+
+              {/* Notifications */}
+              <IconButton
+                size="medium"
+                color="inherit"
+                onClick={handleNotificationOpen}
+                sx={{ 
+                  color: '#6b7280',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                    color: '#374151'
+                  }
+                }}
+              >
+                <Badge badgeContent={3} color="error">
+                  <NotificationsIcon fontSize="small" />
+                </Badge>
+              </IconButton>
+
+              {/* Profile Menu */}
+              <IconButton
+                size="medium"
+                edge="end"
+                aria-label="account of current user"
+                onClick={handleProfileMenuOpen}
+                color="inherit"
+                sx={{ ml: 1 }}
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: getRoleColor(currentUser.role || 'learner') }}>
+                  {currentUser.full_name?.charAt(0).toUpperCase()}
+                </Avatar>
+              </IconButton>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
+      </div>
 
       {/* Debug Role Switcher */}
       <RoleSwitcher />
@@ -279,11 +358,11 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem>
-          <Avatar sx={{ bgcolor: getRoleColor(user?.role || 'learner') }} />
+          <Avatar sx={{ bgcolor: getRoleColor(currentUser.role || 'learner') }} />
           <Box>
-            <Typography variant="subtitle2">{user?.full_name}</Typography>
+            <Typography variant="subtitle2">{currentUser.full_name}</Typography>
             <Typography variant="caption" color="text.secondary">
-              {getRoleDisplayName(user?.role || 'learner')}
+              {getRoleDisplayName(currentUser.role || 'learner')}
             </Typography>
           </Box>
         </MenuItem>
@@ -332,6 +411,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
           </Box>
         </MenuItem>
       </Menu>
-    </Box>
+    </div>
   );
 }

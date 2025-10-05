@@ -177,7 +177,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } 
       });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
+      console.error('useAuth.register - Full error:', error);
+      console.error('useAuth.register - Error response:', error.response);
+      console.error('useAuth.register - Error data:', error.response?.data);
+      console.error('useAuth.register - Error status:', error.response?.status);
+      
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Registration failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
       throw error;
     }

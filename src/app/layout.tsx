@@ -21,8 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>CredHub - Digital Credential Platform</title>
-        <meta name="description" content="Securely manage and verify your digital credentials with CredHub" />
+        <title>Credify - Digital Credential Platform</title>
+        <meta name="description" content="Securely manage and verify your digital credentials with Credify" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </head>

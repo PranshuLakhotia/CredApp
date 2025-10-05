@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { RegisterRequest } from '@/types/auth';
+import { AuthService } from '@/services/auth.service';
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -59,7 +60,7 @@ export default function SignUpPage() {
       feedback.push('One lowercase letter');
     }
 
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) {
       score += 1;
     } else {
       feedback.push('One special character');
@@ -132,7 +133,7 @@ export default function SignUpPage() {
         passwordErrors.push('Password must contain at least one lowercase letter');
       }
       
-      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password)) {
+      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(formData.password)) {
         passwordErrors.push('Password must contain at least one special character');
       }
       
@@ -184,30 +185,52 @@ export default function SignUpPage() {
       setIsSubmitting(true);
       clearError();
       
-      // Convert form data to backend API format
-      const registrationData: RegisterRequest = {
+      // Convert form data to backend API format - only include non-empty fields
+      const registrationData: any = {
         email: formData.email.trim(),
         full_name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
         password: formData.password,
         confirm_password: formData.confirmPassword,
-        phone_number: formData.phone?.trim() || undefined,
-        date_of_birth: formData.dateOfBirth ? `${formData.dateOfBirth}T00:00:00Z` : undefined,
-        gender: formData.gender || undefined,
-        address: formData.address.street || formData.address.city || formData.address.state || 
-                formData.address.country || formData.address.postalCode ? {
-          street: formData.address.street?.trim() || undefined,
-          city: formData.address.city?.trim() || undefined,
-          state: formData.address.state?.trim() || undefined,
-          country: formData.address.country?.trim() || undefined,
-          postal_code: formData.address.postalCode?.trim() || undefined,
-        } : undefined,
       };
+
+      // Only add optional fields if they have values
+      if (formData.phone?.trim()) {
+        registrationData.phone_number = formData.phone.trim();
+      }
       
-      console.log('Sending registration data:', registrationData);
+      if (formData.dateOfBirth?.trim()) {
+        registrationData.date_of_birth = formData.dateOfBirth.trim();
+      }
+      
+      if (formData.gender?.trim()) {
+        registrationData.gender = formData.gender.trim();
+      }
+
+      // Only add address if at least one field is filled
+      const hasAddressData = formData.address.street?.trim() || 
+                            formData.address.city?.trim() || 
+                            formData.address.state?.trim() || 
+                            formData.address.country?.trim() || 
+                            formData.address.postalCode?.trim();
+      
+      if (hasAddressData) {
+        registrationData.address = {};
+        if (formData.address.street?.trim()) registrationData.address.street = formData.address.street.trim();
+        if (formData.address.city?.trim()) registrationData.address.city = formData.address.city.trim();
+        if (formData.address.state?.trim()) registrationData.address.state = formData.address.state.trim();
+        if (formData.address.country?.trim()) registrationData.address.country = formData.address.country.trim();
+        if (formData.address.postalCode?.trim()) registrationData.address.postal_code = formData.address.postalCode.trim();
+      }
+      
+      console.log('Sending registration data:', JSON.stringify(registrationData, null, 2));
       await register(registrationData);
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Registration failed:', error);
+      router.push('/dashboard/learner');
+    } catch (error: any) {
+      console.error('SignUpForm - Registration failed:', error);
+      console.error('SignUpForm - Error response:', error.response);
+      console.error('SignUpForm - Error data:', error.response?.data);
+      console.error('SignUpForm - Error status:', error.response?.status);
+      console.error('SignUpForm - Error headers:', error.response?.headers);
     } finally {
       setIsSubmitting(false);
     }
@@ -215,6 +238,38 @@ export default function SignUpPage() {
 
   const handleLogin = () => {
     router.push('/auth/login');
+  };
+
+  const testBackendConnection = async () => {
+    try {
+      console.log('Testing backend connection...');
+      await AuthService.testConnection();
+      alert('Backend connection successful!');
+    } catch (error) {
+      console.error('Backend connection failed:', error);
+      alert('Backend connection failed! Check console for details.');
+    }
+  };
+
+  const testMinimalRegistration = async () => {
+    try {
+      console.log('Testing minimal registration...');
+      const minimalData = {
+        email: 'test@example.com',
+        full_name: 'Test User',
+        password: 'TestPass123!',
+        confirm_password: 'TestPass123!'
+      };
+      console.log('Minimal registration data:', JSON.stringify(minimalData, null, 2));
+      
+      const response = await AuthService.register(minimalData);
+      console.log('Minimal registration success:', response);
+      alert('Minimal registration successful!');
+    } catch (error: any) {
+      console.error('Minimal registration failed:', error);
+      console.error('Error response:', error.response?.data);
+      alert(`Minimal registration failed: ${error.response?.data?.detail || error.message}`);
+    }
   };
 
   return (
@@ -504,9 +559,9 @@ export default function SignUpPage() {
                           <span>Lowercase letter</span>
                         </div>
                         <div className={`flex items-center gap-1 ${
-                          /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
+                          /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'
                         }`}>
-                          <span>{/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) ? '✓' : '○'}</span>
+                          <span>{/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(formData.password) ? '✓' : '○'}</span>
                           <span>Special character</span>
                         </div>
                       </div>
@@ -574,6 +629,24 @@ export default function SignUpPage() {
                   {error}
                 </div>
               )}
+
+              {/* Test Backend Connection Button */}
+              <button
+                type="button"
+                onClick={testBackendConnection}
+                className="w-full bg-gray-600 text-white py-2 rounded-lg font-semibold hover:bg-gray-700 transition mb-2"
+              >
+                Test Backend Connection
+              </button>
+
+              {/* Test Minimal Registration Button */}
+              <button
+                type="button"
+                onClick={testMinimalRegistration}
+                className="w-full bg-yellow-600 text-white py-2 rounded-lg font-semibold hover:bg-yellow-700 transition mb-2"
+              >
+                Test Minimal Registration
+              </button>
 
               {/* Create Account Button */}
               <button

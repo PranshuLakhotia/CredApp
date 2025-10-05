@@ -37,7 +37,7 @@ export default function LoginFormNew() {
       };
       
       await login(loginData);
-      router.push('/dashboard');
+      router.push('/dashboard/learner');
     } catch (error) {
       console.error('Login failed:', error);
     } finally {

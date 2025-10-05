@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 
-// CredHub brand colors based on the screenshots
+// Credify brand colors based on the screenshots
 const brandColors = {
   primary: {
     main: '#4F46E5', // Indigo blue from the screenshots

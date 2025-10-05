@@ -240,7 +240,7 @@ export default function ForgotPasswordPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">C</span>
             </div>
-            <span className="text-3xl font-bold text-gray-900">CredHub</span>
+            <span className="text-3xl font-bold text-gray-900">Credify</span>
           </div>
 
           {/* Back to Login */}
