@@ -7,315 +7,245 @@ import {
   Card,
   CardContent,
   Button,
-  TextField,
-  InputAdornment,
+  Paper,
+  LinearProgress,
   Chip,
   Avatar,
   List,
   ListItem,
   ListItemText,
   ListItemAvatar,
-  ListItemSecondaryAction,
-  IconButton,
-  Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Paper,
 } from '@mui/material';
 import {
   Search,
-  FilterList,
-  BookmarkBorder,
-  Bookmark,
-  Visibility,
-  Download,
   People,
   VerifiedUser,
   TrendingUp,
   Assessment,
+  WorkOutline,
+  Schedule,
+  Star,
+  Visibility,
+  PersonAdd,
+  Analytics,
+  FilterList,
+  Business,
+  Assignment,
+  Notifications,
 } from '@mui/icons-material';
 import StatsCard from './StatsCard';
-import { Candidate } from '@/types/dashboard';
+import { useRouter } from 'next/navigation';
 
-// Mock data
-const mockCandidates: Candidate[] = [
-  {
-    id: '1',
-    full_name: 'Rajesh Kumar',
-    email: 'rajesh@example.com',
-    skills: ['React', 'Node.js', 'JavaScript'],
-    nsqf_level: 5,
-    total_credentials: 12,
-    verified_credentials: 10,
-    match_percentage: 95,
-    location: 'Mumbai, India',
-    experience_years: 3,
-    last_active: '2024-03-15',
-  },
-  {
-    id: '2',
-    full_name: 'Priya Sharma',
-    email: 'priya@example.com',
-    skills: ['Python', 'Machine Learning', 'Data Science'],
-    nsqf_level: 6,
-    total_credentials: 15,
-    verified_credentials: 14,
-    match_percentage: 92,
-    location: 'Bangalore, India',
-    experience_years: 5,
-    last_active: '2024-03-14',
-  },
-  {
-    id: '3',
-    full_name: 'Amit Patel',
-    email: 'amit@example.com',
-    skills: ['Java', 'Spring Boot', 'Microservices'],
-    nsqf_level: 4,
-    total_credentials: 8,
-    verified_credentials: 7,
-    match_percentage: 88,
-    location: 'Pune, India',
-    experience_years: 2,
-    last_active: '2024-03-13',
-  },
+// Mock data for employer dashboard
+const mockHiringData = {
+  activeJobs: 12,
+  candidatesViewed: 89,
+  interviewsScheduled: 15,
+  hiredThisMonth: 3,
+};
+
+const mockRecentActivity = [
+  { id: 1, type: 'application', candidate: 'Rajesh Kumar', job: 'React Developer', time: '2 hours ago' },
+  { id: 2, type: 'interview', candidate: 'Priya Sharma', job: 'ML Engineer', time: '4 hours ago' },
+  { id: 3, type: 'hired', candidate: 'Amit Patel', job: 'Full Stack Dev', time: '1 day ago' },
 ];
 
-const mockRecentSearches = [
-  'React Developer Mumbai',
-  'Machine Learning Engineer',
-  'Full Stack Developer 3+ years',
-  'Python Developer Remote',
+const mockTopSkills = [
+  { skill: 'React', demand: 85, growth: '+12%' },
+  { skill: 'Python', demand: 78, growth: '+8%' },
+  { skill: 'Node.js', demand: 72, growth: '+15%' },
+  { skill: 'Machine Learning', demand: 68, growth: '+25%' },
 ];
 
 export default function EmployerDashboard() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [skillFilter, setSkillFilter] = useState('');
-  const [locationFilter, setLocationFilter] = useState('');
-  const [nsqfFilter, setNsqfFilter] = useState('');
-  const [savedCandidates, setSavedCandidates] = useState<string[]>(['1']);
+  const router = useRouter();
 
-  const toggleSaveCandidate = (candidateId: string) => {
-    setSavedCandidates(prev => 
-      prev.includes(candidateId) 
-        ? prev.filter(id => id !== candidateId)
-        : [...prev, candidateId]
-    );
+  const handleSearchLearners = () => {
+    router.push('/dashboard/employer/search-learners');
   };
 
   return (
-    <Box>
-      {/* Welcome Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Find Verified Talent 🎯
+    <Box sx={{ p: 3 }}>
+      {/* Header Section */}
+      <Box sx={{ mb: 5 }}>
+        <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, color: '#0f172a' }}>
+          Employer Dashboard 💼
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Search and verify candidates with blockchain-backed credentials
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+          Manage your hiring process and find verified talent
         </Typography>
       </Box>
 
       {/* Stats Overview */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 5 }}>
         <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
           <StatsCard
-            title="Total Searches"
-            value={247}
-            icon={<Search />}
+            title="Active Jobs"
+            value={mockHiringData.activeJobs}
+            icon={<WorkOutline />}
             color="primary"
-            trend={{ value: 12, label: 'vs last month' }}
+            trend={{ value: 8, label: 'this month' }}
           />
         </Box>
         <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
           <StatsCard
             title="Candidates Viewed"
-            value={89}
+            value={mockHiringData.candidatesViewed}
             icon={<People />}
             color="info"
-            trend={{ value: 8, label: 'this week' }}
+            trend={{ value: 15, label: 'this week' }}
           />
         </Box>
         <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
           <StatsCard
-            title="Verifications"
-            value={156}
-            icon={<VerifiedUser />}
-            color="success"
-            trend={{ value: 15, label: 'completed' }}
-          />
-        </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-          <StatsCard
-            title="Saved Profiles"
-            value={23}
-            icon={<Bookmark />}
+            title="Interviews Scheduled"
+            value={mockHiringData.interviewsScheduled}
+            icon={<Schedule />}
             color="warning"
-            subtitle="Ready for review"
+            trend={{ value: 3, label: 'pending' }}
+          />
+        </Box>
+        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+          <StatsCard
+            title="Hired This Month"
+            value={mockHiringData.hiredThisMonth}
+            icon={<Star />}
+            color="success"
+            subtitle="Great progress!"
           />
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        {/* Search & Filter Section */}
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                Candidate Search & Filter
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {/* Main Actions */}
+        <Box sx={{ flex: '2 1 600px', minWidth: '400px' }}>
+          {/* Quick Actions Card */}
+          <Card 
+            elevation={0}
+            sx={{ 
+              mb: 4,
+              border: '1px solid #e2e8f0',
+              borderRadius: 4,
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+                Quick Actions
               </Typography>
-              
-              {/* Search Bar */}
-              <TextField
-                fullWidth
-                placeholder="Search by skills, job title, or keywords..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ mb: 3 }}
-              />
-
-              {/* Filters */}
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Skills</InputLabel>
-                    <Select
-                      value={skillFilter}
-                      label="Skills"
-                      onChange={(e) => setSkillFilter(e.target.value)}
-                    >
-                      <MenuItem value="">All Skills</MenuItem>
-                      <MenuItem value="react">React</MenuItem>
-                      <MenuItem value="python">Python</MenuItem>
-                      <MenuItem value="java">Java</MenuItem>
-                      <MenuItem value="ml">Machine Learning</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Location</InputLabel>
-                    <Select
-                      value={locationFilter}
-                      label="Location"
-                      onChange={(e) => setLocationFilter(e.target.value)}
-                    >
-                      <MenuItem value="">All Locations</MenuItem>
-                      <MenuItem value="mumbai">Mumbai</MenuItem>
-                      <MenuItem value="bangalore">Bangalore</MenuItem>
-                      <MenuItem value="pune">Pune</MenuItem>
-                      <MenuItem value="remote">Remote</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>NSQF Level</InputLabel>
-                    <Select
-                      value={nsqfFilter}
-                      label="NSQF Level"
-                      onChange={(e) => setNsqfFilter(e.target.value)}
-                    >
-                      <MenuItem value="">All Levels</MenuItem>
-                      <MenuItem value="3">Level 3+</MenuItem>
-                      <MenuItem value="4">Level 4+</MenuItem>
-                      <MenuItem value="5">Level 5+</MenuItem>
-                      <MenuItem value="6">Level 6+</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-                <Button variant="contained" startIcon={<Search />}>
-                  Search Candidates
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Search />}
+                  onClick={handleSearchLearners}
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    bgcolor: '#3b82f6',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                    '&:hover': {
+                      bgcolor: '#2563eb',
+                      boxShadow: '0 6px 16px rgba(59, 130, 246, 0.5)',
+                      transform: 'translateY(-2px)',
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Search Learners
                 </Button>
-                <Button variant="outlined" startIcon={<FilterList />}>
-                  Advanced Filters
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={<PersonAdd />}
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    borderColor: '#3b82f6',
+                    color: '#3b82f6',
+                    '&:hover': {
+                      borderColor: '#2563eb',
+                      bgcolor: 'rgba(59, 130, 246, 0.05)',
+                    }
+                  }}
+                >
+                  Post New Job
                 </Button>
-                <Button variant="outlined" startIcon={<Download />}>
-                  Bulk Verification
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={<Analytics />}
+                  sx={{
+                    px: 4,
+                    py: 2,
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    borderColor: '#10b981',
+                    color: '#10b981',
+                    '&:hover': {
+                      borderColor: '#059669',
+                      bgcolor: 'rgba(16, 185, 129, 0.05)',
+                    }
+                  }}
+                >
+                  View Analytics
                 </Button>
               </Box>
             </CardContent>
           </Card>
 
-          {/* Search Results */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                Search Results ({mockCandidates.length} candidates found)
+          {/* Recent Activity */}
+          <Card 
+            elevation={0}
+            sx={{ 
+              border: '1px solid #e2e8f0',
+              borderRadius: 4,
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+                Recent Activity
               </Typography>
-              
               <List sx={{ p: 0 }}>
-                {mockCandidates.map((candidate, index) => (
-                  <React.Fragment key={candidate.id}>
-                    <ListItem sx={{ px: 0, py: 2 }}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: 'primary.main' }}>
-                          {candidate.full_name.charAt(0)}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                              {candidate.full_name}
-                            </Typography>
-                            {candidate.match_percentage && (
-                              <Chip
-                                label={`${candidate.match_percentage}% match`}
-                                size="small"
-                                color="success"
-                                variant="outlined"
-                              />
-                            )}
-                          </Box>
-                        }
-                        secondary={
-                          <Box>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                              {candidate.location} • {candidate.experience_years} years experience
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                              {candidate.skills.slice(0, 3).map((skill, idx) => (
-                                <Chip key={idx} label={skill} size="small" variant="outlined" />
-                              ))}
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Typography variant="caption" color="text.secondary">
-                                NSQF Level {candidate.nsqf_level}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {candidate.verified_credentials}/{candidate.total_credentials} verified
-                              </Typography>
-                            </Box>
-                          </Box>
-                        }
-                      />
-                      <ListItemSecondaryAction>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <IconButton
-                            onClick={() => toggleSaveCandidate(candidate.id)}
-                            color={savedCandidates.includes(candidate.id) ? 'primary' : 'default'}
-                          >
-                            {savedCandidates.includes(candidate.id) ? <Bookmark /> : <BookmarkBorder />}
-                          </IconButton>
-                          <Button variant="outlined" size="small" startIcon={<Visibility />}>
-                            View Profile
-                          </Button>
+                {mockRecentActivity.map((activity) => (
+                  <ListItem key={activity.id} sx={{ px: 0, py: 2 }}>
+                    <ListItemAvatar>
+                      <Avatar 
+                        sx={{ 
+                          bgcolor: activity.type === 'hired' ? '#10b981' : 
+                                  activity.type === 'interview' ? '#f59e0b' : '#3b82f6',
+                          width: 48,
+                          height: 48
+                        }}
+                      >
+                        {activity.type === 'hired' ? <Star /> : 
+                         activity.type === 'interview' ? <Schedule /> : <Visibility />}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          {activity.candidate}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
+                            {activity.type === 'hired' ? 'Hired for' : 
+                             activity.type === 'interview' ? 'Interview scheduled for' : 'Applied for'} {activity.job}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {activity.time}
+                          </Typography>
                         </Box>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                    {index < mockCandidates.length - 1 && <Divider />}
-                  </React.Fragment>
+                      }
+                    />
+                  </ListItem>
                 ))}
               </List>
             </CardContent>
@@ -324,65 +254,96 @@ export default function EmployerDashboard() {
 
         {/* Sidebar */}
         <Box sx={{ flex: '1 1 400px', minWidth: '350px' }}>
-          {/* Quick Actions */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                Quick Actions
+          {/* Top Skills in Demand */}
+          <Card 
+            elevation={0}
+            sx={{ 
+              mb: 4,
+              border: '1px solid #e2e8f0',
+              borderRadius: 4,
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+                Top Skills in Demand
               </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button variant="contained" startIcon={<Download />} fullWidth>
-                  Bulk Verification Tool
-                </Button>
-                <Button variant="outlined" startIcon={<Assessment />} fullWidth>
-                  Analytics Dashboard
-                </Button>
-                <Button variant="outlined" startIcon={<Bookmark />} fullWidth>
-                  Saved Candidates ({savedCandidates.length})
-                </Button>
-              </Box>
+              {mockTopSkills.map((skillData, index) => (
+                <Box key={index} sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {skillData.skill}
+                    </Typography>
+                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                      {skillData.growth}
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={skillData.demand} 
+                    sx={{ 
+                      height: 8, 
+                      borderRadius: 4,
+                      bgcolor: '#f1f5f9',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 4,
+                        bgcolor: '#3b82f6'
+                      }
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {skillData.demand}% demand
+                  </Typography>
+                </Box>
+              ))}
             </CardContent>
           </Card>
 
-          {/* Recent Searches */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                Recent Searches
-              </Typography>
-              <List sx={{ p: 0 }}>
-                {mockRecentSearches.map((search, index) => (
-                  <ListItem key={index} sx={{ px: 0, py: 1 }}>
-                    <ListItemText
-                      primary={search}
-                      primaryTypographyProps={{ variant: 'body2' }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
+          {/* Notifications */}
+          <Card 
+            elevation={0}
+            sx={{ 
+              border: '1px solid #e2e8f0',
+              borderRadius: 4,
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Notifications sx={{ color: '#f59e0b' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                  Notifications
+                </Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                  New applications received
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  5 new candidates applied for React Developer position
+                </Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                  Interview reminder
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Interview with Priya Sharma scheduled for tomorrow at 2 PM
+                </Typography>
+              </Box>
+              <Button 
+                variant="text" 
+                size="small" 
+                sx={{ 
+                  color: '#3b82f6',
+                  fontWeight: 600,
+                  textTransform: 'none'
+                }}
+              >
+                View all notifications
+              </Button>
             </CardContent>
           </Card>
-
-          {/* Hiring Trends */}
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-              Hiring Trends
-            </Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Most in-demand skills this month:
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                <Chip label="React" size="small" color="primary" />
-                <Chip label="Python" size="small" color="primary" />
-                <Chip label="Machine Learning" size="small" color="primary" />
-                <Chip label="DevOps" size="small" color="primary" />
-              </Box>
-            </Box>
-            <Typography variant="caption" color="text.secondary">
-              📈 React developers saw 25% increase in demand
-            </Typography>
-          </Paper>
         </Box>
       </Box>
     </Box>
