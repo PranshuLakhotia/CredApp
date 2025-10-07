@@ -1,453 +1,781 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
+  Stepper,
+  Step,
+  StepLabel,
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
-  Chip,
-  Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Divider,
-  LinearProgress,
+  Card,
+  CardContent,
+  Alert,
+  CircularProgress,
   IconButton,
+  InputAdornment,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import {
-  Add,
-  School,
-  People,
-  Assessment,
-  Api,
-  TrendingUp,
+  Business,
+  Description,
   VerifiedUser,
-  AttachMoney,
-  Download,
-  Edit,
-  Delete,
+  Key,
   Visibility,
+  VisibilityOff,
+  ContentCopy,
+  CheckCircle,
+  Warning,
+  Refresh,
+  Delete,
 } from '@mui/icons-material';
-import StatsCard from './StatsCard';
-import { Institution, CredentialTemplate } from '@/types/dashboard';
 
-// Mock data
-const mockLearners = [
-  {
-    id: '1',
-    name: 'Rahul Singh',
-    email: 'rahul@example.com',
-    enrolled_courses: 3,
-    completed_credentials: 2,
-    progress: 67,
-    last_active: '2024-03-15',
-  },
-  {
-    id: '2',
-    name: 'Sneha Patel',
-    email: 'sneha@example.com',
-    enrolled_courses: 2,
-    completed_credentials: 2,
-    progress: 100,
-    last_active: '2024-03-14',
-  },
-  {
-    id: '3',
-    name: 'Vikram Kumar',
-    email: 'vikram@example.com',
-    enrolled_courses: 4,
-    completed_credentials: 1,
-    progress: 25,
-    last_active: '2024-03-13',
-  },
-];
+interface IssuerVerificationData {
+  // Step 1: Organization Details
+  organization_name: string;
+  organization_type: string;
+  registration_number: string;
+  year_established: string;
+  website: string;
+  
+  // Step 2: Government Documents
+  govt_id_type: string;
+  govt_id_number: string;
+  tax_id: string;
+  registration_certificate_url: string;
+  
+  // Step 3: Contact Information
+  official_email: string;
+  official_phone: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  
+  // Step 4: Authorized Representative
+  representative_name: string;
+  representative_designation: string;
+  representative_email: string;
+  representative_phone: string;
+  representative_id_proof_url: string;
+}
 
-const mockCredentialTemplates: CredentialTemplate[] = [
-  {
-    id: '1',
-    title: 'Web Development Fundamentals',
-    description: 'Complete course covering HTML, CSS, JavaScript basics',
-    nsqf_level: 3,
-    credit_points: 8,
-    duration: '12 weeks',
-    skills_covered: ['HTML', 'CSS', 'JavaScript'],
-    assessment_criteria: ['Project submission', 'Quiz scores', 'Peer review'],
-    is_active: true,
-  },
-  {
-    id: '2',
-    title: 'Data Science with Python',
-    description: 'Advanced data analysis and machine learning techniques',
-    nsqf_level: 5,
-    credit_points: 15,
-    duration: '16 weeks',
-    skills_covered: ['Python', 'Pandas', 'Machine Learning', 'Statistics'],
-    assessment_criteria: ['Capstone project', 'Weekly assignments', 'Final exam'],
-    is_active: true,
-  },
+interface ApiKey {
+  _id: string;
+  key: string;
+  name: string;
+  created_at: string;
+  last_used: string | null;
+  is_active: boolean;
+}
+
+const steps = [
+  'Organization Details',
+  'Government Documents',
+  'Contact Information',
+  'Authorized Representative'
 ];
 
 export default function InstitutionDashboard() {
-  const [openCredentialDialog, setOpenCredentialDialog] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<CredentialTemplate | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'rejected' | 'not_submitted'>('not_submitted');
+  const [formData, setFormData] = useState<IssuerVerificationData>({
+    organization_name: '',
+    organization_type: '',
+    registration_number: '',
+    year_established: '',
+    website: '',
+    govt_id_type: '',
+    govt_id_number: '',
+    tax_id: '',
+    registration_certificate_url: '',
+    official_email: '',
+    official_phone: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: 'India',
+    representative_name: '',
+    representative_designation: '',
+    representative_email: '',
+    representative_phone: '',
+    representative_id_proof_url: '',
+  });
+  
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [showApiKey, setShowApiKey] = useState<string | null>(null);
+  const [newKeyDialog, setNewKeyDialog] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
 
-  const handleIssueCredential = () => {
-    setOpenCredentialDialog(true);
+  useEffect(() => {
+    fetchVerificationStatus();
+  }, []);
+
+  const fetchVerificationStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVerificationStatus(data.status);
+        if (data.status === 'verified') {
+          fetchApiKeys();
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching verification status:', error);
+    }
   };
 
-  return (
-    <Box>
-      {/* Welcome Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Institution Portal 🏫
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Manage credential issuance and track learner progress
-        </Typography>
-      </Box>
+  const fetchApiKeys = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
 
-      {/* Stats Overview */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-          <StatsCard
-            title="Credentials Issued"
-            value={1247}
-            icon={<VerifiedUser />}
-            color="primary"
-            trend={{ value: 18, label: 'vs last month' }}
-          />
-        </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-          <StatsCard
-            title="Active Learners"
-            value={342}
-            icon={<People />}
-            color="info"
-            trend={{ value: 12, label: 'new this week' }}
-          />
-        </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-          <StatsCard
-            title="Completion Rate"
-            value="87%"
-            icon={<Assessment />}
-            color="success"
-            progress={{ value: 87, total: 100, label: 'Overall Rate' }}
-          />
-        </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-          <StatsCard
-            title="Revenue Generated"
-            value="₹2.4L"
-            icon={<AttachMoney />}
-            color="warning"
-            trend={{ value: 22, label: 'this quarter' }}
-          />
-        </Box>
-      </Box>
+      if (response.ok) {
+        const data = await response.json();
+        setApiKeys(data.api_keys);
+      }
+    } catch (error) {
+      console.error('Error fetching API keys:', error);
+    }
+  };
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        {/* Credential Issuance Panel */}
-        <Box sx={{ flex: '2 1 600px', minWidth: '500px' }}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Credential Issuance Panel
-                </Typography>
-                <Button variant="contained" startIcon={<Add />} onClick={handleIssueCredential}>
-                  Issue New Credential
-                </Button>
-              </Box>
+  const handleInputChange = (field: keyof IssuerVerificationData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-              {/* Quick Issue Form */}
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-                <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-                  <FormControl fullWidth>
-                    <InputLabel>Credential Template</InputLabel>
-                    <Select label="Credential Template">
-                      {mockCredentialTemplates.map((template) => (
-                        <MenuItem key={template.id} value={template.id}>
-                          {template.title} (Level {template.nsqf_level})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-                  <TextField
-                    fullWidth
-                    label="Learner Email"
-                    placeholder="Enter learner's email address"
-                  />
-                </Box>
-              </Box>
+  const handleNext = () => {
+    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  };
 
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button variant="contained">Issue Credential</Button>
-                <Button variant="outlined">Bulk Issue</Button>
-                <Button variant="outlined" startIcon={<Download />}>
-                  Export Template
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
+  const handleBack = () => {
+    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  };
 
-          {/* Learner Analytics */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                Learner Analytics
-              </Typography>
-              
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Learner</TableCell>
-                      <TableCell>Enrolled Courses</TableCell>
-                      <TableCell>Completed</TableCell>
-                      <TableCell>Progress</TableCell>
-                      <TableCell>Last Active</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {mockLearners.map((learner) => (
-                      <TableRow key={learner.id}>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Avatar sx={{ width: 32, height: 32 }}>
-                              {learner.name.charAt(0)}
-                            </Avatar>
-                            <Box>
-                              <Typography variant="subtitle2">{learner.name}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {learner.email}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{learner.enrolled_courses}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={learner.completed_credentials}
-                            size="small"
-                            color="success"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <LinearProgress
-                              variant="determinate"
-                              value={learner.progress}
-                              sx={{ width: 60, height: 6, borderRadius: 3 }}
-                            />
-                            <Typography variant="caption">{learner.progress}%</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(learner.last_active).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <IconButton size="small">
-                            <Visibility />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Box>
+  const handleSubmitVerification = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/v1/issuer/submit-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-        {/* Sidebar */}
-        <Box sx={{ flex: '1 1 400px', minWidth: '350px' }}>
-          {/* NSQF Compliance */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                NSQF Compliance Status
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Compliance Score</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>94%</Typography>
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={94}
-                  sx={{ height: 8, borderRadius: 4 }}
-                />
-              </Box>
-              <List sx={{ p: 0 }}>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemText
-                    primary="Assessment Standards"
-                    secondary="✅ Compliant"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                    secondaryTypographyProps={{ variant: 'caption' }}
-                  />
-                </ListItem>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemText
-                    primary="Credit Framework"
-                    secondary="✅ Aligned"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                    secondaryTypographyProps={{ variant: 'caption' }}
-                  />
-                </ListItem>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemText
-                    primary="Quality Assurance"
-                    secondary="⚠️ Needs Review"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                    secondaryTypographyProps={{ variant: 'caption' }}
-                  />
-                </ListItem>
-              </List>
-            </CardContent>
-          </Card>
+      if (response.ok) {
+        setVerificationStatus('pending');
+        alert('Verification request submitted successfully! We will review your application within 2-3 business days.');
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail || 'Failed to submit verification'}`);
+      }
+    } catch (error) {
+      console.error('Error submitting verification:', error);
+      alert('Failed to submit verification request');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          {/* API Integration Status */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                API Integration
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main' }} />
-                <Typography variant="body2">Connected</Typography>
-              </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-                Last sync: 2 minutes ago
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button variant="outlined" size="small" startIcon={<Api />}>
-                  API Documentation
-                </Button>
-                <Button variant="outlined" size="small">
-                  Test Connection
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
+  const handleGenerateApiKey = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({ name: newKeyName || 'Default API Key' }),
+      });
 
-          {/* Recent Activity */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                Recent Activity
-              </Typography>
-              <List sx={{ p: 0 }}>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemAvatar>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'success.main' }}>
-                      <VerifiedUser fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary="Credential issued"
-                    secondary="Web Development cert to Rahul Singh"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                    secondaryTypographyProps={{ variant: 'caption' }}
-                  />
-                </ListItem>
-                <Divider />
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemAvatar>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'info.main' }}>
-                      <People fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary="New enrollment"
-                    secondary="5 learners joined Data Science course"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                    secondaryTypographyProps={{ variant: 'caption' }}
-                  />
-                </ListItem>
-                <Divider />
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemAvatar>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'warning.main' }}>
-                      <Assessment fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary="Compliance review"
-                    secondary="Quality assurance check pending"
-                    primaryTypographyProps={{ variant: 'body2' }}
-                    secondaryTypographyProps={{ variant: 'caption' }}
-                  />
-                </ListItem>
-              </List>
-            </CardContent>
-          </Card>
-        </Box>
-      </Box>
+      if (response.ok) {
+        const data = await response.json();
+        setGeneratedKey(data.api_key);
+        setNewKeyDialog(false);
+        setNewKeyName('');
+        fetchApiKeys();
+      } else {
+        alert('Failed to generate API key');
+      }
+    } catch (error) {
+      console.error('Error generating API key:', error);
+      alert('Failed to generate API key');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      {/* Issue Credential Dialog */}
-      <Dialog open={openCredentialDialog} onClose={() => setOpenCredentialDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Issue New Credential</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>
-            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-              <FormControl fullWidth>
-                <InputLabel>Credential Template</InputLabel>
-                <Select label="Credential Template">
-                  {mockCredentialTemplates.map((template) => (
-                    <MenuItem key={template.id} value={template.id}>
-                      {template.title}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-              <TextField fullWidth label="Learner Email" />
-            </Box>
-            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-              <TextField fullWidth label="Issue Date" type="date" InputLabelProps={{ shrink: true }} />
-            </Box>
-            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
-              <TextField fullWidth label="Expiry Date" type="date" InputLabelProps={{ shrink: true }} />
-            </Box>
-            <Box sx={{ flex: '1 1 100%', minWidth: '300px' }}>
-              <TextField fullWidth multiline rows={3} label="Additional Notes" />
+  const handleRevokeApiKey = async (keyId: string) => {
+    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/issuer/api-keys/${keyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        fetchApiKeys();
+      } else {
+        alert('Failed to revoke API key');
+      }
+    } catch (error) {
+      console.error('Error revoking API key:', error);
+      alert('Failed to revoke API key');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard!');
+  };
+
+  const renderStepContent = (step: number) => {
+    switch (step) {
+      case 0:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Organization Name"
+              required
+              fullWidth
+              value={formData.organization_name}
+              onChange={(e) => handleInputChange('organization_name', e.target.value)}
+              placeholder="e.g., PhysicsWallah, BYJU'S, Unacademy"
+            />
+            <TextField
+              label="Organization Type"
+              required
+              fullWidth
+              select
+              SelectProps={{ native: true }}
+              value={formData.organization_type}
+              onChange={(e) => handleInputChange('organization_type', e.target.value)}
+            >
+              <option value="">Select Type</option>
+              <option value="educational_institution">Educational Institution</option>
+              <option value="university">University</option>
+              <option value="training_center">Training Center</option>
+              <option value="certification_body">Certification Body</option>
+              <option value="online_platform">Online Learning Platform</option>
+            </TextField>
+            <TextField
+              label="Registration Number"
+              required
+              fullWidth
+              value={formData.registration_number}
+              onChange={(e) => handleInputChange('registration_number', e.target.value)}
+              placeholder="Company/Trust/Society Registration Number"
+            />
+            <TextField
+              label="Year Established"
+              required
+              fullWidth
+              type="number"
+              value={formData.year_established}
+              onChange={(e) => handleInputChange('year_established', e.target.value)}
+              placeholder="e.g., 2020"
+            />
+            <TextField
+              label="Official Website"
+              required
+              fullWidth
+              type="url"
+              value={formData.website}
+              onChange={(e) => handleInputChange('website', e.target.value)}
+              placeholder="https://www.yourorganization.com"
+            />
+          </Box>
+        );
+
+      case 1:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Government ID Type"
+              required
+              fullWidth
+              select
+              SelectProps={{ native: true }}
+              value={formData.govt_id_type}
+              onChange={(e) => handleInputChange('govt_id_type', e.target.value)}
+            >
+              <option value="">Select ID Type</option>
+              <option value="pan">PAN Card</option>
+              <option value="cin">Corporate Identification Number (CIN)</option>
+              <option value="llpin">Limited Liability Partnership Identification Number (LLPIN)</option>
+              <option value="trust_registration">Trust Registration Number</option>
+            </TextField>
+            <TextField
+              label="Government ID Number"
+              required
+              fullWidth
+              value={formData.govt_id_number}
+              onChange={(e) => handleInputChange('govt_id_number', e.target.value)}
+              placeholder="Enter ID Number"
+            />
+            <TextField
+              label="Tax ID / GSTIN"
+              required
+              fullWidth
+              value={formData.tax_id}
+              onChange={(e) => handleInputChange('tax_id', e.target.value)}
+              placeholder="e.g., 29ABCDE1234F1Z5"
+            />
+            <TextField
+              label="Registration Certificate URL"
+              required
+              fullWidth
+              type="url"
+              value={formData.registration_certificate_url}
+              onChange={(e) => handleInputChange('registration_certificate_url', e.target.value)}
+              placeholder="Upload to cloud and paste URL"
+              helperText="Upload your registration certificate to Google Drive/Dropbox and paste the public link"
+            />
+          </Box>
+        );
+
+      case 2:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Official Email"
+              required
+              fullWidth
+              type="email"
+              value={formData.official_email}
+              onChange={(e) => handleInputChange('official_email', e.target.value)}
+              placeholder="contact@organization.com"
+            />
+            <TextField
+              label="Official Phone"
+              required
+              fullWidth
+              value={formData.official_phone}
+              onChange={(e) => handleInputChange('official_phone', e.target.value)}
+              placeholder="+91 9876543210"
+            />
+            <TextField
+              label="Address Line 1"
+              required
+              fullWidth
+              value={formData.address_line1}
+              onChange={(e) => handleInputChange('address_line1', e.target.value)}
+              placeholder="Building No., Street Name"
+            />
+            <TextField
+              label="Address Line 2"
+              fullWidth
+              value={formData.address_line2}
+              onChange={(e) => handleInputChange('address_line2', e.target.value)}
+              placeholder="Locality, Landmark"
+            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+              <TextField
+                label="City"
+                required
+                value={formData.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+              />
+              <TextField
+                label="State"
+                required
+                value={formData.state}
+                onChange={(e) => handleInputChange('state', e.target.value)}
+              />
+              <TextField
+                label="Postal Code"
+                required
+                value={formData.postal_code}
+                onChange={(e) => handleInputChange('postal_code', e.target.value)}
+              />
+              <TextField
+                label="Country"
+                required
+                value={formData.country}
+                onChange={(e) => handleInputChange('country', e.target.value)}
+              />
             </Box>
           </Box>
+        );
+
+      case 3:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Representative Name"
+              required
+              fullWidth
+              value={formData.representative_name}
+              onChange={(e) => handleInputChange('representative_name', e.target.value)}
+              placeholder="Full name of authorized person"
+            />
+            <TextField
+              label="Designation"
+              required
+              fullWidth
+              value={formData.representative_designation}
+              onChange={(e) => handleInputChange('representative_designation', e.target.value)}
+              placeholder="e.g., CEO, Director, Principal"
+            />
+            <TextField
+              label="Representative Email"
+              required
+              fullWidth
+              type="email"
+              value={formData.representative_email}
+              onChange={(e) => handleInputChange('representative_email', e.target.value)}
+            />
+            <TextField
+              label="Representative Phone"
+              required
+              fullWidth
+              value={formData.representative_phone}
+              onChange={(e) => handleInputChange('representative_phone', e.target.value)}
+            />
+            <TextField
+              label="ID Proof URL (Aadhaar/PAN/Passport)"
+              required
+              fullWidth
+              type="url"
+              value={formData.representative_id_proof_url}
+              onChange={(e) => handleInputChange('representative_id_proof_url', e.target.value)}
+              placeholder="Upload ID proof and paste URL"
+              helperText="Upload representative's ID proof to cloud storage and paste the public link"
+            />
+          </Box>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Render verification form
+  if (verificationStatus === 'not_submitted') {
+    return (
+      <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+            Institution Verification
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Complete the verification process to start issuing credentials
+          </Typography>
+        </Box>
+
+        <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3 }}>
+          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+            {steps.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+
+          {renderStepContent(activeStep)}
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            <Button
+              disabled={activeStep === 0}
+              onClick={handleBack}
+              sx={{ textTransform: 'none' }}
+            >
+              Back
+            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {activeStep === steps.length - 1 ? (
+                <Button
+                  variant="contained"
+                  onClick={handleSubmitVerification}
+                  disabled={loading}
+                  sx={{
+                    bgcolor: '#3b82f6',
+                    textTransform: 'none',
+                    px: 4,
+                    '&:hover': { bgcolor: '#2563eb' }
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Submit for Verification'}
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  onClick={handleNext}
+                  sx={{
+                    bgcolor: '#3b82f6',
+                    textTransform: 'none',
+                    px: 4,
+                    '&:hover': { bgcolor: '#2563eb' }
+                  }}
+                >
+                  Next
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // Render pending status
+  if (verificationStatus === 'pending') {
+    return (
+      <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
+        <Card sx={{ textAlign: 'center', p: 6 }}>
+          <Warning sx={{ fontSize: 80, color: '#f59e0b', mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+            Verification Pending
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Your verification request is under review. We'll notify you via email within 2-3 business days.
+          </Typography>
+        </Card>
+      </Box>
+    );
+  }
+
+  // Render rejected status
+  if (verificationStatus === 'rejected') {
+    return (
+      <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
+        <Card sx={{ textAlign: 'center', p: 6 }}>
+          <Warning sx={{ fontSize: 80, color: '#ef4444', mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+            Verification Rejected
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Your verification request was rejected. Please contact support for more information.
+          </Typography>
+          <Button variant="contained" sx={{ textTransform: 'none' }}>
+            Contact Support
+          </Button>
+        </Card>
+      </Box>
+    );
+  }
+
+  // Render verified dashboard with API key management
+  return (
+    <Box sx={{ p: 4 }}>
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            Institution Dashboard
+          </Typography>
+          <Chip
+            icon={<CheckCircle />}
+            label="Verified"
+            color="success"
+            sx={{ fontWeight: 600 }}
+          />
+        </Box>
+        <Typography variant="body1" color="text.secondary">
+          Manage your API keys and issue credentials
+        </Typography>
+      </Box>
+
+      {/* API Keys Section */}
+      <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+              API Keys
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use API keys to authenticate requests to issue credentials
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<Key />}
+            onClick={() => setNewKeyDialog(true)}
+            sx={{
+              bgcolor: '#3b82f6',
+              textTransform: 'none',
+              '&:hover': { bgcolor: '#2563eb' }
+            }}
+          >
+            Generate New Key
+          </Button>
+        </Box>
+
+        {apiKeys.length === 0 ? (
+          <Alert severity="info">
+            No API keys generated yet. Click "Generate New Key" to create your first API key.
+          </Alert>
+        ) : (
+          <List>
+            {apiKeys.map((apiKey, index) => (
+              <React.Fragment key={apiKey._id}>
+                <ListItem
+                  sx={{
+                    bgcolor: '#f8fafc',
+                    borderRadius: 2,
+                    mb: 2,
+                    flexDirection: 'column',
+                    alignItems: 'stretch'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 2 }}>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {apiKey.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Created: {new Date(apiKey.created_at).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowApiKey(showApiKey === apiKey._id ? null : apiKey._id)}
+                      >
+                        {showApiKey === apiKey._id ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => copyToClipboard(apiKey.key)}
+                      >
+                        <ContentCopy />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleRevokeApiKey(apiKey._id)}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  <TextField
+                    fullWidth
+                    value={apiKey.key}
+                    type={showApiKey === apiKey._id ? 'text' : 'password'}
+                    InputProps={{
+                      readOnly: true,
+                      sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                    }}
+                  />
+                  {apiKey.last_used && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                      Last used: {new Date(apiKey.last_used).toLocaleString()}
+                    </Typography>
+                  )}
+                </ListItem>
+              </React.Fragment>
+            ))}
+          </List>
+        )}
+      </Paper>
+
+      {/* New Key Dialog */}
+      <Dialog open={newKeyDialog} onClose={() => setNewKeyDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Generate New API Key</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Key Name"
+            fullWidth
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+            placeholder="e.g., Production Key, Development Key"
+            helperText="Give your API key a descriptive name for easy identification"
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCredentialDialog(false)}>Cancel</Button>
-          <Button variant="contained">Issue Credential</Button>
+          <Button onClick={() => setNewKeyDialog(false)} sx={{ textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleGenerateApiKey}
+            variant="contained"
+            disabled={loading}
+            sx={{
+              bgcolor: '#3b82f6',
+              textTransform: 'none',
+              '&:hover': { bgcolor: '#2563eb' }
+            }}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Generate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Generated Key Dialog */}
+      <Dialog open={!!generatedKey} onClose={() => setGeneratedKey(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>API Key Generated Successfully</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <strong>Important:</strong> Copy this API key now. You won't be able to see it again!
+          </Alert>
+          <TextField
+            fullWidth
+            value={generatedKey || ''}
+            InputProps={{
+              readOnly: true,
+              sx: { fontFamily: 'monospace' },
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => copyToClipboard(generatedKey || '')}>
+                    <ContentCopy />
+                  </IconButton>
+                </InputAdornment>
+              )
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setGeneratedKey(null)}
+            variant="contained"
+            sx={{
+              bgcolor: '#3b82f6',
+              textTransform: 'none',
+              '&:hover': { bgcolor: '#2563eb' }
+            }}
+          >
+            I've Copied the Key
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 }
+

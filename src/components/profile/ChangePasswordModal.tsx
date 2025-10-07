@@ -14,6 +14,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
+import { AuthService } from '@/services/auth.service';
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -81,8 +82,13 @@ export default function ChangePasswordModal({ open, onClose }: ChangePasswordMod
     }
     
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const payload = {
+        current_password: formData.currentPassword,
+        new_password: formData.newPassword,
+        confirm_password: formData.confirmPassword,
+      };
+      await AuthService.changePassword(payload);
       setIsLoading(false);
       onClose();
       // Reset form
@@ -94,7 +100,11 @@ export default function ChangePasswordModal({ open, onClose }: ChangePasswordMod
       });
       setOtpSent(false);
       setErrors([]);
-    }, 2000);
+    } catch (e: any) {
+      setIsLoading(false);
+      const apiError = e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Failed to change password';
+      setErrors([String(apiError)]);
+    }
   };
 
   const modalStyle = {

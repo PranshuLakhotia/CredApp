@@ -70,6 +70,26 @@ api.interceptors.response.use(
 );
 
 export class AuthService {
+  // User profile - GET / PUT /api/v1/users/profile
+  static async getUserProfile(): Promise<any> {
+    const response = await api.get('/api/v1/users/profile');
+    return response.data;
+  }
+
+  static async updateUserProfile(data: {
+    full_name?: string;
+    phone_number?: string;
+    address?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postal_code?: string;
+    } | null;
+  }): Promise<any> {
+    const response = await api.put('/api/v1/users/profile', data);
+    return response.data;
+  }
   // Test backend connectivity
   static async testConnection(): Promise<any> {
     try {
@@ -197,6 +217,12 @@ export class AuthService {
   // Change password
   static async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
     const response = await api.post('/api/v1/users/change-password', data);
+    return response.data;
+  }
+
+  // Delete account (irreversible)
+  static async deleteAccount(): Promise<{ message: string }> {
+    const response = await api.delete('/api/v1/users/account');
     return response.data;
   }
 

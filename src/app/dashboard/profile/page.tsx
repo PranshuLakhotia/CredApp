@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { 
   Box, 
@@ -19,33 +19,138 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon, Email as EmailIcon } from '@mui/icons-material';
 import ChangePasswordModal from '@/components/profile/ChangePasswordModal';
+import { AuthService } from '@/services/auth.service';
+  import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 
 export default function ProfileOverviewPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
-    fullName: 'Monis Iexa',
+    fullName: '',
     nickName: '',
     gender: '',
     country: '',
     language: '',
     timeZone: '',
-    email: 'monis.iexa@credify.com'
+    email: '',
+    phoneNumber: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      country: '',
+      postal_code: ''
+    } as {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postal_code?: string;
+    } | null,
   });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await AuthService.getUserProfile();
+        setProfileData(prev => ({
+          ...prev,
+          fullName: data.full_name || '',
+          email: data.email || '',
+          gender: data.gender || '',
+          phoneNumber: data.phone_number || '',
+          address: data.address || {
+            street: '',
+            city: '',
+            state: '',
+            country: '',
+            postal_code: ''
+          },
+        }));
+      } catch (e: any) {
+        setError(e?.response?.data?.message || e?.message || 'Failed to load profile');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleEdit = () => {
     setIsEditing(!isEditing);
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Add save logic here
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const payload = {
+        full_name: profileData.fullName || undefined,
+        phone_number: profileData.phoneNumber || undefined,
+        address: profileData.address
+          ? {
+              street: profileData.address.street || undefined,
+              city: profileData.address.city || undefined,
+              state: profileData.address.state || undefined,
+              country: profileData.address.country || undefined,
+              postal_code: profileData.address.postal_code || undefined,
+            }
+          : null,
+      } as any;
+      const updated = await AuthService.updateUserProfile(payload);
+      setProfileData(prev => ({
+        ...prev,
+        fullName: updated.full_name || prev.fullName,
+        email: updated.email || prev.email,
+        gender: updated.gender || prev.gender,
+        phoneNumber: updated.phone_number || prev.phoneNumber,
+        address: updated.address || prev.address,
+      }));
+      setIsEditing(false);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Failed to save profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await AuthService.deleteAccount();
+      // Clear tokens and redirect to login page
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/auth/login';
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Failed to delete account');
+    } finally {
+      setIsLoading(false);
+      setShowDeleteDialog(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleAddressChange = (field: 'street' | 'city' | 'state' | 'country' | 'postal_code', value: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      address: {
+        ...(prev.address || {}),
+        [field]: value,
+      },
     }));
   };
 
@@ -57,6 +162,11 @@ export default function ProfileOverviewPage() {
           <Typography variant="h4" sx={{ fontWeight: 700, color: '#0f172a', letterSpacing: '-0.025em' }}>
             User Profile
           </Typography>
+          {error && (
+            <Typography color="error" variant="body2" sx={{ mr: 2 }}>
+              {error}
+            </Typography>
+          )}
           <Button
             variant={isEditing ? 'contained' : 'outlined'}
             onClick={isEditing ? handleSave : handleEdit}
@@ -233,6 +343,24 @@ export default function ProfileOverviewPage() {
               />
             </Box>
 
+            {/* Phone Number */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Phone Number"
+                value={profileData.phoneNumber}
+                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                disabled={!isEditing}
+                placeholder="e.g. +1234567890"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+
             {/* Gender */}
             <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
               <FormControl fullWidth disabled={!isEditing}>
@@ -319,6 +447,92 @@ export default function ProfileOverviewPage() {
                   <MenuItem value="utc+8">UTC+08:00 (CST)</MenuItem>
                 </Select>
               </FormControl>
+            </Box>
+
+            {/* Address - Street */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Street"
+                value={profileData.address?.street || ''}
+                onChange={(e) => handleAddressChange('street', e.target.value)}
+                disabled={!isEditing}
+                placeholder="123 Main St"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+            {/* Address - City */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="City"
+                value={profileData.address?.city || ''}
+                onChange={(e) => handleAddressChange('city', e.target.value)}
+                disabled={!isEditing}
+                placeholder="Boston"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+            {/* Address - State */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="State"
+                value={profileData.address?.state || ''}
+                onChange={(e) => handleAddressChange('state', e.target.value)}
+                disabled={!isEditing}
+                placeholder="MA"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+            {/* Address - Postal Code */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Postal Code"
+                value={profileData.address?.postal_code || ''}
+                onChange={(e) => handleAddressChange('postal_code', e.target.value)}
+                disabled={!isEditing}
+                placeholder="02101"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+            {/* Address - Country */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Address Country"
+                value={profileData.address?.country || ''}
+                onChange={(e) => handleAddressChange('country', e.target.value)}
+                disabled={!isEditing}
+                placeholder="USA"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
             </Box>
           </Box>
         </Paper>
@@ -416,6 +630,67 @@ export default function ProfileOverviewPage() {
             </Button>
           </Box>
         </Paper>
+
+        {/* Danger Zone */}
+        <Paper 
+          elevation={0}
+          sx={{
+            marginTop: 4,
+            p: 5,
+            borderRadius: 4,
+            border: '1px solid #fee2e2',
+            background: 'linear-gradient(135deg, #fff1f2 0%, #ffffff 100%)',
+          }}
+        >
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: '#991b1b' }}>
+            Danger Zone
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3, color: '#7f1d1d' }}>
+            Deleting your account is irreversible. All your data will be permanently removed and cannot be recovered.
+          </Typography>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => setShowDeleteDialog(true)}
+            sx={{
+              textTransform: 'none',
+              borderWidth: 2,
+            }}
+          >
+            Delete Account
+          </Button>
+        </Paper>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+        >
+          <DialogTitle>Confirm Account Deletion</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              This action is permanent and cannot be undone. Type DELETE to confirm.
+            </DialogContentText>
+            <TextField
+              autoFocus
+              margin="dense"
+              fullWidth
+              label="Type DELETE to confirm"
+              onChange={(e) => setConfirmText(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={handleDeleteAccount}
+              disabled={confirmText !== 'DELETE' || isLoading}
+            >
+              {isLoading ? 'Deleting...' : 'Delete Account'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Change Password Modal */}
         <ChangePasswordModal 

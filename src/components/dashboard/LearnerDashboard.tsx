@@ -1,6 +1,5 @@
 
 
-
 'use client';
 
 import React from 'react';
@@ -14,6 +13,10 @@ import {
   TextField,
   InputAdornment,
   Chip,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   School,
@@ -29,21 +32,13 @@ import {
   PeopleOutline,
   ArrowForward,
 } from '@mui/icons-material';
+import LearnerService, { LearnerCredential } from '@/services/learner.service';
 
-// --- MOCK DATA ---
-const credentials = [
-  { id: '1', title: 'Machine Learning', issuer: 'Coursera', level: 4, date: 'May 2025', verified: true },
-  { id: '2', title: 'Machine Learning', issuer: 'Coursera', level: 4, date: 'May 2025', verified: true },
-  { id: '3', title: 'Machine Learning', issuer: 'Coursera', level: 4, date: 'May 2025', verified: true },
-  { id: '4', title: 'Machine Learning', issuer: 'Coursera', level: 4, date: 'May 2025', verified: true },
-  { id: '5', title: 'Machine Learning', issuer: 'Coursera', level: 4, date: 'May 2025', verified: true },
-  { id: '6', title: 'Machine Learning', issuer: 'Coursera', level: 4, date: 'May 2025', verified: true },
-];
-
-const stats = [
-  { label: 'Total Credentials', value: '12', icon: <School sx={{ fontSize: 28 }} />, bgColor: '#e8eaf6', iconColor: '#5c6bc0', note: 'in last 30 days' },
-  { label: 'Verified', value: '9', icon: <Verified sx={{ fontSize: 28 }} />, bgColor: '#e8f5e9', iconColor: '#66bb6a', note: 'credentials' },
-  { label: 'Pending', value: '3', icon: <Timeline sx={{ fontSize: 28 }} />, bgColor: '#fff3e0', iconColor: '#ffa726', note: 'under review' },
+// --- STATS placeholders; values computed from API ---
+const baseStats = [
+  { label: 'Total Credentials', key: 'total', icon: <School sx={{ fontSize: 28 }} />, bgColor: '#e8eaf6', iconColor: '#5c6bc0', note: 'from your account' },
+  { label: 'Verified', key: 'verified', icon: <Verified sx={{ fontSize: 28 }} />, bgColor: '#e8f5e9', iconColor: '#66bb6a', note: 'credentials' },
+  { label: 'Pending', key: 'pending', icon: <Timeline sx={{ fontSize: 28 }} />, bgColor: '#fff3e0', iconColor: '#ffa726', note: 'under review' },
 ];
 
 const categories = [
@@ -55,7 +50,7 @@ const categories = [
   { label: 'Others', color: '#94a3b8' },
 ];
 
-// --- SVG CHART COMPONENTS ---
+// --- SVG CHART COMPONENTS (kept minimal) ---
 
 const LineChart = () => (
   <Box sx={{ position: 'relative', height: 240, mt: 3 }}>
@@ -139,6 +134,9 @@ const DonutChart = () => (
   </Box>
 );
 
+
+
+  
 const BarChart = () => {
   const data = [
     { label: 'Python', value: 50, color: '#a5b4fc' },
@@ -164,52 +162,132 @@ const BarChart = () => {
   );
 };
 
-// --- CREDENTIAL CARD COMPONENT ---
-const CredentialCard = ({ credential }: { credential: typeof credentials[0] }) => (
-  <Card sx={{ p: 3, borderRadius: 2, bgcolor: '#fafbfc', boxShadow: 'none', border: '1px solid #e5e7eb', transition: 'all 0.2s', '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: 'translateY(-2px)' } }}>
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
-          {credential.title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={0.5}>
-          Issuer : {credential.issuer}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={0.5}>
-          NSQF Level : {credential.level}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          Issued Date : {credential.date}
-        </Typography>
+// --- CREDENTIAL CARD COMPONENT (API-driven) ---
+const CredentialCard = ({ credential }: { credential: LearnerCredential }) => {
+  const verified = (credential.status || '').toLowerCase() === 'verified';
+  const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
+  return (
+    <Card sx={{ p: 3, borderRadius: 2, bgcolor: '#fafbfc', boxShadow: 'none', border: '1px solid #e5e7eb', transition: 'all 0.2s', '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: 'translateY(-2px)' } }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+            {credential.credential_title || '-'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={0.5}>
+            Issuer : {credential.issuer_name || '-'}
+          </Typography>
+          {credential.nsqf_level !== undefined && (
+            <Typography variant="body2" color="text.secondary" mb={0.5}>
+              NSQF Level : {credential.nsqf_level}
+            </Typography>
+          )}
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Issued Date : {issuedDate}
+          </Typography>
+          {/* Skill tags */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {(credential.skill_tags || []).map((t) => (
+              <Chip key={t} label={t} size="small" sx={{ bgcolor: '#eef2ff', color: '#4338ca' }} />
+            ))}
+            {(credential.tags || []).map((t) => (
+              <Chip key={t} label={t} size="small" sx={{ bgcolor: '#ecfeff', color: '#0e7490' }} />
+            ))}
+          </Box>
+        </Box>
+        <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ml: 2 }}>
+          <EmojiEvents sx={{ fontSize: 36, color: '#7c4dff' }} />
+        </Box>
       </Box>
-      <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ml: 2 }}>
-        <EmojiEvents sx={{ fontSize: 36, color: '#7c4dff' }} />
+      {verified && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+          <Verified sx={{ fontSize: 18, color: '#26c6da' }} />
+          <Typography variant="body2" color="#26c6da" fontWeight={600}>
+            Verified
+          </Typography>
+        </Box>
+      )}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <Button variant="text" size="small" sx={{ color: '#7c4dff', textTransform: 'none', fontWeight: 600, p: 0, minWidth: 'auto' }}>
+          View Details
+        </Button>
+        <Button variant="text" size="small" sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}>
+          Download
+        </Button>
+        <Button variant="text" size="small" sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}>
+          Share
+        </Button>
       </Box>
-    </Box>
-    {credential.verified && (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
-        <Verified sx={{ fontSize: 18, color: '#26c6da' }} />
-        <Typography variant="body2" color="#26c6da" fontWeight={600}>
-          Verified
-        </Typography>
-      </Box>
-    )}
-    <Box sx={{ display: 'flex', gap: 2 }}>
-      <Button variant="text" size="small" sx={{ color: '#7c4dff', textTransform: 'none', fontWeight: 600, p: 0, minWidth: 'auto' }}>
-        View Details
-      </Button>
-      <Button variant="text" size="small" sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}>
-        Download
-      </Button>
-      <Button variant="text" size="small" sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}>
-        Share
-      </Button>
-    </Box>
-  </Card>
-);
+    </Card>
+  );
+};
 
 // --- MAIN DASHBOARD COMPONENT ---
 export default function LearnerDashboard() {
+  const [credentials, setCredentials] = React.useState<LearnerCredential[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // query state
+  const [query, setQuery] = React.useState('');
+  const [status, setStatus] = React.useState<string>(''); // '', 'verified', etc.
+  const [issuer, setIssuer] = React.useState('');
+  const [nsqfLevel, setNsqfLevel] = React.useState<number | ''>('');
+  const [sortBy, setSortBy] = React.useState<'issued_date_desc' | 'issued_date_asc'>('issued_date_desc');
+  const [skip, setSkip] = React.useState(0);
+  const [limit, setLimit] = React.useState(9);
+
+  const total = credentials.length;
+  const verifiedCount = credentials.filter(c => (c.status || '').toLowerCase() === 'verified').length;
+  const pendingCount = Math.max(total - verifiedCount, 0);
+
+  // top skills calculation (from skill_tags)
+  const topSkills = React.useMemo(() => {
+    const freq: Record<string, number> = {};
+    credentials.forEach((c) => (c.skill_tags || []).forEach((t) => { freq[t] = (freq[t] || 0) + 1; }));
+    return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [credentials]);
+
+  const load = React.useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const params: any = { skip, limit };
+      if (status) params.status = status;
+      if (issuer) params.issuer = issuer;
+      if (nsqfLevel) params.nsqf_level = nsqfLevel;
+      // tags/search not provided by this route; simple client filter will be used for query
+      const data = await LearnerService.getLearnerCredentials(params);
+      let items = data.credentials || [];
+      // client-side search filter
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        items = items.filter((c) =>
+          (c.credential_title || '').toLowerCase().includes(q) ||
+          (c.issuer_name || '').toLowerCase().includes(q) ||
+          (c.skill_tags || []).some(t => t.toLowerCase().includes(q)) ||
+          (c.tags || []).some(t => t.toLowerCase().includes(q))
+        );
+      }
+      // sort by issued_date
+      items.sort((a, b) => {
+        const da = a.issued_date ? new Date(a.issued_date).getTime() : 0;
+        const db = b.issued_date ? new Date(b.issued_date).getTime() : 0;
+        return sortBy === 'issued_date_desc' ? db - da : da - db;
+      });
+      setCredentials(items);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Failed to load credentials');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [status, issuer, nsqfLevel, query, sortBy, skip, limit]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const pages = Math.max(1, Math.ceil((credentials.length || 0) / Math.max(1, limit)));
+
   return (
     <Box sx={{ px: { xs: 2, md: 4 }, py: 4, bgcolor: '#fafbfc', minHeight: '100vh' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -226,28 +304,37 @@ export default function LearnerDashboard() {
         </Box>
       </Box>
 
-      {/* Top Stats Cards Row */}
+      {error && (
+        <Card sx={{ p: 2, mb: 2, border: '1px solid #fecaca', bgcolor: '#fef2f2', color: '#991b1b' }}>
+          <Typography variant="body2">{error}</Typography>
+        </Card>
+      )}
+
+      {/* Top Stats Cards Row (computed) */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mb: 3 }}>
-        {stats.map((stat) => (
-          <Card key={stat.label} sx={{ flex: '1 1 220px', p: 2.5, borderRadius: 3, bgcolor: stat.bgColor, boxShadow: 'none' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
-                  {stat.label}
-                </Typography>
-                <Typography variant="h3" fontWeight={700} color="#1e293b">
-                  {stat.value}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stat.note}
-                </Typography>
+        {baseStats.map((stat) => {
+          const value = stat.key === 'total' ? total : stat.key === 'verified' ? verifiedCount : pendingCount;
+          return (
+            <Card key={stat.label} sx={{ flex: '1 1 220px', p: 2.5, borderRadius: 3, bgcolor: stat.bgColor, boxShadow: 'none' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h3" fontWeight={700} color="#1e293b">
+                    {isLoading ? '...' : value}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {stat.note}
+                  </Typography>
+                </Box>
+                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.iconColor }}>
+                  {stat.icon}
+                </Box>
               </Box>
-              <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.iconColor }}>
-                {stat.icon}
-              </Box>
-            </Box>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
         <Card sx={{ flex: '1 1 300px', p: 2.5, borderRadius: 3, bgcolor: '#e3f2fd', boxShadow: 'none' }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5 }}>
             NQFQ Progress
@@ -259,7 +346,7 @@ export default function LearnerDashboard() {
         </Card>
       </Box>
 
-      {/* Line Chart + Badges Row */}
+      {/* Line Chart + Top Skills */}
       <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
         <Card sx={{ flex: '1 1 60%', p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
           <Typography variant="h6" fontWeight={700} color="#1e293b">
@@ -318,7 +405,15 @@ export default function LearnerDashboard() {
               <ArrowForward fontSize="small" />
             </IconButton>
           </Box>
-          <BarChart />
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {topSkills.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No skills found.</Typography>
+            ) : (
+              topSkills.map(([skill, count]) => (
+                <Chip key={skill} label={`${skill} (${count})`} size="small" />
+              ))
+            )}
+          </Box>
         </Card>
       </Box>
 
@@ -341,19 +436,21 @@ export default function LearnerDashboard() {
           </Box>
         </Box>
 
-        {/* Search and Filter Bar */}
+        {/* Search, Filter, Sort Bar */}
         <Box sx={{ bgcolor: '#fafbfc', p: 2.5, borderRadius: 2, mb: 3, border: '1px solid #e5e7eb' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <PeopleOutline sx={{ color: '#64748b' }} />
               <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                34 Certificate Found
+                {isLoading ? 'Loading...' : `${credentials.length} Certificate${credentials.length === 1 ? '' : 's'} Found`}
               </Typography>
             </Box>
             <Box sx={{ flex: 1 }} />
             <TextField
               size="small"
-              placeholder="Search Skills, Tags, Type"
+              placeholder="Search Skills, Tags, Title, Issuer"
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setSkip(0); }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -363,30 +460,23 @@ export default function LearnerDashboard() {
               }}
               sx={{ width: 280, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
-            <Button variant="outlined" startIcon={<FilterList />} sx={{ textTransform: 'none', borderColor: '#e5e7eb', color: '#64748b' }}>
-              Filter
-            </Button>
-            <Button variant="outlined" startIcon={<Sort />} sx={{ textTransform: 'none', borderColor: '#e5e7eb', color: '#64748b' }}>
-              Sort
-            </Button>
-          </Box>
-
-          {/* Category Chips */}
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-            {categories.map((cat) => (
-              <Chip
-                key={cat.label}
-                label={cat.label}
-                icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color, ml: 1 }} />}
-                sx={{
-                  bgcolor: cat.active ? '#1e293b' : '#ffffff',
-                  color: cat.active ? '#ffffff' : '#64748b',
-                  fontWeight: 500,
-                  border: cat.active ? 'none' : '1px solid #e5e7eb',
-                  '&:hover': { bgcolor: cat.active ? '#1e293b' : '#f8fafc' },
-                }}
-              />
-            ))}
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel id="status-label">Status</InputLabel>
+              <Select labelId="status-label" label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setSkip(0); }}>
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="verified">Verified</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField size="small" label="Issuer" value={issuer} onChange={(e) => { setIssuer(e.target.value); setSkip(0); }} sx={{ width: 180, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+            <TextField size="small" label="NSQF" type="number" value={nsqfLevel} onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); setSkip(0); }} sx={{ width: 100, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <InputLabel id="sort-label">Sort</InputLabel>
+              <Select labelId="sort-label" label="Sort" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+                <MenuItem value="issued_date_desc">Newest First</MenuItem>
+                <MenuItem value="issued_date_asc">Oldest First</MenuItem>
+              </Select>
+            </FormControl>
           </Box>
         </Box>
 
@@ -400,44 +490,32 @@ export default function LearnerDashboard() {
             '@media (max-width: 768px)': { gridTemplateColumns: '1fr' },
           }}
         >
-          {credentials.map((cred) => (
-            <CredentialCard key={cred.id} credential={cred} />
-          ))}
+          {isLoading ? (
+            <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
+              <Typography>Loading credentials...</Typography>
+            </Card>
+          ) : credentials.length === 0 ? (
+            <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
+              <Typography>No credentials found.</Typography>
+            </Card>
+          ) : (
+            credentials.map((cred) => (
+              <CredentialCard key={cred._id} credential={cred} />
+            ))
+          )}
         </Box>
 
         {/* Pagination */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4 }}>
           <Typography variant="body2" color="text.secondary">
-            Showing 1 to 10 of 100 entries
+            Page {Math.floor(skip / Math.max(1, limit)) + 1} of {pages}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 2, color: '#64748b', borderColor: '#e5e7eb', textTransform: 'none' }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 2, color: '#64748b', borderColor: '#e5e7eb', textTransform: 'none' }} disabled={skip === 0} onClick={() => setSkip(Math.max(0, skip - limit))}>
               ← Back
             </Button>
-            {[1, 2, 3, 4, 5].map((num) => (
-              <Button
-                key={num}
-                size="small"
-                variant={num === 1 ? 'contained' : 'outlined'}
-                sx={{
-                  minWidth: 32,
-                  px: 1.5,
-                  bgcolor: num === 1 ? '#1e293b' : 'transparent',
-                  color: num === 1 ? '#fff' : '#64748b',
-                  borderColor: '#e5e7eb',
-                  '&:hover': { bgcolor: num === 1 ? '#1e293b' : '#f5f5f5' },
-                }}
-              >
-                {num}
-              </Button>
-            ))}
-            <Typography variant="body2" sx={{ px: 1, display: 'flex', alignItems: 'center' }}>
-              ...
-            </Typography>
-            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 1.5, color: '#64748b', borderColor: '#e5e7eb' }}>
-              10
-            </Button>
-            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 2, color: '#64748b', borderColor: '#e5e7eb', textTransform: 'none' }}>
+            <TextField size="small" label="Per Page" type="number" value={limit} onChange={(e) => { const v = Number(e.target.value) || 1; setLimit(Math.max(1, Math.min(100, v))); setSkip(0); }} sx={{ width: 100 }} />
+            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 2, color: '#64748b', borderColor: '#e5e7eb', textTransform: 'none' }} disabled={credentials.length < limit} onClick={() => setSkip(skip + limit)}>
               Next →
             </Button>
           </Box>
