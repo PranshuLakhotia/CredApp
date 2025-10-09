@@ -1,0 +1,117 @@
+{
+  "common": {
+    "welcome": "स्वागत आहे",
+    "dashboard": "डॅशबोर्ड",
+    "overview": "विहंगावलोकन",
+    "profile": "प्रोफाइल",
+    "settings": "सेटिंग्ज",
+    "help": "मदत आणि समर्थन",
+    "logout": "लॉगआउट",
+    "save": "जतन करा",
+    "cancel": "रद्द करा",
+    "delete": "हटवा",
+    "edit": "संपादित करा",
+    "view": "पहा",
+    "search": "शोधा",
+    "filter": "फिल्टर",
+    "sort": "क्रमवारी लावा",
+    "loading": "लोड होत आहे...",
+    "error": "त्रुटी",
+    "success": "यश",
+    "download": "डाउनलोड",
+    "share": "शेअर"
+  },
+  "navigation": {
+    "home": "मुख्यपृष्ठ",
+    "credentials": "प्रमाणपत्रे",
+    "skills": "कौशल्ये",
+    "pathways": "मार्ग",
+    "candidates": "उमेदवार",
+    "institutions": "संस्था",
+    "reports": "अहवाल"
+  },
+  "dashboard": {
+    "title": "डॅशबोर्ड विहंगावलोकन",
+    "totalCredentials": "एकूण प्रमाणपत्रे",
+    "verified": "सत्यापित",
+    "pending": "प्रलंबित",
+    "myCredentials": "माझी प्रमाणपत्रे",
+    "recentActivity": "अलीकडील क्रियाकलाप",
+    "statistics": "आकडेवारी"
+  },
+  "credentials": {
+    "title": "प्रमाणपत्रे",
+    "addNew": "नवीन प्रमाणपत्र जोडा",
+    "verified": "सत्यापित",
+    "pending": "पुनरावलोकनासाठी प्रलंबित",
+    "rejected": "नाकारले",
+    "download": "डाउनलोड करा",
+    "share": "शेअर करा",
+    "viewDetails": "तपशील पहा",
+    "issuer": "जारीकर्ता",
+    "issuedDate": "जारी केलेली तारीख",
+    "expiryDate": "कालबाह्यता तारीख"
+  },
+  "profile": {
+    "title": "वापरकर्ता प्रोफाइल",
+    "personalInfo": "वैयक्तिक माहिती",
+    "education": "शिक्षण",
+    "experience": "अनुभव",
+    "skills": "कौशल्ये",
+    "editProfile": "प्रोफाइल संपादित करा",
+    "fullName": "पूर्ण नाव",
+    "email": "ईमेल",
+    "phone": "फोन नंबर"
+  },
+  "accessibility": {
+    "title": "प्रवेशयोग्यता",
+    "textToSpeech": "मजकूर ते भाषण",
+    "biggerText": "मोठा मजकूर",
+    "textSpacing": "मजकूर अंतर",
+    "lineHeight": "ओळ उंची",
+    "dyslexiaFriendly": "डिस्लेक्सिया फ्रेंडली",
+    "highlightLinks": "दुवे हायलाइट करा",
+    "hideImages": "प्रतिमा लपवा",
+    "largeCursor": "मोठा कर्सर",
+    "invertColors": "रंग उलट करा",
+    "resetSettings": "सर्व सेटिंग्ज रीसेट करा",
+    "description": {
+      "textToSpeech": "हॉवर करताना मजकूर वाचा",
+      "biggerText": "फॉन्ट आकार वाढवा",
+      "textSpacing": "अक्षरांमधील अंतर वाढवा",
+      "lineHeight": "ओळींमधील अंतर वाढवा",
+      "dyslexiaFriendly": "डिस्लेक्सिया-अनुकूल फॉन्ट वापरा",
+      "highlightLinks": "दुवे अधिक दृश्यमान करा",
+      "hideImages": "पृष्ठावरील सर्व प्रतिमा लपवा",
+      "largeCursor": "कर्सर आकार वाढवा",
+      "invertColors": "पृष्ठाचे रंग उलट करा"
+    }
+  },
+  "language": {
+    "title": "भाषा",
+    "selectLanguage": "भाषा निवडा",
+    "changeLanguage": "भाषा बदला"
+  },
+  "auth": {
+    "login": "लॉगिन",
+    "signup": "साइन अप",
+    "forgotPassword": "पासवर्ड विसरलात?",
+    "resetPassword": "पासवर्ड रीसेट करा",
+    "emailPlaceholder": "तुमचा ईमेल टाका",
+    "passwordPlaceholder": "तुमचा पासवर्ड टाका",
+    "rememberMe": "मला लक्षात ठेवा"
+  },
+  "errors": {
+    "generic": "काहीतरी चूक झाली. कृपया पुन्हा प्रयत्न करा.",
+    "networkError": "नेटवर्क त्रुटी. कृपया तुमचे कनेक्शन तपासा.",
+    "unauthorized": "ही क्रिया करण्यासाठी तुम्ही अधिकृत नाही.",
+    "notFound": "विनंती केलेला स्त्रोत सापडला नाही."
+  },
+  "messages": {
+    "savedSuccessfully": "यशस्वीरित्या जतन केले",
+    "deletedSuccessfully": "यशस्वीरित्या हटवले",
+    "updatedSuccessfully": "यशस्वीरित्या अपडेट केले",
+    "confirmDelete": "तुम्हाला हे खरोखर हटवायचे आहे का?"
+  }
+}
+

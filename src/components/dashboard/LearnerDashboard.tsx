@@ -33,6 +33,8 @@ import {
   ArrowForward,
 } from '@mui/icons-material';
 import LearnerService, { LearnerCredential } from '@/services/learner.service';
+import CircularLoader from '@/lib/circularloader';
+import { SkeletonLoader } from '@/lib/skeletonloader';
 
 // --- STATS placeholders; values computed from API ---
 const baseStats = [
@@ -288,17 +290,26 @@ export default function LearnerDashboard() {
 
   const pages = Math.max(1, Math.ceil((credentials.length || 0) / Math.max(1, limit)));
 
+  // Show full page loader on initial load
+  if (isLoading && credentials.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularLoader />
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ px: { xs: 2, md: 4 }, py: 4, bgcolor: '#fafbfc', minHeight: '100vh' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+    <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, py: { xs: 2, md: 4 }, bgcolor: '#fafbfc', minHeight: '100vh' }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 3, md: 4 }, gap: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
           Dashboard Overview
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
             Today
           </Typography>
-          <Button variant="contained" sx={{ bgcolor: '#7c4dff', textTransform: 'none', borderRadius: 2, px: 3, '&:hover': { bgcolor: '#6a3de8' } }}>
+          <Button variant="contained" sx={{ bgcolor: '#7c4dff', textTransform: 'none', borderRadius: 2, px: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' }, '&:hover': { bgcolor: '#6a3de8' } }}>
             Learner
           </Button>
         </Box>
@@ -311,51 +322,74 @@ export default function LearnerDashboard() {
       )}
 
       {/* Top Stats Cards Row (computed) */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mb: 3 }}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, 
+        gap: { xs: 2, sm: 2.5 }, 
+        mb: 3 
+      }}>
         {baseStats.map((stat) => {
           const value = stat.key === 'total' ? total : stat.key === 'verified' ? verifiedCount : pendingCount;
           return (
-            <Card key={stat.label} sx={{ flex: '1 1 220px', p: 2.5, borderRadius: 3, bgcolor: stat.bgColor, boxShadow: 'none' }}>
+            <Card key={stat.label} sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3, bgcolor: stat.bgColor, boxShadow: 'none' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     {stat.label}
                   </Typography>
-                  <Typography variant="h3" fontWeight={700} color="#1e293b">
+                  <Typography variant="h3" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                     {isLoading ? '...' : value}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
                     {stat.note}
                   </Typography>
                 </Box>
-                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.iconColor }}>
-                  {stat.icon}
+                <Box sx={{ 
+                  width: { xs: 40, sm: 48 }, 
+                  height: { xs: 40, sm: 48 }, 
+                  borderRadius: 2, 
+                  bgcolor: 'rgba(255,255,255,0.7)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: stat.iconColor,
+                  flexShrink: 0,
+                  ml: 2
+                }}>
+                  {React.cloneElement(stat.icon, { sx: { fontSize: { xs: 24, sm: 28 } } })}
                 </Box>
               </Box>
             </Card>
           );
         })}
-        <Card sx={{ flex: '1 1 300px', p: 2.5, borderRadius: 3, bgcolor: '#e3f2fd', boxShadow: 'none' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5 }}>
+        <Card sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3, bgcolor: '#e3f2fd', boxShadow: 'none' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             NQFQ Progress
           </Typography>
-          <LinearProgress variant="determinate" value={57} sx={{ height: 10, borderRadius: 5, bgcolor: '#bbdefb', '& .MuiLinearProgress-bar': { bgcolor: '#1976d2', borderRadius: 5 } }} />
-          <Typography variant="h6" pt={1} sx={{ fontWeight: 700, color: '#1e293b', textAlign: 'right' }}>
+          <LinearProgress variant="determinate" value={57} sx={{ height: { xs: 8, sm: 10 }, borderRadius: 5, bgcolor: '#bbdefb', '& .MuiLinearProgress-bar': { bgcolor: '#1976d2', borderRadius: 5 } }} />
+          <Typography variant="h6" pt={1} sx={{ fontWeight: 700, color: '#1e293b', textAlign: 'right', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Level 4/7
           </Typography>
         </Card>
       </Box>
 
       {/* Line Chart + Top Skills */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Card sx={{ flex: '1 1 60%', p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Typography variant="h6" fontWeight={700} color="#1e293b">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: { xs: 2, sm: 3 }, mb: 3 }}>
+        <Card sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+          <Typography variant="h6" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Total Profile Impressions
           </Typography>
-          <LineChart />
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+            <LineChart />
+          </Box>
+          <Box sx={{ display: { xs: 'block', md: 'none' }, py: 3 }}>
+            <Typography variant="body2" color="text.secondary" textAlign="center">
+              Chart view available on larger screens
+            </Typography>
+          </Box>
         </Card>
 
-        <Card sx={{ flex: '1 1 35%', p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+        <Card sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6" fontWeight={700} color="#1e293b">
               Badges
@@ -388,15 +422,22 @@ export default function LearnerDashboard() {
       </Box>
 
       {/* Certificate Distribution + Top Skills Row */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 4 }}>
-        <Card sx={{ flex: 1, p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Typography variant="h6" fontWeight={700} mb={1} color="#1e293b">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: { xs: 2, sm: 3 }, mb: 4 }}>
+        <Card sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+          <Typography variant="h6" fontWeight={700} mb={1} color="#1e293b" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Certificate Distribution
           </Typography>
-          <DonutChart />
+          <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <DonutChart />
+          </Box>
+          <Box sx={{ display: { xs: 'block', sm: 'none' }, py: 3 }}>
+            <Typography variant="body2" color="text.secondary" textAlign="center">
+              Chart view available on larger screens
+            </Typography>
+          </Box>
         </Card>
 
-        <Card sx={{ flex: 1, p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+        <Card sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight={700} color="#1e293b">
               Top Skills
@@ -419,11 +460,11 @@ export default function LearnerDashboard() {
 
       {/* My Credentials Section */}
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" fontWeight={700} color="#1e293b">
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, gap: 2 }}>
+          <Typography variant="h5" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             My Credentials
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1 }}>
             <IconButton size="small" sx={{ bgcolor: '#f1f5f9' }}>
               <ViewModule fontSize="small" />
             </IconButton>
@@ -437,15 +478,15 @@ export default function LearnerDashboard() {
         </Box>
 
         {/* Search, Filter, Sort Bar */}
-        <Box sx={{ bgcolor: '#fafbfc', p: 2.5, borderRadius: 2, mb: 3, border: '1px solid #e5e7eb' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ bgcolor: '#fafbfc', p: { xs: 2, sm: 2.5 }, borderRadius: 2, mb: 3, border: '1px solid #e5e7eb' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: { xs: 2, sm: 2 }, flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <PeopleOutline sx={{ color: '#64748b' }} />
               <Typography variant="body2" color="text.secondary" fontWeight={600}>
                 {isLoading ? 'Loading...' : `${credentials.length} Certificate${credentials.length === 1 ? '' : 's'} Found`}
               </Typography>
             </Box>
-            <Box sx={{ flex: 1 }} />
+            <Box sx={{ flex: { xs: 'none', sm: 1 } }} />
             <TextField
               size="small"
               placeholder="Search Skills, Tags, Title, Issuer"
@@ -458,9 +499,9 @@ export default function LearnerDashboard() {
                   </InputAdornment>
                 ),
               }}
-              sx={{ width: 280, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              sx={{ width: { xs: '100%', sm: 280 }, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
-            <FormControl size="small" sx={{ minWidth: 160 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
               <InputLabel id="status-label">Status</InputLabel>
               <Select labelId="status-label" label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setSkip(0); }}>
                 <MenuItem value="">All</MenuItem>
@@ -468,9 +509,9 @@ export default function LearnerDashboard() {
                 <MenuItem value="pending">Pending</MenuItem>
               </Select>
             </FormControl>
-            <TextField size="small" label="Issuer" value={issuer} onChange={(e) => { setIssuer(e.target.value); setSkip(0); }} sx={{ width: 180, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
-            <TextField size="small" label="NSQF" type="number" value={nsqfLevel} onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); setSkip(0); }} sx={{ width: 100, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
-            <FormControl size="small" sx={{ minWidth: 170 }}>
+            <TextField size="small" label="Issuer" value={issuer} onChange={(e) => { setIssuer(e.target.value); setSkip(0); }} sx={{ width: { xs: '100%', sm: 180 }, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 }, display: { xs: 'none', md: 'block' } }} />
+            <TextField size="small" label="NSQF" type="number" value={nsqfLevel} onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); setSkip(0); }} sx={{ width: { xs: '100%', sm: 100 }, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 }, display: { xs: 'none', md: 'block' } }} />
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 170 } }}>
               <InputLabel id="sort-label">Sort</InputLabel>
               <Select labelId="sort-label" label="Sort" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
                 <MenuItem value="issued_date_desc">Newest First</MenuItem>
@@ -481,29 +522,27 @@ export default function LearnerDashboard() {
         </Box>
 
         {/* Credentials Grid - 3 COLUMNS */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 3,
-            '@media (max-width: 1200px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
-            '@media (max-width: 768px)': { gridTemplateColumns: '1fr' },
-          }}
-        >
-          {isLoading ? (
-            <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
-              <Typography>Loading credentials...</Typography>
-            </Card>
-          ) : credentials.length === 0 ? (
-            <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
-              <Typography>No credentials found.</Typography>
-            </Card>
-          ) : (
-            credentials.map((cred) => (
+        {isLoading ? (
+          <SkeletonLoader type="card" count={6} />
+        ) : credentials.length === 0 ? (
+          <Card sx={{ p: 3 }}>
+            <Typography>No credentials found.</Typography>
+          </Card>
+        ) : (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 3,
+              '@media (max-width: 1200px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
+              '@media (max-width: 768px)': { gridTemplateColumns: '1fr' },
+            }}
+          >
+            {credentials.map((cred) => (
               <CredentialCard key={cred._id} credential={cred} />
-            ))
-          )}
-        </Box>
+            ))}
+          </Box>
+        )}
 
         {/* Pagination */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4 }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -39,6 +39,8 @@ import {
   Block,
 } from '@mui/icons-material';
 import StatsCard from './StatsCard';
+import CircularLoader from '@/lib/circularloader';
+import { SkeletonLoader } from '@/lib/skeletonloader';
 
 // Mock data
 const mockSystemStats = {
@@ -151,20 +153,20 @@ export default function AdminDashboard() {
   };
 
   return (
-    <Box>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Welcome Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+      <Box sx={{ mb: { xs: 3, md: 4 } }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
           System Administration 🛠️
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Monitor platform health and manage system-wide operations
         </Typography>
       </Box>
 
       {/* System Stats */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: { xs: 2, sm: 3 }, mb: { xs: 3, md: 4 } }}>
+        <Box>
           <StatsCard
             title="Total Users"
             value={mockSystemStats.total_users}
@@ -173,7 +175,7 @@ export default function AdminDashboard() {
             trend={{ value: mockSystemStats.monthly_growth, label: 'monthly growth' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box>
           <StatsCard
             title="Active Institutions"
             value={mockSystemStats.active_institutions}
@@ -182,7 +184,7 @@ export default function AdminDashboard() {
             subtitle="Verified partners"
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box>
           <StatsCard
             title="Credentials Issued"
             value={mockSystemStats.credentials_issued}
@@ -191,7 +193,7 @@ export default function AdminDashboard() {
             trend={{ value: 22, label: 'vs last month' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box>
           <StatsCard
             title="System Uptime"
             value={`${mockSystemStats.system_uptime}%`}
@@ -202,16 +204,16 @@ export default function AdminDashboard() {
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: { xs: 2, sm: 3 } }}>
         {/* Institution Management */}
-        <Box sx={{ flex: '2 1 600px', minWidth: '500px' }}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Box>
+          <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, gap: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                   Institution Management
                 </Typography>
-                <Button variant="contained" startIcon={<Business />}>
+                <Button variant="contained" startIcon={<Business />} fullWidth sx={{ display: { xs: 'flex', sm: 'inline-flex' } }}>
                   Add Institution
                 </Button>
               </Box>
@@ -360,7 +362,7 @@ export default function AdminDashboard() {
         </Box>
 
         {/* Sidebar */}
-        <Box sx={{ flex: '1 1 400px', minWidth: '350px' }}>
+        <Box>
           {/* System Health */}
           <Card sx={{ mb: 3 }}>
             <CardContent>

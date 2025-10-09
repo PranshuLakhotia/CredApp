@@ -1,0 +1,117 @@
+{
+  "common": {
+    "welcome": "સ્વાગત છે",
+    "dashboard": "ડેશબોર્ડ",
+    "overview": "ઝલક",
+    "profile": "પ્રોફાઇલ",
+    "settings": "સેટિંગ્સ",
+    "help": "સહાય અને સપોર્ટ",
+    "logout": "લોગઆઉટ",
+    "save": "સાચવો",
+    "cancel": "રદ કરો",
+    "delete": "કાઢી નાખો",
+    "edit": "સંપાદિત કરો",
+    "view": "જુઓ",
+    "search": "શોધો",
+    "filter": "ફિલ્ટર",
+    "sort": "ક્રમબદ્ધ કરો",
+    "loading": "લોડ થઈ રહ્યું છે...",
+    "error": "ભૂલ",
+    "success": "સફળતા",
+    "download": "ડાઉનલોડ",
+    "share": "શેર"
+  },
+  "navigation": {
+    "home": "હોમ",
+    "credentials": "પ્રમાણપત્રો",
+    "skills": "કુશળતા",
+    "pathways": "માર્ગો",
+    "candidates": "ઉમેદવારો",
+    "institutions": "સંસ્થાઓ",
+    "reports": "રિપોર્ટ્સ"
+  },
+  "dashboard": {
+    "title": "ડેશબોર્ડ ઝલક",
+    "totalCredentials": "કુલ પ્રમાણપત્રો",
+    "verified": "ચકાસાયેલ",
+    "pending": "બાકી",
+    "myCredentials": "મારા પ્રમાણપત્રો",
+    "recentActivity": "તાજેતરની પ્રવૃત્તિ",
+    "statistics": "આંકડા"
+  },
+  "credentials": {
+    "title": "પ્રમાણપત્રો",
+    "addNew": "નવું પ્રમાણપત્ર ઉમેરો",
+    "verified": "ચકાસાયેલ",
+    "pending": "સમીક્ષા માટે બાકી",
+    "rejected": "નકારાયેલ",
+    "download": "ડાઉનલોડ",
+    "share": "શેર",
+    "viewDetails": "વિગતો જુઓ",
+    "issuer": "જારીકર્તા",
+    "issuedDate": "જારી કરવાની તારીખ",
+    "expiryDate": "સમાપ્તિ તારીખ"
+  },
+  "profile": {
+    "title": "વપરાશકર્તા પ્રોફાઇલ",
+    "personalInfo": "વ્યક્તિગત માહિતી",
+    "education": "શિક્ષણ",
+    "experience": "અનુભવ",
+    "skills": "કુશળતા",
+    "editProfile": "પ્રોફાઇલ સંપાદિત કરો",
+    "fullName": "પૂરું નામ",
+    "email": "ઇમેઇલ",
+    "phone": "ફોન નંબર"
+  },
+  "accessibility": {
+    "title": "સુલભતા",
+    "textToSpeech": "ટેક્સ્ટ ટુ સ્પીચ",
+    "biggerText": "મોટો ટેક્સ્ટ",
+    "textSpacing": "ટેક્સ્ટ સ્પેસિંગ",
+    "lineHeight": "લાઇન ઊંચાઈ",
+    "dyslexiaFriendly": "ડિસલેક્સિયા ફ્રેન્ડલી",
+    "highlightLinks": "લિંક્સ હાઇલાઇટ કરો",
+    "hideImages": "છબીઓ છુપાવો",
+    "largeCursor": "મોટો કર્સર",
+    "invertColors": "રંગો ઉલટાવો",
+    "resetSettings": "બધી સેટિંગ્સ રીસેટ કરો",
+    "description": {
+      "textToSpeech": "હોવર કરતી વખતે ટેક્સ્ટ વાંચો",
+      "biggerText": "ફોન્ટ કદ વધારો",
+      "textSpacing": "અક્ષરો વચ્ચેનું અંતર વધારો",
+      "lineHeight": "લાઇનો વચ્ચેનું અંતર વધારો",
+      "dyslexiaFriendly": "ડિસલેક્સિયા-અનુકૂળ ફોન્ટ વાપરો",
+      "highlightLinks": "લિંક્સને વધુ દૃશ્યમાન બનાવો",
+      "hideImages": "પૃષ્ઠ પર બધી છબીઓ છુપાવો",
+      "largeCursor": "કર્સર કદ વધારો",
+      "invertColors": "પૃષ્ઠના રંગો ઉલટાવો"
+    }
+  },
+  "language": {
+    "title": "ભાષા",
+    "selectLanguage": "ભાષા પસંદ કરો",
+    "changeLanguage": "ભાષા બદલો"
+  },
+  "auth": {
+    "login": "લોગિન",
+    "signup": "સાઇન અપ",
+    "forgotPassword": "પાસવર્ડ ભૂલી ગયા?",
+    "resetPassword": "પાસવર્ડ રીસેટ કરો",
+    "emailPlaceholder": "તમારું ઇમેઇલ દાખલ કરો",
+    "passwordPlaceholder": "તમારો પાસવર્ડ દાખલ કરો",
+    "rememberMe": "મને યાદ રાખો"
+  },
+  "errors": {
+    "generic": "કંઈક ખોટું થયું. કૃપા કરીને ફરી પ્રયાસ કરો.",
+    "networkError": "નેટવર્ક ભૂલ. કૃપા કરીને તમારું કનેક્શન તપાસો.",
+    "unauthorized": "આ ક્રિયા કરવા માટે તમે અધિકૃત નથી.",
+    "notFound": "વિનંતી કરેલ સંસાધન મળ્યું નથી."
+  },
+  "messages": {
+    "savedSuccessfully": "સફળતાપૂર્વક સાચવાયું",
+    "deletedSuccessfully": "સફળતાપૂર્વક કાઢી નાખ્યું",
+    "updatedSuccessfully": "સફળતાપૂર્વક અપડેટ થયું",
+    "confirmDelete": "શું તમે ખરેખર આને કાઢી નાખવા માંગો છો?"
+  }
+}
+

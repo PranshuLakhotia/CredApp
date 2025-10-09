@@ -1,0 +1,117 @@
+{
+  "common": {
+    "welcome": "స్వాగతం",
+    "dashboard": "డాష్‌బోర్డ్",
+    "overview": "సమీక్ష",
+    "profile": "ప్రొఫైల్",
+    "settings": "సెట్టింగులు",
+    "help": "సహాయం & మద్దతు",
+    "logout": "లాగ్అవుట్",
+    "save": "సేవ్",
+    "cancel": "రద్దు",
+    "delete": "తొలగించు",
+    "edit": "సవరించు",
+    "view": "చూడు",
+    "search": "వెతుకు",
+    "filter": "ఫిల్టర్",
+    "sort": "క్రమబద్ధీకరించు",
+    "loading": "లోడ్ అవుతోంది...",
+    "error": "లోపం",
+    "success": "విజయం",
+    "download": "డౌన్‌లోడ్",
+    "share": "షేర్"
+  },
+  "navigation": {
+    "home": "హోమ్",
+    "credentials": "ధృవపత్రాలు",
+    "skills": "నైపుణ్యాలు",
+    "pathways": "మార్గాలు",
+    "candidates": "అభ్యర్థులు",
+    "institutions": "సంస్థలు",
+    "reports": "నివేదికలు"
+  },
+  "dashboard": {
+    "title": "డాష్‌బోర్డ్ సమీక్ష",
+    "totalCredentials": "మొత్తం ధృవపత్రాలు",
+    "verified": "ధృవీకరించబడింది",
+    "pending": "పెండింగ్",
+    "myCredentials": "నా ధృవపత్రాలు",
+    "recentActivity": "ఇటీవలి కార్యాచరణ",
+    "statistics": "గణాంకాలు"
+  },
+  "credentials": {
+    "title": "ధృవపత్రాలు",
+    "addNew": "కొత్త ధృవపత్రం జోడించు",
+    "verified": "ధృవీకరించబడింది",
+    "pending": "సమీక్ష కోసం పెండింగ్",
+    "rejected": "తిరస్కరించబడింది",
+    "download": "డౌన్‌లోడ్",
+    "share": "షేర్",
+    "viewDetails": "వివరాలు చూడు",
+    "issuer": "జారీచేసేవారు",
+    "issuedDate": "జారీ తేదీ",
+    "expiryDate": "గడువు తేదీ"
+  },
+  "profile": {
+    "title": "వినియోగదారు ప్రొఫైల్",
+    "personalInfo": "వ్యక్తిగత సమాచారం",
+    "education": "విద్య",
+    "experience": "అనుభవం",
+    "skills": "నైపుణ్యాలు",
+    "editProfile": "ప్రొఫైల్‌ను సవరించు",
+    "fullName": "పూర్తి పేరు",
+    "email": "ఇమెయిల్",
+    "phone": "ఫోన్ నంబర్"
+  },
+  "accessibility": {
+    "title": "ప్రాప్యత",
+    "textToSpeech": "టెక్స్ట్ టు స్పీచ్",
+    "biggerText": "పెద్ద టెక్స్ట్",
+    "textSpacing": "టెక్స్ట్ స్పేసింగ్",
+    "lineHeight": "లైన్ ఎత్తు",
+    "dyslexiaFriendly": "డిస్లెక్సియా ఫ్రెండ్లీ",
+    "highlightLinks": "లింక్‌లను హైలైట్ చేయండి",
+    "hideImages": "చిత్రాలను దాచు",
+    "largeCursor": "పెద్ద కర్సర్",
+    "invertColors": "రంగులను మార్చు",
+    "resetSettings": "అన్ని సెట్టింగులను రీసెట్ చేయండి",
+    "description": {
+      "textToSpeech": "హోవర్ చేసినప్పుడు టెక్స్ట్ చదవండి",
+      "biggerText": "ఫాంట్ పరిమాణం పెంచండి",
+      "textSpacing": "అక్షరాల మధ్య ఖాళీని పెంచండి",
+      "lineHeight": "లైన్ల మధ్య ఖాళీని పెంచండి",
+      "dyslexiaFriendly": "డిస్లెక్సియా-అనుకూల ఫాంట్‌ను ఉపయోగించండి",
+      "highlightLinks": "లింక్‌లను మరింత కనిపించేలా చేయండి",
+      "hideImages": "పేజీలోని అన్ని చిత్రాలను దాచండి",
+      "largeCursor": "కర్సర్ పరిమాణం పెంచండి",
+      "invertColors": "పేజీ రంగులను మార్చండి"
+    }
+  },
+  "language": {
+    "title": "భాష",
+    "selectLanguage": "భాషను ఎంచుకోండి",
+    "changeLanguage": "భాషను మార్చు"
+  },
+  "auth": {
+    "login": "లాగిన్",
+    "signup": "సైన్ అప్",
+    "forgotPassword": "పాస్‌వర్డ్ మర్చిపోయారా?",
+    "resetPassword": "పాస్‌వర్డ్‌ను రీసెట్ చేయండి",
+    "emailPlaceholder": "మీ ఇమెయిల్‌ను నమోదు చేయండి",
+    "passwordPlaceholder": "మీ పాస్‌వర్డ్‌ను నమోదు చేయండి",
+    "rememberMe": "నన్ను గుర్తుంచుకో"
+  },
+  "errors": {
+    "generic": "ఏదో తప్పు జరిగింది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+    "networkError": "నెట్‌వర్క్ లోపం. దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేయండి.",
+    "unauthorized": "ఈ చర్యను నిర్వహించడానికి మీకు అధికారం లేదు.",
+    "notFound": "అభ్యర్థించిన వనరు కనుగొనబడలేదు."
+  },
+  "messages": {
+    "savedSuccessfully": "విజయవంతంగా సేవ్ చేయబడింది",
+    "deletedSuccessfully": "విజయవంతంగా తొలగించబడింది",
+    "updatedSuccessfully": "విజయవంతంగా నవీకరించబడింది",
+    "confirmDelete": "మీరు దీన్ని ఖచ్చితంగా తొలగించాలనుకుంటున్నారా?"
+  }
+}
+

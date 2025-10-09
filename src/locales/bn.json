@@ -1,0 +1,117 @@
+{
+  "common": {
+    "welcome": "স্বাগতম",
+    "dashboard": "ড্যাশবোর্ড",
+    "overview": "সংক্ষিপ্ত বিবরণ",
+    "profile": "প্রোফাইল",
+    "settings": "সেটিংস",
+    "help": "সাহায্য ও সহায়তা",
+    "logout": "লগআউট",
+    "save": "সংরক্ষণ করুন",
+    "cancel": "বাতিল করুন",
+    "delete": "মুছে ফেলুন",
+    "edit": "সম্পাদনা করুন",
+    "view": "দেখুন",
+    "search": "অনুসন্ধান করুন",
+    "filter": "ফিল্টার",
+    "sort": "সাজান",
+    "loading": "লোড হচ্ছে...",
+    "error": "ত্রুটি",
+    "success": "সফল",
+    "download": "ডাউনলোড",
+    "share": "শেয়ার"
+  },
+  "navigation": {
+    "home": "হোম",
+    "credentials": "প্রমাণপত্র",
+    "skills": "দক্ষতা",
+    "pathways": "পথ",
+    "candidates": "প্রার্থী",
+    "institutions": "প্রতিষ্ঠান",
+    "reports": "রিপোর্ট"
+  },
+  "dashboard": {
+    "title": "ড্যাশবোর্ড সংক্ষিপ্ত বিবরণ",
+    "totalCredentials": "মোট প্রমাণপত্র",
+    "verified": "যাচাই করা হয়েছে",
+    "pending": "মুলতুবি",
+    "myCredentials": "আমার প্রমাণপত্র",
+    "recentActivity": "সাম্প্রতিক কার্যকলাপ",
+    "statistics": "পরিসংখ্যান"
+  },
+  "credentials": {
+    "title": "প্রমাণপত্র",
+    "addNew": "নতুন প্রমাণপত্র যোগ করুন",
+    "verified": "যাচাই করা হয়েছে",
+    "pending": "পর্যালোচনার জন্য মুলতুবি",
+    "rejected": "প্রত্যাখ্যাত",
+    "download": "ডাউনলোড করুন",
+    "share": "শেয়ার করুন",
+    "viewDetails": "বিস্তারিত দেখুন",
+    "issuer": "ইস্যুকারী",
+    "issuedDate": "ইস্যু তারিখ",
+    "expiryDate": "মেয়াদ শেষের তারিখ"
+  },
+  "profile": {
+    "title": "ব্যবহারকারী প্রোফাইল",
+    "personalInfo": "ব্যক্তিগত তথ্য",
+    "education": "শিক্ষা",
+    "experience": "অভিজ্ঞতা",
+    "skills": "দক্ষতা",
+    "editProfile": "প্রোফাইল সম্পাদনা করুন",
+    "fullName": "পূর্ণ নাম",
+    "email": "ইমেল",
+    "phone": "ফোন নম্বর"
+  },
+  "accessibility": {
+    "title": "অ্যাক্সেসযোগ্যতা",
+    "textToSpeech": "টেক্সট টু স্পিচ",
+    "biggerText": "বড় টেক্সট",
+    "textSpacing": "টেক্সট স্পেসিং",
+    "lineHeight": "লাইন উচ্চতা",
+    "dyslexiaFriendly": "ডিসলেক্সিয়া ফ্রেন্ডলি",
+    "highlightLinks": "লিঙ্ক হাইলাইট করুন",
+    "hideImages": "ছবি লুকান",
+    "largeCursor": "বড় কার্সার",
+    "invertColors": "রঙ উল্টান",
+    "resetSettings": "সব সেটিংস রিসেট করুন",
+    "description": {
+      "textToSpeech": "হোভার করার সময় টেক্সট পড়ুন",
+      "biggerText": "ফন্ট আকার বাড়ান",
+      "textSpacing": "অক্ষরের মধ্যে ব্যবধান বাড়ান",
+      "lineHeight": "লাইনের মধ্যে ব্যবধান বাড়ান",
+      "dyslexiaFriendly": "ডিসলেক্সিয়া-বন্ধুত্বপূর্ণ ফন্ট ব্যবহার করুন",
+      "highlightLinks": "লিঙ্কগুলি আরও দৃশ্যমান করুন",
+      "hideImages": "পৃষ্ঠার সব ছবি লুকান",
+      "largeCursor": "কার্সার আকার বাড়ান",
+      "invertColors": "পৃষ্ঠার রঙ উল্টান"
+    }
+  },
+  "language": {
+    "title": "ভাষা",
+    "selectLanguage": "ভাষা নির্বাচন করুন",
+    "changeLanguage": "ভাষা পরিবর্তন করুন"
+  },
+  "auth": {
+    "login": "লগইন",
+    "signup": "সাইন আপ",
+    "forgotPassword": "পাসওয়ার্ড ভুলে গেছেন?",
+    "resetPassword": "পাসওয়ার্ড রিসেট করুন",
+    "emailPlaceholder": "আপনার ইমেল লিখুন",
+    "passwordPlaceholder": "আপনার পাসওয়ার্ড লিখুন",
+    "rememberMe": "আমাকে মনে রাখুন"
+  },
+  "errors": {
+    "generic": "কিছু ভুল হয়েছে। দয়া করে আবার চেষ্টা করুন।",
+    "networkError": "নেটওয়ার্ক ত্রুটি। দয়া করে আপনার সংযোগ পরীক্ষা করুন।",
+    "unauthorized": "এই কাজটি করার জন্য আপনার অনুমতি নেই।",
+    "notFound": "অনুরোধ করা সংস্থান পাওয়া যায়নি।"
+  },
+  "messages": {
+    "savedSuccessfully": "সফলভাবে সংরক্ষিত হয়েছে",
+    "deletedSuccessfully": "সফলভাবে মুছে ফেলা হয়েছে",
+    "updatedSuccessfully": "সফলভাবে আপডেট করা হয়েছে",
+    "confirmDelete": "আপনি কি নিশ্চিতভাবে এটি মুছে ফেলতে চান?"
+  }
+}
+

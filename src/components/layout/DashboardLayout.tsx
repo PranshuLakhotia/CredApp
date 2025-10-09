@@ -55,6 +55,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types/auth';
 import DashboardSidebar from './DashboardSidebar';
 import RoleSwitcher from '../debug/RoleSwitcher';
+import LanguageSwitcher from '../language/LanguageSwitcher';
 import { usePathname, useRouter } from 'next/navigation';
 
 const drawerWidth = 280;
@@ -269,7 +270,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <DashboardSidebar
         sidebarExpanded={sidebarExpanded}
@@ -280,11 +281,11 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Navigation Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="bg-white border-b border-gray-200 px-3 sm:px-4 md:px-6 py-3 md:py-4" style={{ marginLeft: isMobile ? '0' : '0' }}>
+          <div className="flex items-center justify-between" style={{ paddingLeft: isMobile ? '56px' : '0' }}>
             <div className="flex flex-col gap-2">
               {/* Page Title */}
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>
                 {title || 'Dashboard Overview'}
               </Typography>
               
@@ -342,19 +343,21 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Search Bar */}
-              <Search>
-                <SearchIconWrapper>
-                  <SearchIcon />
-                </SearchIconWrapper>
-                <StyledInputBase
-                  placeholder="Search credentials, skills..."
-                  inputProps={{ 'aria-label': 'search' }}
-                />
-              </Search>
+              {/* Search Bar - Hidden on mobile */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Search>
+                  <SearchIconWrapper>
+                    <SearchIcon />
+                  </SearchIconWrapper>
+                  <StyledInputBase
+                    placeholder="Search credentials, skills..."
+                    inputProps={{ 'aria-label': 'search' }}
+                  />
+                </Search>
+              </Box>
 
-              {/* Font Size Controls */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
+              {/* Font Size Controls - Hidden on small screens */}
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5, ml: 1 }}>
                 <Tooltip title="Decrease font size">
                   <IconButton
                     size="small"
@@ -407,10 +410,13 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 </Tooltip>
               </Box>
 
-              <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+              <Divider orientation="vertical" flexItem sx={{ mx: 1, display: { xs: 'none', sm: 'block' } }} />
+
+              {/* Language Switcher */}
+              <LanguageSwitcher />
 
               {/* Theme Toggle */}
-              <IconButton
+              {/* <IconButton
                 size="medium"
                 color="inherit"
                 onClick={handleThemeToggle}
@@ -423,9 +429,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 }}
               >
                 {isDarkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
-              </IconButton>
+              </IconButton> */}
 
-              {/* Refresh */}
+              {/* Refresh - Hidden on mobile */}
               <IconButton
                 size="medium"
                 color="inherit"
@@ -435,14 +441,15 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   '&:hover': { 
                     backgroundColor: 'rgba(0, 0, 0, 0.04)',
                     color: '#374151'
-                  }
+                  },
+                  display: { xs: 'none', sm: 'inline-flex' }
                 }}
               >
                 <Refresh fontSize="small" />
               </IconButton>
 
               {/* Apps Menu */}
-              <IconButton
+              {/* <IconButton
                 size="medium"
                 color="inherit"
                 onClick={handleAppsMenu}
@@ -455,7 +462,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 }}
               >
                 <Apps fontSize="small" />
-              </IconButton>
+              </IconButton> */}
 
               {/* Notifications */}
               <IconButton
@@ -470,7 +477,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   }
                 }}
               >
-                <Badge badgeContent={3} color="error">
+                <Badge badgeContent={3} color="error" variant={isMobile ? "dot" : "standard"}>
                   <NotificationsIcon fontSize="small" />
                 </Badge>
               </IconButton>
@@ -503,7 +510,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
       </div>
 
       {/* Debug Role Switcher */}
-      <RoleSwitcher />
+      {/* <RoleSwitcher /> */}
 
       {/* Profile Menu */}
       <Menu

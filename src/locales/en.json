@@ -1,0 +1,117 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "profile": "Profile",
+    "settings": "Settings",
+    "help": "Help & Support",
+    "logout": "Logout",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "download": "Download",
+    "share": "Share"
+  },
+  "navigation": {
+    "home": "Home",
+    "credentials": "Credentials",
+    "skills": "Skills",
+    "pathways": "Pathways",
+    "candidates": "Candidates",
+    "institutions": "Institutions",
+    "reports": "Reports"
+  },
+  "dashboard": {
+    "title": "Dashboard Overview",
+    "totalCredentials": "Total Credentials",
+    "verified": "Verified",
+    "pending": "Pending",
+    "myCredentials": "My Credentials",
+    "recentActivity": "Recent Activity",
+    "statistics": "Statistics"
+  },
+  "credentials": {
+    "title": "Credentials",
+    "addNew": "Add New Credential",
+    "verified": "Verified",
+    "pending": "Pending Review",
+    "rejected": "Rejected",
+    "download": "Download",
+    "share": "Share",
+    "viewDetails": "View Details",
+    "issuer": "Issuer",
+    "issuedDate": "Issued Date",
+    "expiryDate": "Expiry Date"
+  },
+  "profile": {
+    "title": "User Profile",
+    "personalInfo": "Personal Information",
+    "education": "Education",
+    "experience": "Experience",
+    "skills": "Skills",
+    "editProfile": "Edit Profile",
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone Number"
+  },
+  "accessibility": {
+    "title": "Accessibility",
+    "textToSpeech": "Text to Speech",
+    "biggerText": "Bigger Text",
+    "textSpacing": "Text Spacing",
+    "lineHeight": "Line Height",
+    "dyslexiaFriendly": "Dyslexia Friendly",
+    "highlightLinks": "Highlight Links",
+    "hideImages": "Hide Images",
+    "largeCursor": "Large Cursor",
+    "invertColors": "Invert Colors",
+    "resetSettings": "Reset All Settings",
+    "description": {
+      "textToSpeech": "Read text aloud when hovering",
+      "biggerText": "Increase font size",
+      "textSpacing": "Increase space between letters",
+      "lineHeight": "Increase space between lines",
+      "dyslexiaFriendly": "Use dyslexia-friendly font",
+      "highlightLinks": "Make links more visible",
+      "hideImages": "Hide all images on the page",
+      "largeCursor": "Increase cursor size",
+      "invertColors": "Invert page colors"
+    }
+  },
+  "language": {
+    "title": "Language",
+    "selectLanguage": "Select Language",
+    "changeLanguage": "Change Language"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "emailPlaceholder": "Enter your email",
+    "passwordPlaceholder": "Enter your password",
+    "rememberMe": "Remember me"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "networkError": "Network error. Please check your connection.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "notFound": "The requested resource was not found."
+  },
+  "messages": {
+    "savedSuccessfully": "Saved successfully",
+    "deletedSuccessfully": "Deleted successfully",
+    "updatedSuccessfully": "Updated successfully",
+    "confirmDelete": "Are you sure you want to delete this?"
+  }
+}
+

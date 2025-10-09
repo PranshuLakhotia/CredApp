@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -35,6 +35,8 @@ import {
 } from '@mui/icons-material';
 import StatsCard from './StatsCard';
 import { useRouter } from 'next/navigation';
+import CircularLoader from '@/lib/circularloader';
+import { SkeletonLoader } from '@/lib/skeletonloader';
 
 // Mock data for employer dashboard
 const mockHiringData = {
@@ -59,26 +61,48 @@ const mockTopSkills = [
 
 export default function EmployerDashboard() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate data loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSearchLearners = () => {
     router.push('/dashboard/employer/search-learners');
   };
 
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularLoader />
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Header Section */}
-      <Box sx={{ mb: 5 }}>
-        <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, color: '#0f172a' }}>
+      <Box sx={{ mb: { xs: 3, md: 5 } }}>
+        <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, color: '#0f172a', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
           Employer Dashboard 💼
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 4, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           Manage your hiring process and find verified talent
         </Typography>
       </Box>
 
       {/* Stats Overview */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 5 }}>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+        gap: { xs: 2, sm: 3 }, 
+        mb: { xs: 3, md: 5 } 
+      }}>
+        <Box>
           <StatsCard
             title="Active Jobs"
             value={mockHiringData.activeJobs}
@@ -87,7 +111,7 @@ export default function EmployerDashboard() {
             trend={{ value: 8, label: 'this month' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box>
           <StatsCard
             title="Candidates Viewed"
             value={mockHiringData.candidatesViewed}
@@ -96,7 +120,7 @@ export default function EmployerDashboard() {
             trend={{ value: 15, label: 'this week' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box>
           <StatsCard
             title="Interviews Scheduled"
             value={mockHiringData.interviewsScheduled}
@@ -105,7 +129,7 @@ export default function EmployerDashboard() {
             trend={{ value: 3, label: 'pending' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box>
           <StatsCard
             title="Hired This Month"
             value={mockHiringData.hiredThisMonth}
@@ -116,31 +140,32 @@ export default function EmployerDashboard() {
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: { xs: 3, md: 4 } }}>
         {/* Main Actions */}
-        <Box sx={{ flex: '2 1 600px', minWidth: '400px' }}>
+        <Box>
           {/* Quick Actions Card */}
           <Card 
             elevation={0}
             sx={{ 
-              mb: 4,
+              mb: { xs: 3, md: 4 },
               border: '1px solid #e2e8f0',
               borderRadius: 4,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+            <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                 Quick Actions
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', gap: 2 }}>
                 <Button
                   variant="contained"
                   size="large"
                   startIcon={<Search />}
                   onClick={handleSearchLearners}
+                  fullWidth
                   sx={{
-                    px: 4,
+                    px: { xs: 3, sm: 4 },
                     py: 2,
                     borderRadius: 3,
                     fontWeight: 600,
@@ -160,8 +185,9 @@ export default function EmployerDashboard() {
                   variant="outlined"
                   size="large"
                   startIcon={<PersonAdd />}
+                  fullWidth
                   sx={{
-                    px: 4,
+                    px: { xs: 3, sm: 4 },
                     py: 2,
                     borderRadius: 3,
                     fontWeight: 600,
@@ -179,8 +205,9 @@ export default function EmployerDashboard() {
                   variant="outlined"
                   size="large"
                   startIcon={<Analytics />}
+                  fullWidth
                   sx={{
-                    px: 4,
+                    px: { xs: 3, sm: 4 },
                     py: 2,
                     borderRadius: 3,
                     fontWeight: 600,
@@ -207,8 +234,8 @@ export default function EmployerDashboard() {
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+            <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                 Recent Activity
               </Typography>
               <List sx={{ p: 0 }}>
@@ -253,7 +280,7 @@ export default function EmployerDashboard() {
         </Box>
 
         {/* Sidebar */}
-        <Box sx={{ flex: '1 1 400px', minWidth: '350px' }}>
+        <Box>
           {/* Top Skills in Demand */}
           <Card 
             elevation={0}
@@ -264,8 +291,8 @@ export default function EmployerDashboard() {
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+            <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: '#0f172a', fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                 Top Skills in Demand
               </Typography>
               {mockTopSkills.map((skillData, index) => (
@@ -308,10 +335,10 @@ export default function EmployerDashboard() {
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
+            <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                 <Notifications sx={{ color: '#f59e0b' }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                   Notifications
                 </Typography>
               </Box>

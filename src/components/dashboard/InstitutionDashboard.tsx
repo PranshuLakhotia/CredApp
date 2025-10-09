@@ -39,6 +39,8 @@ import {
   Refresh,
   Delete,
 } from '@mui/icons-material';
+import CircularLoader from '@/lib/circularloader';
+import { SkeletonLoader } from '@/lib/skeletonloader';
 
 interface IssuerVerificationData {
   // Step 1: Organization Details
@@ -91,6 +93,7 @@ const steps = [
 export default function InstitutionDashboard() {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'rejected' | 'not_submitted'>('not_submitted');
   const [formData, setFormData] = useState<IssuerVerificationData>({
     organization_name: '',
@@ -144,6 +147,8 @@ export default function InstitutionDashboard() {
       }
     } catch (error) {
       console.error('Error fetching verification status:', error);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -485,20 +490,29 @@ export default function InstitutionDashboard() {
     }
   };
 
+  // Show loader during initial load
+  if (initialLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularLoader />
+      </Box>
+    );
+  }
+
   // Render verification form
   if (verificationStatus === 'not_submitted') {
     return (
-      <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+      <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 900, mx: 'auto' }}>
+        <Box sx={{ mb: { xs: 3, md: 4 } }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
             Institution Verification
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             Complete the verification process to start issuing credentials
           </Typography>
         </Box>
 
-        <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3 }}>
+        <Paper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 }, border: '1px solid #e2e8f0', borderRadius: 3 }}>
           <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
             {steps.map((label) => (
               <Step key={label}>
@@ -509,15 +523,16 @@ export default function InstitutionDashboard() {
 
           {renderStepContent(activeStep)}
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', mt: 4, gap: 2 }}>
             <Button
               disabled={activeStep === 0}
               onClick={handleBack}
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', order: { xs: 2, sm: 1 } }}
+              fullWidth
             >
               Back
             </Button>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, order: { xs: 1, sm: 2 } }}>
               {activeStep === steps.length - 1 ? (
                 <Button
                   variant="contained"
@@ -592,10 +607,10 @@ export default function InstitutionDashboard() {
 
   // Render verified dashboard with API key management
   return (
-    <Box sx={{ p: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      <Box sx={{ mb: { xs: 3, md: 4 } }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 1 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
             Institution Dashboard
           </Typography>
           <Chip
@@ -605,30 +620,32 @@ export default function InstitutionDashboard() {
             sx={{ fontWeight: 600 }}
           />
         </Box>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           Manage your API keys and issue credentials
         </Typography>
       </Box>
 
       {/* API Keys Section */}
-      <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 }, border: '1px solid #e2e8f0', borderRadius: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, gap: 2 }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
               API Keys
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
               Use API keys to authenticate requests to issue credentials
             </Typography>
           </Box>
           <Button
+            fullWidth
             variant="contained"
             startIcon={<Key />}
             onClick={() => setNewKeyDialog(true)}
             sx={{
               bgcolor: '#3b82f6',
               textTransform: 'none',
-              '&:hover': { bgcolor: '#2563eb' }
+              '&:hover': { bgcolor: '#2563eb' },
+              display: { xs: 'flex', sm: 'inline-flex' }
             }}
           >
             Generate New Key

@@ -1,0 +1,117 @@
+{
+  "common": {
+    "welcome": "स्वागत है",
+    "dashboard": "डैशबोर्ड",
+    "overview": "अवलोकन",
+    "profile": "प्रोफ़ाइल",
+    "settings": "सेटिंग्स",
+    "help": "सहायता और समर्थन",
+    "logout": "लॉगआउट",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "view": "देखें",
+    "search": "खोजें",
+    "filter": "फ़िल्टर",
+    "sort": "क्रमबद्ध करें",
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि",
+    "success": "सफलता",
+    "download": "डाउनलोड करें",
+    "share": "साझा करें"
+  },
+  "navigation": {
+    "home": "होम",
+    "credentials": "प्रमाणपत्र",
+    "skills": "कौशल",
+    "pathways": "मार्ग",
+    "candidates": "उम्मीदवार",
+    "institutions": "संस्थान",
+    "reports": "रिपोर्ट"
+  },
+  "dashboard": {
+    "title": "डैशबोर्ड अवलोकन",
+    "totalCredentials": "कुल प्रमाणपत्र",
+    "verified": "सत्यापित",
+    "pending": "लंबित",
+    "myCredentials": "मेरे प्रमाणपत्र",
+    "recentActivity": "हाल की गतिविधि",
+    "statistics": "आंकड़े"
+  },
+  "credentials": {
+    "title": "प्रमाणपत्र",
+    "addNew": "नया प्रमाणपत्र जोड़ें",
+    "verified": "सत्यापित",
+    "pending": "समीक्षा के लिए लंबित",
+    "rejected": "अस्वीकृत",
+    "download": "डाउनलोड करें",
+    "share": "साझा करें",
+    "viewDetails": "विवरण देखें",
+    "issuer": "जारीकर्ता",
+    "issuedDate": "जारी करने की तारीख",
+    "expiryDate": "समाप्ति तिथि"
+  },
+  "profile": {
+    "title": "उपयोगकर्ता प्रोफ़ाइल",
+    "personalInfo": "व्यक्तिगत जानकारी",
+    "education": "शिक्षा",
+    "experience": "अनुभव",
+    "skills": "कौशल",
+    "editProfile": "प्रोफ़ाइल संपादित करें",
+    "fullName": "पूरा नाम",
+    "email": "ईमेल",
+    "phone": "फ़ोन नंबर"
+  },
+  "accessibility": {
+    "title": "सुलभता",
+    "textToSpeech": "टेक्स्ट टू स्पीच",
+    "biggerText": "बड़ा टेक्स्ट",
+    "textSpacing": "टेक्स्ट स्पेसिंग",
+    "lineHeight": "पंक्ति की ऊंचाई",
+    "dyslexiaFriendly": "डिस्लेक्सिया फ्रेंडली",
+    "highlightLinks": "लिंक हाइलाइट करें",
+    "hideImages": "छवियां छिपाएं",
+    "largeCursor": "बड़ा कर्सर",
+    "invertColors": "रंग उलटें",
+    "resetSettings": "सभी सेटिंग्स रीसेट करें",
+    "description": {
+      "textToSpeech": "होवर करने पर टेक्स्ट पढ़ें",
+      "biggerText": "फ़ॉन्ट आकार बढ़ाएं",
+      "textSpacing": "अक्षरों के बीच की जगह बढ़ाएं",
+      "lineHeight": "पंक्तियों के बीच की जगह बढ़ाएं",
+      "dyslexiaFriendly": "डिस्लेक्सिया-अनुकूल फ़ॉन्ट का उपयोग करें",
+      "highlightLinks": "लिंक को अधिक दृश्यमान बनाएं",
+      "hideImages": "पृष्ठ पर सभी छवियां छिपाएं",
+      "largeCursor": "कर्सर का आकार बढ़ाएं",
+      "invertColors": "पृष्ठ के रंग उलटें"
+    }
+  },
+  "language": {
+    "title": "भाषा",
+    "selectLanguage": "भाषा चुनें",
+    "changeLanguage": "भाषा बदलें"
+  },
+  "auth": {
+    "login": "लॉगिन",
+    "signup": "साइन अप",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "resetPassword": "पासवर्ड रीसेट करें",
+    "emailPlaceholder": "अपना ईमेल दर्ज करें",
+    "passwordPlaceholder": "अपना पासवर्ड दर्ज करें",
+    "rememberMe": "मुझे याद रखें"
+  },
+  "errors": {
+    "generic": "कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
+    "networkError": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें।",
+    "unauthorized": "आप इस कार्रवाई को करने के लिए अधिकृत नहीं हैं।",
+    "notFound": "अनुरोधित संसाधन नहीं मिला।"
+  },
+  "messages": {
+    "savedSuccessfully": "सफलतापूर्वक सहेजा गया",
+    "deletedSuccessfully": "सफलतापूर्वक हटाया गया",
+    "updatedSuccessfully": "सफलतापूर्वक अपडेट किया गया",
+    "confirmDelete": "क्या आप वाकई इसे हटाना चाहते हैं?"
+  }
+}
+

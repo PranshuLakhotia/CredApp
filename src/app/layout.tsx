@@ -6,6 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from '@/hooks/useAuth';
 import { AccessibilityProvider } from '@/contexts/AccessibilityContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { theme } from '@/lib/theme';
 import "./globals.css";
@@ -31,12 +32,14 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <AccessibilityProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-            <AccessibilityWidget />
-          </AccessibilityProvider>
+          <LanguageProvider>
+            <AccessibilityProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+              <AccessibilityWidget />
+            </AccessibilityProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>
