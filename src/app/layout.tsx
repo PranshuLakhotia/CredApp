@@ -5,6 +5,8 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from '@/hooks/useAuth';
+import { AccessibilityProvider } from '@/contexts/AccessibilityContext';
+import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { theme } from '@/lib/theme';
 import "./globals.css";
 
@@ -29,9 +31,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AccessibilityProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+            <AccessibilityWidget />
+          </AccessibilityProvider>
         </ThemeProvider>
       </body>
     </html>

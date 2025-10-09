@@ -24,3 +24,105 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ============================================ */
+/* Accessibility Styles */
+/* ============================================ */
+
+/* Bigger Text */
+body.accessibility-bigger-text,
+body.accessibility-bigger-text * {
+  font-size: 1.25em !important;
+  line-height: 1.6 !important;
+}
+
+/* Text Spacing */
+body.accessibility-text-spacing,
+body.accessibility-text-spacing * {
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+}
+
+/* Line Height */
+body.accessibility-line-height,
+body.accessibility-line-height * {
+  line-height: 2 !important;
+}
+
+/* Dyslexia Friendly Font */
+body.accessibility-dyslexia,
+body.accessibility-dyslexia * {
+  font-family: 'Comic Sans MS', 'Trebuchet MS', 'Arial', sans-serif !important;
+  font-weight: 500 !important;
+}
+
+/* Highlight Links */
+body.accessibility-highlight-links a {
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+  text-decoration: underline !important;
+  font-weight: bold !important;
+  padding: 2px 4px !important;
+  border: 2px solid #000000 !important;
+  border-radius: 3px !important;
+}
+
+body.accessibility-highlight-links a:hover {
+  background-color: #ffcc00 !important;
+}
+
+body.accessibility-highlight-links a:focus {
+  outline: 3px solid #0000ff !important;
+  outline-offset: 2px !important;
+}
+
+/* Hide Images */
+body.accessibility-hide-images img,
+body.accessibility-hide-images picture,
+body.accessibility-hide-images svg[class*="image"],
+body.accessibility-hide-images [role="img"] {
+  display: none !important;
+}
+
+body.accessibility-hide-images video {
+  display: none !important;
+}
+
+/* Large Cursor */
+body.accessibility-large-cursor,
+body.accessibility-large-cursor * {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M2 2 L2 28 L12 20 L16 30 L20 28 L16 18 L26 18 Z" fill="black" stroke="white" stroke-width="2"/></svg>') 4 4, auto !important;
+}
+
+body.accessibility-large-cursor a,
+body.accessibility-large-cursor button,
+body.accessibility-large-cursor [role="button"] {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M10 2 L10 10 L2 10 L2 14 L10 14 L10 22 L14 22 L14 14 L22 14 L22 10 L14 10 L14 2 Z M16 16 L16 30 L20 30 L20 20 L30 20 L30 16 Z" fill="black" stroke="white" stroke-width="2"/></svg>') 8 8, pointer !important;
+}
+
+/* Invert Colors */
+body.accessibility-invert-colors {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+body.accessibility-invert-colors img,
+body.accessibility-invert-colors video,
+body.accessibility-invert-colors picture {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Smooth transitions for accessibility changes */
+body {
+  transition: filter 0.3s ease;
+}
+
+/* Ensure sidebar is not affected by invert colors */
+body.accessibility-invert-colors .accessibility-sidebar-container {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Focus visible improvements for keyboard navigation */
+*:focus-visible {
+  outline: 3px solid #4299e1 !important;
+  outline-offset: 2px !important;
+}
