@@ -38,7 +38,9 @@ import {
   Warning,
   Refresh,
   Delete,
+  Search,
 } from '@mui/icons-material';
+import { kycService } from '@/services/kyc.service';
 
 interface IssuerVerificationData {
   // Step 1: Organization Details
@@ -92,6 +94,11 @@ export default function InstitutionDashboard() {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'rejected' | 'not_submitted'>('not_submitted');
+  const [gstinNumber, setGstinNumber] = useState('');
+  const [gstinVerified, setGstinVerified] = useState(false);
+  const [gstinLoading, setGstinLoading] = useState(false);
+  const [gstinError, setGstinError] = useState('');
+  const [gstinData, setGstinData] = useState<any>(null);
   const [formData, setFormData] = useState<IssuerVerificationData>({
     organization_name: '',
     organization_type: '',
@@ -264,6 +271,49 @@ export default function InstitutionDashboard() {
     alert('Copied to clipboard!');
   };
 
+  const handleGSTINVerification = async () => {
+    if (!gstinNumber || gstinNumber.length !== 15) {
+      setGstinError('Please enter a valid 15-character GSTIN');
+      return;
+    }
+
+    try {
+      setGstinLoading(true);
+      setGstinError('');
+
+      const response = await kycService.searchGSTIN(gstinNumber);
+
+      if (response.code === 200 && response.data?.data) {
+        const gstData = response.data.data;
+        setGstinData(gstData);
+        setGstinVerified(true);
+
+        // Auto-fill form data from GSTIN response
+        setFormData(prev => ({
+          ...prev,
+          organization_name: gstData.lgnm || gstData.tradeNam || '',
+          tax_id: gstinNumber,
+          // Extract address from pradr (principal address)
+          address_line1: gstData.pradr?.addr?.st || '',
+          address_line2: gstData.pradr?.addr?.loc || '',
+          city: gstData.pradr?.addr?.loc || '',
+          state: gstData.pradr?.addr?.stcd || '',
+          postal_code: gstData.pradr?.addr?.pncd || '',
+        }));
+
+        alert('GSTIN verified successfully! Form auto-filled with organization details.');
+      } else if (response.data?.message === 'No records found') {
+        setGstinError('No records found for this GSTIN. Please check the number.');
+      } else {
+        setGstinError('GSTIN verification failed. Please try again.');
+      }
+    } catch (error: any) {
+      setGstinError(error.message || 'Failed to verify GSTIN');
+    } finally {
+      setGstinLoading(false);
+    }
+  };
+
   const renderStepContent = (step: number) => {
     switch (step) {
       case 0:
@@ -276,6 +326,11 @@ export default function InstitutionDashboard() {
               value={formData.organization_name}
               onChange={(e) => handleInputChange('organization_name', e.target.value)}
               placeholder="e.g., PhysicsWallah, BYJU'S, Unacademy"
+              helperText={gstinData ? '✓ Auto-filled from GSTIN' : 'Enter your organization name'}
+              InputProps={{
+                readOnly: !!gstinData,
+                sx: gstinData ? { bgcolor: '#f0fdf4' } : {}
+              }}
             />
             <TextField
               label="Organization Type"
@@ -355,6 +410,11 @@ export default function InstitutionDashboard() {
               value={formData.tax_id}
               onChange={(e) => handleInputChange('tax_id', e.target.value)}
               placeholder="e.g., 29ABCDE1234F1Z5"
+              helperText={gstinData ? '✓ Verified from GSTIN' : 'Enter GSTIN or Tax ID'}
+              InputProps={{
+                readOnly: !!gstinData,
+                sx: gstinData ? { bgcolor: '#f0fdf4' } : {}
+              }}
             />
             <TextField
               label="Registration Certificate URL"
@@ -396,6 +456,10 @@ export default function InstitutionDashboard() {
               value={formData.address_line1}
               onChange={(e) => handleInputChange('address_line1', e.target.value)}
               placeholder="Building No., Street Name"
+              helperText={gstinData ? '✓ Auto-filled from GSTIN' : ''}
+              InputProps={{
+                sx: gstinData && formData.address_line1 ? { bgcolor: '#f0fdf4' } : {}
+              }}
             />
             <TextField
               label="Address Line 2"
@@ -403,6 +467,9 @@ export default function InstitutionDashboard() {
               value={formData.address_line2}
               onChange={(e) => handleInputChange('address_line2', e.target.value)}
               placeholder="Locality, Landmark"
+              InputProps={{
+                sx: gstinData && formData.address_line2 ? { bgcolor: '#f0fdf4' } : {}
+              }}
             />
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
               <TextField
@@ -410,18 +477,27 @@ export default function InstitutionDashboard() {
                 required
                 value={formData.city}
                 onChange={(e) => handleInputChange('city', e.target.value)}
+                InputProps={{
+                  sx: gstinData && formData.city ? { bgcolor: '#f0fdf4' } : {}
+                }}
               />
               <TextField
                 label="State"
                 required
                 value={formData.state}
                 onChange={(e) => handleInputChange('state', e.target.value)}
+                InputProps={{
+                  sx: gstinData && formData.state ? { bgcolor: '#f0fdf4' } : {}
+                }}
               />
               <TextField
                 label="Postal Code"
                 required
                 value={formData.postal_code}
                 onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                InputProps={{
+                  sx: gstinData && formData.postal_code ? { bgcolor: '#f0fdf4' } : {}
+                }}
               />
               <TextField
                 label="Country"
@@ -499,55 +575,138 @@ export default function InstitutionDashboard() {
         </Box>
 
         <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3 }}>
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+          {/* GSTIN Verification Step */}
+          {!gstinVerified ? (
+            <Box>
+              <Box sx={{ mb: 4, textAlign: 'center' }}>
+                <Business sx={{ fontSize: 60, color: '#3b82f6', mb: 2 }} />
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                  Verify Your Organization
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Enter your GSTIN to auto-fill organization details
+                </Typography>
+              </Box>
 
-          {renderStepContent(activeStep)}
+              <Box sx={{ maxWidth: 500, mx: 'auto' }}>
+                <TextField
+                  label="GSTIN Number"
+                  fullWidth
+                  required
+                  value={gstinNumber}
+                  onChange={(e) => {
+                    setGstinNumber(e.target.value.toUpperCase());
+                    setGstinError('');
+                  }}
+                  placeholder="29ABCDE1234F1Z5"
+                  helperText="15-character GST Identification Number"
+                  inputProps={{ maxLength: 15 }}
+                  disabled={gstinLoading}
+                  error={!!gstinError}
+                  sx={{ mb: 2 }}
+                />
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-            <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              sx={{ textTransform: 'none' }}
-            >
-              Back
-            </Button>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {activeStep === steps.length - 1 ? (
+                {gstinError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {gstinError}
+                  </Alert>
+                )}
+
+                {gstinData && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    <strong>Organization Found:</strong> {gstinData.lgnm || gstinData.tradeNam}
+                    <br />
+                    <Typography variant="caption">
+                      Status: {gstinData.sts} | Type: {gstinData.dty}
+                    </Typography>
+                  </Alert>
+                )}
+
                 <Button
                   variant="contained"
-                  onClick={handleSubmitVerification}
-                  disabled={loading}
+                  fullWidth
+                  size="large"
+                  onClick={handleGSTINVerification}
+                  disabled={gstinLoading || gstinNumber.length !== 15}
+                  startIcon={gstinLoading ? <CircularProgress size={20} /> : <Search />}
                   sx={{
                     bgcolor: '#3b82f6',
                     textTransform: 'none',
-                    px: 4,
+                    py: 1.5,
                     '&:hover': { bgcolor: '#2563eb' }
                   }}
                 >
-                  {loading ? <CircularProgress size={24} /> : 'Submit for Verification'}
+                  {gstinLoading ? 'Verifying GSTIN...' : 'Verify & Auto-Fill'}
                 </Button>
-              ) : (
+
                 <Button
-                  variant="contained"
-                  onClick={handleNext}
-                  sx={{
-                    bgcolor: '#3b82f6',
-                    textTransform: 'none',
-                    px: 4,
-                    '&:hover': { bgcolor: '#2563eb' }
-                  }}
+                  fullWidth
+                  onClick={() => setGstinVerified(true)}
+                  sx={{ mt: 2, textTransform: 'none', color: 'text.secondary' }}
                 >
-                  Next
+                  Skip & Fill Manually
                 </Button>
-              )}
+              </Box>
             </Box>
-          </Box>
+          ) : (
+            <>
+              {gstinData && (
+                <Alert severity="success" icon={<CheckCircle />} sx={{ mb: 3 }}>
+                  <strong>GSTIN Verified:</strong> {gstinData.lgnm || gstinData.tradeNam} ({gstinNumber})
+                </Alert>
+              )}
+
+              <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+                {steps.map((label) => (
+                  <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+
+              {renderStepContent(activeStep)}
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+                <Button
+                  disabled={activeStep === 0}
+                  onClick={handleBack}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Back
+                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {activeStep === steps.length - 1 ? (
+                    <Button
+                      variant="contained"
+                      onClick={handleSubmitVerification}
+                      disabled={loading}
+                      sx={{
+                        bgcolor: '#3b82f6',
+                        textTransform: 'none',
+                        px: 4,
+                        '&:hover': { bgcolor: '#2563eb' }
+                      }}
+                    >
+                      {loading ? <CircularProgress size={24} /> : 'Submit for Verification'}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      onClick={handleNext}
+                      sx={{
+                        bgcolor: '#3b82f6',
+                        textTransform: 'none',
+                        px: 4,
+                        '&:hover': { bgcolor: '#2563eb' }
+                      }}
+                    >
+                      Next
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            </>
+          )}
         </Paper>
       </Box>
     );

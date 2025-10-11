@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { RegisterRequest } from '@/types/auth';
 import { AuthService } from '@/services/auth.service';
+import InlineKYCSteps from './InlineKYCSteps';
+
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -34,6 +36,8 @@ export default function SignUpPage() {
     score: 0,
     feedback: []
   });
+  const [currentStep, setCurrentStep] = useState<'signup' | 'kyc-step1' | 'kyc-step2' | 'kyc-step3'>('signup');
+  const [kycVerificationData, setKycVerificationData] = useState<any>(null);
 
   const { register, isLoading, error, clearError } = useAuth();
   const router = useRouter();
@@ -153,8 +157,10 @@ export default function SignUpPage() {
       errors.phone = 'Please enter a valid phone number';
     }
 
-    // Validate date of birth if provided
-    if (formData.dateOfBirth) {
+    // Date of birth is required for KYC verification
+    if (!formData.dateOfBirth) {
+      errors.dateOfBirth = 'Date of birth is required for KYC verification';
+    } else {
       const selectedDate = new Date(formData.dateOfBirth);
       const today = new Date();
       const age = today.getFullYear() - selectedDate.getFullYear();
@@ -181,6 +187,11 @@ export default function SignUpPage() {
       return;
     }
 
+    // Transition to KYC Step 1
+    setCurrentStep('kyc-step1');
+  };
+
+  const handleKYCComplete = async (verificationData: any) => {
     try {
       setIsSubmitting(true);
       clearError();
@@ -221,9 +232,14 @@ export default function SignUpPage() {
         if (formData.address.country?.trim()) registrationData.address.country = formData.address.country.trim();
         if (formData.address.postalCode?.trim()) registrationData.address.postal_code = formData.address.postalCode.trim();
       }
+
+      // Add KYC verification data
+      registrationData.kyc_verification = verificationData;
       
-      console.log('Sending registration data:', JSON.stringify(registrationData, null, 2));
+      console.log('Sending registration data with KYC:', JSON.stringify(registrationData, null, 2));
       await register(registrationData);
+      
+      // Redirect to dashboard
       router.push('/dashboard/learner');
     } catch (error: any) {
       console.error('SignUpForm - Registration failed:', error);
@@ -231,45 +247,19 @@ export default function SignUpPage() {
       console.error('SignUpForm - Error data:', error.response?.data);
       console.error('SignUpForm - Error status:', error.response?.status);
       console.error('SignUpForm - Error headers:', error.response?.headers);
+      setCurrentStep('signup'); // Go back to signup form on error
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleBackToSignup = () => {
+    setCurrentStep('signup');
+    setKycVerificationData(null);
+  };
+
   const handleLogin = () => {
     router.push('/auth/login');
-  };
-
-  const testBackendConnection = async () => {
-    try {
-      console.log('Testing backend connection...');
-      await AuthService.testConnection();
-      alert('Backend connection successful!');
-    } catch (error) {
-      console.error('Backend connection failed:', error);
-      alert('Backend connection failed! Check console for details.');
-    }
-  };
-
-  const testMinimalRegistration = async () => {
-    try {
-      console.log('Testing minimal registration...');
-      const minimalData = {
-        email: 'test@example.com',
-        full_name: 'Test User',
-        password: 'TestPass123!',
-        confirm_password: 'TestPass123!'
-      };
-      console.log('Minimal registration data:', JSON.stringify(minimalData, null, 2));
-      
-      const response = await AuthService.register(minimalData);
-      console.log('Minimal registration success:', response);
-      alert('Minimal registration successful!');
-    } catch (error: any) {
-      console.error('Minimal registration failed:', error);
-      console.error('Error response:', error.response?.data);
-      alert(`Minimal registration failed: ${error.response?.data?.detail || error.message}`);
-    }
   };
 
   return (
@@ -291,9 +281,10 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* Right Side - Form */}
+      {/* Right Side - Form or KYC Steps */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-xl">
+        {currentStep === 'signup' ? (
+          <div className="w-full max-w-xl">
           {/* Logo */}
           <div className="flex items-center justify-end gap-2 mb-6">
           <svg width="150" height="100" viewBox="0 0 388 106" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -396,12 +387,13 @@ export default function SignUpPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth
+                    Date of Birth <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.dateOfBirth}
                     onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+                    required
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
                       validationErrors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -630,24 +622,6 @@ export default function SignUpPage() {
                 </div>
               )}
 
-              {/* Test Backend Connection Button */}
-              <button
-                type="button"
-                onClick={testBackendConnection}
-                className="w-full bg-gray-600 text-white py-2 rounded-lg font-semibold hover:bg-gray-700 transition mb-2"
-              >
-                Test Backend Connection
-              </button>
-
-              {/* Test Minimal Registration Button */}
-              <button
-                type="button"
-                onClick={testMinimalRegistration}
-                className="w-full bg-yellow-600 text-white py-2 rounded-lg font-semibold hover:bg-yellow-700 transition mb-2"
-              >
-                Test Minimal Registration
-              </button>
-
               {/* Create Account Button */}
               <button
                 type="submit"
@@ -730,6 +704,18 @@ export default function SignUpPage() {
             </form>
           </div>
         </div>
+        ) : (
+          <InlineKYCSteps
+            currentStep={currentStep as 'kyc-step1' | 'kyc-step2' | 'kyc-step3'}
+            userEmail={formData.email}
+            userPhone={formData.phone}
+            userFullName={`${formData.firstName} ${formData.lastName}`}
+            userDateOfBirth={formData.dateOfBirth}
+            onStepChange={(step) => setCurrentStep(step)}
+            onComplete={handleKYCComplete}
+            onBack={handleBackToSignup}
+          />
+        )}
       </div>
     </div>
   );
