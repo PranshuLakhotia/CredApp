@@ -48,14 +48,13 @@ import {
   Home,
   TextIncrease,
   TextDecrease,
-  TextFields,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types/auth';
 import DashboardSidebar from './DashboardSidebar';
-import RoleSwitcher from '../debug/RoleSwitcher';
 import { usePathname, useRouter } from 'next/navigation';
+import LanguageSelector from '@/components/LanguageSelector';
 
 const drawerWidth = 280;
 
@@ -441,6 +440,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 <Refresh fontSize="small" />
               </IconButton>
 
+              {/* Language Selector */}
+              <LanguageSelector />
+
               {/* Apps Menu */}
               <IconButton
                 size="medium"
@@ -502,8 +504,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         </div>
       </div>
 
-      {/* Debug Role Switcher */}
-      <RoleSwitcher />
 
       {/* Profile Menu */}
       <Menu

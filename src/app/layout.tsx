@@ -8,6 +8,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { AccessibilityProvider } from '@/contexts/AccessibilityContext';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { theme } from '@/lib/theme';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import "./globals.css";
 
 const inter = Inter({
@@ -29,15 +30,17 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body className={inter.className}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <AccessibilityProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-            <AccessibilityWidget />
-          </AccessibilityProvider>
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <AccessibilityProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+              <AccessibilityWidget />
+            </AccessibilityProvider>
+          </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

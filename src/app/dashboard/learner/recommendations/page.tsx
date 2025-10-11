@@ -19,6 +19,7 @@ import {
   Divider,
   IconButton
 } from '@mui/material';
+import { useTranslations } from '@/hooks/useTranslations';
 import { 
   TrendingUp, 
   Star, 
@@ -42,6 +43,7 @@ export default function RecommendationsPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('recommendations');
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -85,10 +87,10 @@ export default function RecommendationsPage() {
             </Avatar>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                Personalized NSQF Course Recommendations
+                {t('title')}
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                AI-powered suggestions based on your skills and career goals
+                {t('subtitle')}
               </Typography>
             </Box>
           </Stack>
@@ -98,7 +100,7 @@ export default function RecommendationsPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8 }}>
             <CircularProgress size={60} thickness={4} />
             <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
-              Finding the best courses for you...
+              {t('findingCourses')}
             </Typography>
           </Box>
         ) : error ? (

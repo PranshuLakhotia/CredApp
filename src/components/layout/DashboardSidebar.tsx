@@ -22,6 +22,9 @@ import {
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserRole } from '@/types/auth';
+import ShareProfileModal from '@/components/modals/ShareProfileModal';
+import { LearnerService } from '@/services/learner.service';
+import { useTranslations } from '@/hooks/useTranslations';
 
 interface DashboardSidebarProps {
   sidebarExpanded: boolean;
@@ -36,11 +39,34 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const [openDashboards, setOpenDashboards] = useState(true);
   const [openPages, setOpenPages] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations('dashboard');
 
   const handleNavigation = (path: string) => {
     router.push(path);
+  };
+
+  const handleDownloadPortfolio = async () => {
+    try {
+      const blob = await LearnerService.downloadPortfolio();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portfolio.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading portfolio:', error);
+      // You could add a toast notification here
+    }
+  };
+
+  const handleShareProfile = () => {
+    setShareModalOpen(true);
   };
 
   return (
@@ -74,13 +100,19 @@ export default function DashboardSidebar({
         
         {sidebarExpanded && (
           <>
-            <button className="w-full text-left text-sm text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2 hover:bg-gray-50 rounded-md px-2 transition-colors">
+            <button 
+              onClick={handleDownloadPortfolio}
+              className="w-full text-left text-sm text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2 hover:bg-gray-50 rounded-md px-2 transition-colors"
+            >
               <Download size={16} />
-              Download Portfolio
+              {t('downloadPortfolio')}
             </button>
-            <button className="w-full text-left text-sm text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2 hover:bg-gray-50 rounded-md px-2 transition-colors">
+            <button 
+              onClick={handleShareProfile}
+              className="w-full text-left text-sm text-gray-600 hover:text-gray-900 py-2 flex items-center gap-2 hover:bg-gray-50 rounded-md px-2 transition-colors"
+            >
               <Share2 size={16} />
-              Share Profile
+              {t('shareProfile')}
             </button>
           </>
         )}
@@ -104,20 +136,9 @@ export default function DashboardSidebar({
               }`}
             >
               <PieChart size={16} className={pathname === `/dashboard/${userRole}` ? 'text-blue-600' : 'text-gray-600'} />
-              {sidebarExpanded && <span>Overview</span>}
+              {sidebarExpanded && <span>{t('overview')}</span>}
             </button>
 
-            <button
-              onClick={() => handleNavigation(`/dashboard/${userRole}/analytics`)}
-              className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-                pathname === `/dashboard/${userRole}/analytics` 
-                  ? 'bg-blue-50 text-blue-700 font-medium' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <BarChart3 size={16} className={pathname === `/dashboard/${userRole}/analytics` ? 'text-blue-600' : 'text-gray-600'} />
-              {sidebarExpanded && <span>Analytics</span>}
-            </button>
 
             <button
               onClick={() => handleNavigation(`/dashboard/${userRole}/credentials`)}
@@ -128,7 +149,7 @@ export default function DashboardSidebar({
               }`}
             >
               <Badge size={16} className={pathname === `/dashboard/${userRole}/credentials` ? 'text-blue-600' : 'text-gray-600'} />
-              {sidebarExpanded && <span>Credentials</span>}
+              {sidebarExpanded && <span>{t('credentials')}</span>}
             </button>
 
             {userRole === 'learner' && (
@@ -141,7 +162,7 @@ export default function DashboardSidebar({
                 }`}
               >
                 <TrendingUp size={16} className={pathname === `/dashboard/learner/recommendations` ? 'text-blue-600' : 'text-gray-600'} />
-                {sidebarExpanded && <span>Recommendations</span>}
+                {sidebarExpanded && <span>{t('recommendations')}</span>}
               </button>
             )}
           </div>
@@ -154,7 +175,7 @@ export default function DashboardSidebar({
           >
             {openPages ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             <Folder size={16} className="text-gray-600" />
-            {sidebarExpanded && <span className="font-medium">User Profile</span>}
+            {sidebarExpanded && <span className="font-medium">{t('userProfile')}</span>}
           </button>
           
           {openPages && sidebarExpanded && (
@@ -227,47 +248,6 @@ export default function DashboardSidebar({
             </>
           )}
 
-          {/* Additional Navigation Items */}
-          <div className="mt-6" />
-          
-          <button
-            onClick={() => handleNavigation('/dashboard/settings')}
-            className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-              pathname === '/dashboard/settings' 
-                ? 'bg-blue-50 text-blue-700 font-medium' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <ChevronRight size={16} />
-            <Settings size={16} className={pathname === '/dashboard/settings' ? 'text-blue-600' : 'text-gray-600'} />
-            {sidebarExpanded && <span>Settings</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigation('/dashboard/blog')}
-            className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-              pathname === '/dashboard/blog' 
-                ? 'bg-blue-50 text-blue-700 font-medium' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <ChevronRight size={16} />
-            <FileText size={16} className={pathname === '/dashboard/blog' ? 'text-blue-600' : 'text-gray-600'} />
-            {sidebarExpanded && <span>Blog</span>}
-          </button>
-
-          <button
-            onClick={() => handleNavigation('/dashboard/social')}
-            className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-              pathname === '/dashboard/social' 
-                ? 'bg-blue-50 text-blue-700 font-medium' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <ChevronRight size={16} />
-            <MessageCircle size={16} className={pathname === '/dashboard/social' ? 'text-blue-600' : 'text-gray-600'} />
-            {sidebarExpanded && <span>Social</span>}
-          </button>
         </div>
       </div>
 
@@ -285,6 +265,12 @@ export default function DashboardSidebar({
           {sidebarExpanded && <span>Help & Support</span>}
         </button>
       </div>
+
+      {/* Share Profile Modal */}
+      <ShareProfileModal 
+        open={shareModalOpen} 
+        onClose={() => setShareModalOpen(false)} 
+      />
     </div>
   );
 }

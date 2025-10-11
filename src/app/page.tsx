@@ -1,34 +1,62 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Box } from '@mui/material';
-import LoadingAnimation from '@/components/LoadingAnimation';
-
+import { Box, CircularProgress, Typography } from '@mui/material';
+import LandingPage from '@/components/landing/LandingPage';
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const [showLanding, setShowLanding] = useState(false);
+  
+  // Temporary: Add logout function to test landing page
+  const handleTestLanding = () => {
+    logout();
+    setShowLanding(true);
+  };
 
   useEffect(() => {
     if (!isLoading) {
-      const timer = setTimeout(() => {
-      if (isAuthenticated) {
-        router.push('/dashboard');
+      if (user) {
+        // Redirect to appropriate dashboard based on user role
+        const role = user.role || 'learner';
+        router.push(`/dashboard/${role}`);
       } else {
-        router.push('/auth/login');
+        // Show landing page if not authenticated
+        setShowLanding(true);
       }
-      }, 2000);
-      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [user, isLoading, router]);
 
-  // Show custom loading animation while checking authentication
-  return (
-    <div className="mt-64 md:mt-24 flex items-center justify-center h-full w-full">
-    <LoadingAnimation 
-      />
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column"
+        justifyContent="center" 
+        alignItems="center" 
+        minHeight="100vh"
+        sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white'
+        }}
+      >
+        <CircularProgress size={60} sx={{ color: 'white', mb: 3 }} />
+        <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
+          Credify
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.8 }}>
+          Loading your digital credential platform...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (showLanding) {
+    return <LandingPage />;
+  }
+
+  return null;
 }

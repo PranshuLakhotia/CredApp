@@ -35,6 +35,12 @@ export interface LearnerCredentialsResponse {
   total: number;
 }
 
+export interface ShareResponse {
+  share_id: string;
+  share_url: string;
+  expires_at: string;
+}
+
 export class LearnerService {
   static async getLearnerCredentials(params?: {
     status?: string;
@@ -46,6 +52,20 @@ export class LearnerService {
   }): Promise<LearnerCredentialsResponse> {
     const response: AxiosResponse<LearnerCredentialsResponse> = await api.get('/api/v1/learner/credentials', {
       params,
+    });
+    return response.data;
+  }
+
+  static async downloadPortfolio(): Promise<Blob> {
+    const response = await api.get('/api/v1/learner/download-portfolio', {
+      responseType: 'blob',
+    });
+    return response.data;
+  }
+
+  static async createShareLink(expiresInDays: number = 30): Promise<ShareResponse> {
+    const response: AxiosResponse<ShareResponse> = await api.post('/api/v1/learner/share', {
+      expires_in_days: expiresInDays,
     });
     return response.data;
   }
