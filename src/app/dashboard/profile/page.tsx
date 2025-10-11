@@ -51,6 +51,10 @@ export default function ProfileOverviewPage() {
       country?: string;
       postal_code?: string;
     } | null,
+    preferred_nsqf_level: 0,
+    skills: [] as string[],
+    education: '',
+    experience: '',
   });
 
   useEffect(() => {
@@ -72,6 +76,10 @@ export default function ProfileOverviewPage() {
             country: '',
             postal_code: ''
           },
+          preferred_nsqf_level: data.preferred_nsqf_level || 0,
+          skills: data.skills || [],
+          education: data.education || '',
+          experience: data.experience || '',
         }));
       } catch (e: any) {
         setError(e?.response?.data?.message || e?.message || 'Failed to load profile');
@@ -102,6 +110,10 @@ export default function ProfileOverviewPage() {
               postal_code: profileData.address.postal_code || undefined,
             }
           : null,
+        preferred_nsqf_level: profileData.preferred_nsqf_level || undefined,
+        skills: profileData.skills || undefined,
+        education: profileData.education || undefined,
+        experience: profileData.experience || undefined,
       } as any;
       const updated = await AuthService.updateUserProfile(payload);
       setProfileData(prev => ({
@@ -111,6 +123,10 @@ export default function ProfileOverviewPage() {
         gender: updated.gender || prev.gender,
         phoneNumber: updated.phone_number || prev.phoneNumber,
         address: updated.address || prev.address,
+        preferred_nsqf_level: updated.preferred_nsqf_level || prev.preferred_nsqf_level,
+        skills: updated.skills || prev.skills,
+        education: updated.education || prev.education,
+        experience: updated.experience || prev.experience,
       }));
       setIsEditing(false);
     } catch (e: any) {
@@ -527,6 +543,83 @@ export default function ProfileOverviewPage() {
                 disabled={!isEditing}
                 placeholder="USA"
                 variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+
+            {/* Preferred NSQF Level */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <FormControl fullWidth disabled={!isEditing}>
+                <InputLabel>Preferred NSQF Level</InputLabel>
+                <Select
+                  value={profileData.preferred_nsqf_level || ''}
+                  label="Preferred NSQF Level"
+                  onChange={(e) => handleInputChange('preferred_nsqf_level', e.target.value)}
+                  sx={{
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }}
+                >
+                  {[1, 2, 3, 4, 4.5, 5, 5.5, 6, 7, 8, 9, 10].map(level => (
+                    <MenuItem key={level} value={level}>{level}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Skills */}
+            <Box sx={{ flex: '1 1 100%', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Skills (comma-separated)"
+                value={Array.isArray(profileData.skills) ? profileData.skills.join(', ') : ''}
+                onChange={(e) => handleInputChange('skills', e.target.value.split(',').map(s => s.trim()))}
+                disabled={!isEditing}
+                placeholder="e.g., Python, Data Analysis, Project Management"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+
+            {/* Education */}
+            <Box sx={{ flex: '1 1 100%', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Education"
+                value={profileData.education}
+                onChange={(e) => handleInputChange('education', e.target.value)}
+                disabled={!isEditing}
+                placeholder="e.g., B.Sc. in Computer Science"
+                variant="outlined"
+                multiline
+                rows={2}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: isEditing ? 'white' : '#f8fafc',
+                  }
+                }}
+              />
+            </Box>
+
+            {/* Experience */}
+            <Box sx={{ flex: '1 1 100%', minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Professional Experience"
+                value={profileData.experience}
+                onChange={(e) => handleInputChange('experience', e.target.value)}
+                disabled={!isEditing}
+                placeholder="e.g., Software Engineer at XYZ Corp (2 years)"
+                variant="outlined"
+                multiline
+                rows={4}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: isEditing ? 'white' : '#f8fafc',

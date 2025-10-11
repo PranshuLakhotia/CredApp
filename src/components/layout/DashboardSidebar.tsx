@@ -18,6 +18,7 @@ import {
   HelpCircle,
   FileText,
   MessageCircle,
+  TrendingUp,
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserRole } from '@/types/auth';
@@ -129,6 +130,20 @@ export default function DashboardSidebar({
               <Badge size={16} className={pathname === `/dashboard/${userRole}/credentials` ? 'text-blue-600' : 'text-gray-600'} />
               {sidebarExpanded && <span>Credentials</span>}
             </button>
+
+            {userRole === 'learner' && (
+              <button
+                onClick={() => handleNavigation(`/dashboard/learner/recommendations`)}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === `/dashboard/learner/recommendations`
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <TrendingUp size={16} className={pathname === `/dashboard/learner/recommendations` ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Recommendations</span>}
+              </button>
+            )}
           </div>
           <div className="mt-8" />
           {sidebarExpanded && <p className="text-sm text-gray-500 mb-4 ml-2 font-medium">PAGES</p>}

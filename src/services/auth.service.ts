@@ -247,6 +247,12 @@ export class AuthService {
     const token = this.getAccessToken();
     return !!token;
   }
+
+  // Fetch course recommendations
+  static async getRecommendations(): Promise<any[]> {
+    const response = await api.get('/api/v1/learner/recommendations/');
+    return response.data;
+  }
 }
 
 export default AuthService;
