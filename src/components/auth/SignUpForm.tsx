@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, Briefcase, GraduationCap, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { RegisterRequest } from '@/types/auth';
+import { RegisterRequest, Role } from '@/types/auth';
 import { AuthService } from '@/services/auth.service';
 import InlineKYCSteps from './InlineKYCSteps';
 
@@ -18,6 +18,7 @@ export default function SignUpPage() {
     confirmPassword: '',
     dateOfBirth: '',
     gender: '',
+    roleType: '', // Added role selection
     address: {
       street: '',
       city: '',
@@ -38,6 +39,31 @@ export default function SignUpPage() {
   });
   const [currentStep, setCurrentStep] = useState<'signup' | 'kyc-step1' | 'kyc-step2' | 'kyc-step3'>('signup');
   const [kycVerificationData, setKycVerificationData] = useState<any>(null);
+  
+  // Hardcoded roles for registration
+  const availableRoles = [
+    {
+      id: 'learner',
+      name: 'Learner',
+      description: 'Access learning resources, earn credentials, and track your educational journey',
+      role_type: 'learner',
+      icon: 'graduation-cap'
+    },
+    {
+      id: 'employer',
+      name: 'Employer',
+      description: 'Verify candidate credentials, search for talent, and manage hiring workflows',
+      role_type: 'employer',
+      icon: 'briefcase'
+    },
+    {
+      id: 'issuer',
+      name: 'Institution',
+      description: 'Issue credentials, manage courses, and certify learner achievements',
+      role_type: 'issuer',
+      icon: 'building'
+    }
+  ];
 
   const { register, isLoading, error, clearError } = useAuth();
   const router = useRouter();
@@ -118,6 +144,10 @@ export default function SignUpPage() {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.roleType) {
+      errors.roleType = 'Please select your account type';
     }
 
     if (!formData.password) {
@@ -233,14 +263,23 @@ export default function SignUpPage() {
         if (formData.address.postalCode?.trim()) registrationData.address.postal_code = formData.address.postalCode.trim();
       }
 
+      // Add role type if selected
+      if (formData.roleType) {
+        registrationData.role_type = formData.roleType;
+      }
+
       // Add KYC verification data
       registrationData.kyc_verification = verificationData;
       
-      console.log('Sending registration data with KYC:', JSON.stringify(registrationData, null, 2));
+      console.log('Sending registration data with KYC and role:', JSON.stringify(registrationData, null, 2));
       await register(registrationData);
       
-      // Redirect to dashboard
-      router.push('/dashboard/learner');
+      // Redirect to appropriate dashboard based on role
+      const roleBasedRedirect = formData.roleType === 'employer' ? '/dashboard/employer' :
+                                formData.roleType === 'issuer' ? '/dashboard/institution' :
+                                '/dashboard/learner';
+      
+      router.push(roleBasedRedirect);
     } catch (error: any) {
       console.error('SignUpForm - Registration failed:', error);
       console.error('SignUpForm - Error response:', error.response);
@@ -343,6 +382,53 @@ export default function SignUpPage() {
                     <p className="text-red-500 text-xs mt-1">{validationErrors.lastName}</p>
                   )}
                 </div>
+              </div>
+
+              {/* Account Type / Role Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  I am registering as <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {availableRoles.map((role) => {
+                    const getRoleIcon = () => {
+                      switch (role.role_type) {
+                        case 'learner':
+                          return <GraduationCap className="w-6 h-6" />;
+                        case 'employer':
+                          return <Briefcase className="w-6 h-6" />;
+                        case 'issuer':
+                          return <Building2 className="w-6 h-6" />;
+                        default:
+                          return <GraduationCap className="w-6 h-6" />;
+                      }
+                    };
+
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => handleChange('roleType', role.role_type)}
+                        className={`p-4 border-2 rounded-lg flex flex-col items-center justify-center gap-2 transition-all ${
+                          formData.roleType === role.role_type
+                            ? 'border-blue-600 bg-blue-50 text-blue-600'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        {getRoleIcon()}
+                        <span className="text-sm font-medium">{role.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {validationErrors.roleType && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.roleType}</p>
+                )}
+                {formData.roleType && availableRoles.find(r => r.role_type === formData.roleType) && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    {availableRoles.find(r => r.role_type === formData.roleType)?.description}
+                  </p>
+                )}
               </div>
 
               {/* Email & Phone Number */}

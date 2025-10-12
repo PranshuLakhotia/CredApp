@@ -253,6 +253,31 @@ export class AuthService {
     const response = await api.get('/api/v1/learner/recommendations/');
     return response.data;
   }
+
+  // Fetch available roles for registration (public endpoint - no auth required)
+  static async getRoles(): Promise<{ roles: any[], total: number }> {
+    try {
+      // Create a separate axios instance without auth headers for public endpoints
+      const publicApi = axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const response = await publicApi.get('/api/v1/roles');
+      return response.data;
+    } catch (error: any) {
+      console.error('AuthService.getRoles - Error:', error);
+      throw error;
+    }
+  }
+
+  // Get user roles information
+  static async getUserRoles(userId: string): Promise<any> {
+    const response = await api.get(`/api/v1/roles/user/${userId}`);
+    return response.data;
+  }
 }
 
 export default AuthService;

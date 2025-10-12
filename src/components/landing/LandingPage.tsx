@@ -495,10 +495,10 @@ const LandingPage = () => {
       </Box>
 
       {/* Hero Section - IMPROVED WITH BETTER SPACE UTILIZATION */}
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 10, py: { xs: 6, md: 8 } }}>
-        <Grid container spacing={4} alignItems="center">
+      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 10, py: { xs: 8, md: 10 } }}>
+        <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
           {/* Left Content - 50% */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={6} {...({} as any)}>
             <Slide direction="right" in={visible} timeout={1000}>
               <Box>
                 <Box sx={{ mb: 3 }}>
@@ -535,7 +535,7 @@ const LandingPage = () => {
                     fontWeight: 900,
                     color: 'rgba(255,255,255,0.95)',
                     mb: 3,
-                    fontSize: { xs: '2.5rem', md: '3.5rem' },
+                    fontSize: { xs: '2.2rem', sm: '3rem', md: '3.5rem', lg: '4rem' },
                     lineHeight: 1.1,
                     letterSpacing: '-0.02em',
                     '& span': {
@@ -553,7 +553,8 @@ const LandingPage = () => {
                   }}
                 >
                   Your Digital
-                  <span> Credential Platform</span>
+                  <br />
+                  <span>Credential Platform</span>
                 </Typography>
                 
                 <Typography 
@@ -562,15 +563,15 @@ const LandingPage = () => {
                     color: 'rgba(255,255,255,0.7)',
                     mb: 4,
                     lineHeight: 1.7,
-                    fontSize: '1.1rem',
-                    maxWidth: '90%'
+                    fontSize: { xs: '1rem', sm: '1.1rem' },
+                    maxWidth: { xs: '100%', md: '90%' }
                   }}
                 >
                   Secure, verify, and showcase your skills with blockchain-powered 
                   digital credentials. Join the future of professional certification.
                 </Typography>
 
-                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 4 }}>
+                <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, flexWrap: 'wrap', mb: 4 }}>
                   <Button
                     variant="contained"
                     size="large"
@@ -578,9 +579,9 @@ const LandingPage = () => {
                     onClick={() => router.push('/auth/register')}
                     sx={{
                       background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                      px: 4,
-                      py: 1.8,
-                      fontSize: '1.05rem',
+                      px: { xs: 3, sm: 4 },
+                      py: { xs: 1.5, sm: 1.8 },
+                      fontSize: { xs: '0.95rem', sm: '1.05rem' },
                       fontWeight: 700,
                       borderRadius: '50px',
                       position: 'relative',
@@ -624,9 +625,9 @@ const LandingPage = () => {
                       color: 'rgba(255,255,255,0.9)',
                       borderColor: 'rgba(139, 92, 246, 0.4)',
                       borderWidth: '2px',
-                      px: 4,
-                      py: 1.8,
-                      fontSize: '1.05rem',
+                      px: { xs: 3, sm: 4 },
+                      py: { xs: 1.5, sm: 1.8 },
+                      fontSize: { xs: '0.95rem', sm: '1.05rem' },
                       fontWeight: 700,
                       borderRadius: '50px',
                       background: 'rgba(139, 92, 246, 0.05)',
@@ -662,18 +663,23 @@ const LandingPage = () => {
                 </Box>
 
                 {/* Stats Grid - Improved */}
-                <Grid container spacing={2}>
+                <Grid container spacing={2} sx={{ mt: 2 }}>
                   {stats.map((stat, index) => (
-                    <Grid item xs={6} sm={3} key={index}>
+                    <Grid item xs={6} sm={6} md={3} key={index} {...({} as any)}>
                       <Box sx={{
                         background: 'rgba(17, 17, 17, 0.4)',
                         backdropFilter: 'blur(10px)',
                         border: '1px solid rgba(139, 92, 246, 0.2)',
                         borderRadius: '16px',
-                        p: 2,
+                        p: 2.5,
                         textAlign: 'center',
                         transition: 'all 0.3s ease',
                         cursor: 'pointer',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
                         animation: `fadeInUp 0.6s ease ${index * 0.1}s both`,
                         '&:hover': {
                           transform: 'translateY(-5px)',
@@ -693,14 +699,14 @@ const LandingPage = () => {
                       }}>
                         <Box sx={{ 
                           color: '#8b5cf6',
-                          mb: 1,
+                          mb: 1.5,
                           display: 'flex',
                           justifyContent: 'center'
                         }}>
                           {stat.icon}
                         </Box>
                         <Typography sx={{
-                          fontSize: '1.6rem',
+                          fontSize: { xs: '1.4rem', sm: '1.6rem' },
                           fontWeight: 800,
                           background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
                           WebkitBackgroundClip: 'text',
@@ -710,7 +716,7 @@ const LandingPage = () => {
                           {stat.value}
                         </Typography>
                         <Typography sx={{
-                          fontSize: '0.75rem',
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
                           color: 'rgba(255,255,255,0.6)',
                           fontWeight: 500
                         }}>
@@ -725,29 +731,30 @@ const LandingPage = () => {
           </Grid>
 
           {/* Right Content - 50% - IMPROVED VISUAL */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={6} {...({} as any)}>
             <Zoom in={visible} timeout={1200}>
               <Box sx={{ 
                 position: 'relative',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                height: '100%'
+                height: '100%',
+                mt: { xs: 4, md: 0 }
               }}>
                 {/* Main Credential Card */}
                 <Box sx={{
                   width: '100%',
-                  maxWidth: 500,
+                  maxWidth: { xs: '50%', sm: 450, md: 500 },
                   position: 'relative'
                 }}>
                   {/* Animated Feature Cards */}
-                  <Box sx={{ position: 'relative', height: 450 }}>
+                  <Box sx={{ position: 'relative', height: { xs: 400, sm: 450 } }}>
                     {features.map((feature, index) => (
                       <Box
                         key={index}
                         sx={{
                           position: 'absolute',
-                          width: '90%',
+                          width: '100%',
                           left: '5%',
                           top: '50%',
                           transform: `translateY(-50%) translateX(${(index - activeFeature) * 100}%)`,
@@ -763,8 +770,8 @@ const LandingPage = () => {
                           )`,
                           backdropFilter: 'blur(20px)',
                           border: `2px solid ${index === activeFeature ? feature.color : 'rgba(139, 92, 246, 0.2)'}`,
-                          borderRadius: '32px',
-                          p: 5,
+                          borderRadius: { xs: '24px', sm: '32px' },
+                          p: { xs: 3, sm: 4, md: 5 },
                           textAlign: 'center',
                           transition: 'all 0.5s ease',
                           boxShadow: index === activeFeature ? `0 30px 60px ${feature.color}40` : 'none',
@@ -772,10 +779,10 @@ const LandingPage = () => {
                         }}>
                           {/* Icon */}
                           <Box sx={{
-                            width: 100,
-                            height: 100,
-                            margin: '0 auto 3rem',
-                            borderRadius: '24px',
+                            width: { xs: 80, sm: 90, md: 100 },
+                            height: { xs: 80, sm: 90, md: 100 },
+                            margin: { xs: '0 auto 2rem', md: '0 auto 3rem' },
+                            borderRadius: { xs: '20px', sm: '24px' },
                             background: `${feature.color}15`,
                             display: 'flex',
                             alignItems: 'center',
@@ -795,8 +802,8 @@ const LandingPage = () => {
 
                           {/* Content */}
                           <Typography sx={{
-                            fontSize: '2rem',
-                            fontWeight: 800,
+                            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                            fontWeight: 400,
                             color: 'rgba(255,255,255,0.95)',
                             mb: 2
                           }}>
@@ -804,7 +811,7 @@ const LandingPage = () => {
                           </Typography>
 
                           <Typography sx={{
-                            fontSize: '1.1rem',
+                            fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
                             color: 'rgba(255,255,255,0.7)',
                             lineHeight: 1.7
                           }}>
@@ -867,8 +874,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                mb: 2
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               Why Choose Credify?
@@ -886,7 +894,7 @@ const LandingPage = () => {
 
         <Grid container spacing={4}>
           {features.map((feature, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
+            <Grid item xs={12} sm={6} md={3} key={index} {...({} as any)}>
               <Slide 
                 direction="up" 
                 in={visible} 
@@ -945,7 +953,7 @@ const LandingPage = () => {
                     '100%': { transform: 'rotate(360deg)' }
                   }
                 }}>
-                  <CardContent sx={{ p: 4, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+                  <CardContent sx={{ p: { xs: 3, sm: 3.5, md: 4 }, textAlign: 'center', position: 'relative', zIndex: 1 }}>
                     <Box sx={{ 
                       color: feature.color,
                       mb: 3,
@@ -1005,8 +1013,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                mb: 2
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               How It Works
@@ -1051,7 +1060,7 @@ const LandingPage = () => {
 
           <Grid container spacing={4}>
             {howItWorks.map((step, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
+              <Grid item xs={12} sm={6} md={3} key={index} {...({} as any)}>
                 <Fade in={visible} timeout={1500 + index * 200}>
                   <Box sx={{
                     textAlign: 'center',
@@ -1059,9 +1068,9 @@ const LandingPage = () => {
                   }}>
                     {/* Step Number Circle */}
                     <Box sx={{
-                      width: 120,
-                      height: 120,
-                      margin: '0 auto 2rem',
+                      width: { xs: 100, sm: 110, md: 120 },
+                      height: { xs: 100, sm: 110, md: 120 },
+                      margin: { xs: '0 auto 1.5rem', md: '0 auto 2rem' },
                       borderRadius: '50%',
                       background: 'rgba(17, 17, 17, 0.8)',
                       border: '2px solid',
@@ -1112,7 +1121,7 @@ const LandingPage = () => {
 
                     {/* Step Title */}
                     <Typography sx={{
-                      fontSize: '1.3rem',
+                      fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.3rem' },
                       fontWeight: 700,
                       color: 'rgba(255,255,255,0.95)',
                       mb: 2
@@ -1122,7 +1131,7 @@ const LandingPage = () => {
 
                     {/* Step Description */}
                     <Typography sx={{
-                      fontSize: '0.95rem',
+                      fontSize: { xs: '0.9rem', sm: '0.95rem' },
                       color: 'rgba(255,255,255,0.6)',
                       lineHeight: 1.7
                     }}>
@@ -1156,8 +1165,9 @@ const LandingPage = () => {
         sx={{ 
           color: 'rgba(255,255,255,0.95)', 
           fontWeight: 800,
-          fontSize: { xs: '2.5rem', md: '3.5rem' },
-          mb: 2
+          fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' },
+          mb: 2,
+          lineHeight: 1.2
         }}
       >
         Identity Verification
@@ -1173,7 +1183,12 @@ const LandingPage = () => {
     </Box>
   </Fade>
 
-  <Grid container spacing={3}>
+  <Box sx={{ 
+    display: 'flex', 
+    flexWrap: 'wrap', 
+    gap: 3,
+    justifyContent: 'center'
+  }}>
     {[
       {
         icon: <FileCheck className="w-6 h-6" />,
@@ -1211,15 +1226,15 @@ const LandingPage = () => {
         tag: "Issuers"
       }
     ].map((method, index) => (
-      <Grid item xs={12} sm={6} md={2.4} key={index}>
+      <Box key={index} sx={{ flex: { xs: '1 1 100%', sm: '1 1 45%', md: '1 1 18%' }, minWidth: { xs: '100%', sm: '200px', md: '180px' }, maxWidth: { xs: '100%', md: '220px' } }}>
         <Zoom in={visible} timeout={1500 + index * 100}>
           <Card sx={{
             height: '100%',
             background: 'rgba(17, 17, 17, 0.6)',
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: '20px',
-            p: 3,
+            borderRadius: { xs: '16px', sm: '18px', md: '20px' },
+            p: { xs: 2.5, sm: 3 },
             transition: 'all 0.3s ease',
             cursor: 'pointer',
             position: 'relative',
@@ -1307,9 +1322,9 @@ const LandingPage = () => {
             </Typography>
           </Card>
         </Zoom>
-      </Grid>
+      </Box>
     ))}
-  </Grid>
+  </Box>
 
   {/* Trust Badge */}
   <Fade in={visible} timeout={2000}>
@@ -1365,8 +1380,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                mb: 2
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               Built for Everyone
@@ -1384,15 +1400,15 @@ const LandingPage = () => {
 
         <Grid container spacing={4}>
           {useCases.map((useCase, index) => (
-            <Grid item xs={12} md={4} key={index}>
+            <Grid item xs={12} md={4} key={index} {...({} as any)}>
               <Zoom in={visible} timeout={1500 + index * 200}>
                 <Card sx={{
                   height: '100%',
                   background: 'rgba(17, 17, 17, 0.6)',
                   backdropFilter: 'blur(20px)',
                   border: '1px solid rgba(139, 92, 246, 0.2)',
-                  borderRadius: '24px',
-                  p: 4,
+                  borderRadius: { xs: '20px', sm: '24px' },
+                  p: { xs: 3, sm: 3.5, md: 4 },
                   transition: 'all 0.4s ease',
                   position: 'relative',
                   overflow: 'hidden',
@@ -1505,8 +1521,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                mb: 2
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               Loved by Thousands
@@ -1524,15 +1541,15 @@ const LandingPage = () => {
 
         <Grid container spacing={4}>
           {testimonials.map((testimonial, index) => (
-            <Grid item xs={12} md={4} key={index}>
+            <Grid item xs={12} md={4} key={index} {...({} as any)}>
               <Fade in={visible} timeout={1700 + index * 200}>
                 <Card sx={{
                   height: '100%',
                   background: `linear-gradient(135deg, rgba(17, 17, 17, 0.8), rgba(17, 17, 17, 0.6))`,
                   backdropFilter: 'blur(20px)',
                   border: `2px solid ${testimonial.color}30`,
-                  borderRadius: '32px',
-                  p: 4,
+                  borderRadius: { xs: '24px', sm: '28px', md: '32px' },
+                  p: { xs: 3, sm: 3.5, md: 4 },
                   transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                   cursor: 'pointer',
                   position: 'relative',
@@ -1675,8 +1692,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2rem', md: '3rem' },
-                mb: 2
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '3rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               Seamlessly Integrated
@@ -1702,9 +1720,9 @@ const LandingPage = () => {
           {integrations.map((integration, index) => (
             <Zoom in={visible} timeout={1800 + index * 100} key={index}>
               <Box sx={{
-                width: 100,
-                height: 100,
-                borderRadius: '20px',
+                width: { xs: 90, sm: 95, md: 100 },
+                height: { xs: 90, sm: 95, md: 100 },
+                borderRadius: { xs: '16px', sm: '18px', md: '20px' },
                 background: 'rgba(17, 17, 17, 0.6)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(139, 92, 246, 0.2)',
@@ -1768,8 +1786,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2rem', md: '3rem' },
-                mb: 2
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '3rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               Credify vs Traditional
@@ -1861,8 +1880,9 @@ const LandingPage = () => {
               sx={{ 
                 color: 'rgba(255,255,255,0.95)', 
                 fontWeight: 800,
-                fontSize: { xs: '2rem', md: '3rem' },
-                mb: 2
+                fontSize: { xs: '1.75rem', sm: '2rem', md: '3rem' },
+                mb: 2,
+                lineHeight: 1.2
               }}
             >
               Frequently Asked Questions
@@ -1940,8 +1960,8 @@ const LandingPage = () => {
             background: 'rgba(17, 17, 17, 0.6)',
             backdropFilter: 'blur(30px)',
             border: '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: '32px',
-            p: { xs: 4, md: 8 },
+            borderRadius: { xs: '24px', sm: '28px', md: '32px' },
+            p: { xs: 3, sm: 5, md: 6, lg: 8 },
             position: 'relative',
             overflow: 'hidden',
             '&::before': {
@@ -1987,7 +2007,8 @@ const LandingPage = () => {
                   color: 'rgba(255,255,255,0.95)',
                   mb: 3,
                   fontWeight: 800,
-                  fontSize: { xs: '2rem', md: '3rem' }
+                  fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
+                  lineHeight: 1.2
                 }}
               >
                 Ready to Transform Your Career?
@@ -1998,8 +2019,8 @@ const LandingPage = () => {
                   color: 'rgba(255,255,255,0.7)',
                   mb: 5,
                   lineHeight: 1.7,
-                  fontSize: '1.1rem',
-                  maxWidth: '80%',
+                  fontSize: { xs: '1rem', sm: '1.1rem' },
+                  maxWidth: { xs: '100%', sm: '90%', md: '80%' },
                   mx: 'auto'
                 }}
               >
@@ -2012,9 +2033,9 @@ const LandingPage = () => {
                 onClick={() => router.push('/auth/register')}
                 sx={{
                   background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                  px: 7,
-                  py: 2.5,
-                  fontSize: '1.2rem',
+                  px: { xs: 5, sm: 6, md: 7 },
+                  py: { xs: 2, sm: 2.5 },
+                  fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
                   fontWeight: 700,
                   borderRadius: '50px',
                   position: 'relative',
@@ -2064,7 +2085,7 @@ const LandingPage = () => {
       }}>
         <Container maxWidth="lg">
           <Grid container spacing={4}>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={4} {...({} as any)}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                 <Box sx={{
                   width: 40,
@@ -2097,7 +2118,7 @@ const LandingPage = () => {
                 The next generation digital credential platform powered by blockchain and AI
               </Typography>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid item xs={6} md={2} {...({} as any)}>
               <Typography sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)', mb: 2 }}>
                 Product
               </Typography>
@@ -2115,7 +2136,7 @@ const LandingPage = () => {
                 ))}
               </Box>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid item xs={6} md={2} {...({} as any)}>
               <Typography sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)', mb: 2 }}>
                 Company
               </Typography>
@@ -2133,7 +2154,7 @@ const LandingPage = () => {
                 ))}
               </Box>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid item xs={6} md={2} {...({} as any)}>
               <Typography sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)', mb: 2 }}>
                 Resources
               </Typography>
@@ -2151,7 +2172,7 @@ const LandingPage = () => {
                 ))}
               </Box>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid item xs={6} md={2} {...({} as any)}>
               <Typography sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)', mb: 2 }}>
                 Legal
               </Typography>
