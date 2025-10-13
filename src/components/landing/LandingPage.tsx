@@ -48,47 +48,73 @@ import {
   BarChart3
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 const LandingPage = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
 
   useEffect(() => {
-    setVisible(true);
+    // Show loader for 2 seconds
+    const loadTimer = setTimeout(() => {
+      setLoading(false);
+      setVisible(true);
+    }, 2000);
     
     // Auto-rotate features
     const interval = setInterval(() => {
       setActiveFeature((prev) => (prev + 1) % 4);
     }, 3000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(loadTimer);
+      clearInterval(interval);
+    };
   }, []);
+
+  // Show loading animation
+  if (loading) {
+    return (
+      <Box sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0a0a0a'
+      }}>
+        <Box sx={{ maxWidth: '400px', width: '100%' }}>
+          <LoadingAnimation />
+        </Box>
+      </Box>
+    );
+  }
 
   const features = [
     {
       icon: <Shield className="w-8 h-8" />,
       title: "Secure Credentials",
       description: "Blockchain-verified digital certificates with tamper-proof security",
-      color: "#8b5cf6"
+      color: "#2563eb"
     },
     {
       icon: <Award className="w-8 h-8" />,
       title: "NSQF Aligned",
       description: "All credentials mapped to National Skills Qualification Framework",
-      color: "#ec4899"
+      color: "#3b82f6"
     },
     {
       icon: <Users className="w-8 h-8" />,
       title: "Multi-Stakeholder",
       description: "Connect learners, employers, and institutions seamlessly",
-      color: "#06b6d4"
+      color: "#60a5fa"
     },
     {
       icon: <TrendingUp className="w-8 h-8" />,
       title: "AI-Powered Insights",
       description: "Personalized learning recommendations and career pathways",
-      color: "#10b981"
+      color: "#0ea5e9"
     }
   ];
 
@@ -132,21 +158,21 @@ const LandingPage = () => {
       title: "Educational Institutions",
       description: "Issue tamper-proof digital degrees, certificates, and transcripts",
       benefits: ["Reduce administrative costs", "Prevent certificate fraud", "Enhance reputation"],
-      color: "#8b5cf6"
+      color: "#2563eb"
     },
     {
       icon: <Briefcase className="w-10 h-10" />,
       title: "Employers",
       description: "Instantly verify candidate credentials and skills",
       benefits: ["Faster hiring process", "Reduce verification costs", "Access skill analytics"],
-      color: "#ec4899"
+      color: "#3b82f6"
     },
     {
       icon: <Users className="w-10 h-10" />,
       title: "Learners",
       description: "Own and control your digital credential portfolio",
       benefits: ["Lifelong credential storage", "Share instantly", "Career recommendations"],
-      color: "#06b6d4"
+      color: "#60a5fa"
     }
   ];
 
@@ -158,7 +184,7 @@ const LandingPage = () => {
       avatar: "PS",
       rating: 5,
       text: "Credify has revolutionized how we issue and manage digital credentials. The blockchain security gives our students and alumni complete confidence.",
-      color: "#8b5cf6"
+      color: "#2563eb"
     },
     {
       name: "Rajesh Kumar",
@@ -167,7 +193,7 @@ const LandingPage = () => {
       avatar: "RK",
       rating: 5,
       text: "We've reduced our credential verification time by 95%. The AI-powered skill matching has been a game-changer for our recruitment process.",
-      color: "#ec4899"
+      color: "#3b82f6"
     },
     {
       name: "Ananya Desai",
@@ -176,7 +202,7 @@ const LandingPage = () => {
       avatar: "AD",
       rating: 5,
       text: "Having all my credentials in one place with instant sharing capability made my job search so much easier. Employers love the verified badges!",
-      color: "#06b6d4"
+      color: "#60a5fa"
     }
   ];
 
@@ -266,8 +292,8 @@ const LandingPage = () => {
         right: 0,
         bottom: 0,
         backgroundImage: `
-          linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px)
+          linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px)
         `,
         backgroundSize: '50px 50px',
         animation: 'gridMove 20s linear infinite',
@@ -283,7 +309,7 @@ const LandingPage = () => {
         width: '600px',
         height: '600px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%)',
         top: '-300px',
         left: '-300px',
         animation: 'float 15s ease-in-out infinite',
@@ -300,7 +326,7 @@ const LandingPage = () => {
         width: '500px',
         height: '500px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(236, 72, 153, 0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
         bottom: '-250px',
         right: '-250px',
         animation: 'float 20s ease-in-out infinite reverse',
@@ -312,7 +338,7 @@ const LandingPage = () => {
         width: '400px',
         height: '400px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(96, 165, 250, 0.1) 0%, transparent 70%)',
         top: '50%',
         right: '10%',
         animation: 'float 18s ease-in-out infinite',
@@ -328,7 +354,7 @@ const LandingPage = () => {
             width: Math.random() * 4 + 2 + 'px',
             height: Math.random() * 4 + 2 + 'px',
             borderRadius: '50%',
-            background: `rgba(139, 92, 246, ${Math.random() * 0.5 + 0.2})`,
+            background: `rgba(37, 99, 235, ${Math.random() * 0.5 + 0.2})`,
             left: Math.random() * 100 + '%',
             top: Math.random() * 100 + '%',
             animation: `particle${i % 3} ${Math.random() * 10 + 10}s linear infinite`,
@@ -359,7 +385,7 @@ const LandingPage = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.1)',
+        borderBottom: '1px solid rgba(37, 99, 235, 0.1)',
         background: 'rgba(10, 10, 10, 0.8)'
       }}>
         <Fade in={visible} timeout={1000}>

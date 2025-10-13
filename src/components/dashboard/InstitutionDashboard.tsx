@@ -135,6 +135,7 @@ export default function InstitutionDashboard() {
   }, []);
 
   const fetchVerificationStatus = async () => {
+    console.log('fetchVerificationStatus');
     try {
       const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
         headers: {
@@ -755,7 +756,7 @@ export default function InstitutionDashboard() {
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Institution Dashboard
+            Institution Dashboarddddd
           </Typography>
           <Chip
             icon={<CheckCircle />}

@@ -382,7 +382,7 @@ export default function KYCVerificationCarousel({
           <div className="flex items-center justify-between mt-6">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center flex-1">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                <div className={`flex items-center justify-center w-20 h-20 rounded-full border-2 ${
                   currentStep >= step 
                     ? 'bg-white text-blue-600 border-white' 
                     : 'bg-blue-500 text-white border-white opacity-50'
@@ -399,7 +399,7 @@ export default function KYCVerificationCarousel({
           </div>
           
           <div className="flex items-center justify-between mt-2 text-xs text-blue-100">
-            <span>Documents</span>
+            <span>Documentssss</span>
             <span>Identity</span>
             <span>Contact</span>
           </div>

@@ -10,7 +10,8 @@ import {
   MapPin,
   Mail,
   Phone,
-  ArrowLeft
+  ArrowLeft,
+  Zap
 } from 'lucide-react';
 import { kycService } from '@/services/kyc.service';
 
@@ -55,11 +56,16 @@ export default function InlineKYCSteps({
   
   // Step 2 - Face and Address Verification
   const [faceVerificationStatus, setFaceVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [faceVerificationError, setFaceVerificationError] = useState('');
   const [addressVerificationStatus, setAddressVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  
+  // Development mode flag
+  const isDevelopmentMode = process.env.NODE_ENV === 'development';
+  console.log('isDevelopmentMode', isDevelopmentMode);
   
   // Step 3 - Mobile and Email Verification
   const [verificationEmail, setVerificationEmail] = useState(userEmail);
@@ -84,6 +90,18 @@ export default function InlineKYCSteps({
   const convertDateFormat = (dateStr: string): string => {
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}/${year}`;
+  };
+
+  // Skip PAN Verification (Development Mode)
+  const handleSkipPANVerification = () => {
+    if (!isDevelopmentMode) return;
+    
+    setPanVerificationStatus('success');
+    setPanData({ status: 'skipped_dev_mode', pan: panNumber || 'DEV_PAN' });
+    setVerificationData((prev: any) => ({
+      ...prev,
+      documentVerification: { type: 'pan', data: { status: 'skipped_dev_mode', pan: panNumber || 'DEV_PAN' } }
+    }));
   };
 
   // PAN Verification
@@ -120,6 +138,29 @@ export default function InlineKYCSteps({
       setPanVerificationStatus('error');
       setPanError(error.message || 'Failed to verify PAN');
     }
+  };
+
+  // Skip Aadhaar Verification (Development Mode)
+  const handleSkipAadhaarVerification = () => {
+    if (!isDevelopmentMode) return;
+    
+    setAadhaarVerificationStatus('success');
+    setAadhaarData({ 
+      status: 'SKIPPED_DEV_MODE',
+      name: userFullName,
+      aadhaar_number: aadhaarNumber || 'XXXXXXXXXXXX',
+      address: {
+        house: 'Dev House',
+        street: 'Dev Street',
+        vtc: 'Dev City',
+        state: 'Dev State',
+        pincode: '123456'
+      }
+    });
+    setVerificationData((prev: any) => ({
+      ...prev,
+      documentVerification: { type: 'aadhaar', data: { status: 'SKIPPED_DEV_MODE' } }
+    }));
   };
 
   // Aadhaar Generate OTP
@@ -237,6 +278,7 @@ export default function InlineKYCSteps({
 
     try {
       setFaceVerificationStatus('loading');
+      setFaceVerificationError('');
       
       const response = await kycService.verifyFace(capturedImage, userEmail);
       
@@ -254,8 +296,45 @@ export default function InlineKYCSteps({
       }));
     } catch (error: any) {
       setFaceVerificationStatus('error');
-      alert('Face verification failed: ' + (error.message || 'Unknown error'));
+      setFaceVerificationError(error.message || 'Unknown error occurred during face verification');
     }
+  };
+
+  // Skip Face Verification (Development Mode Only)
+  const handleSkipFaceVerification = () => {
+    if (!isDevelopmentMode) return;
+    
+    setFaceVerificationStatus('success');
+    setVerificationData((prev: any) => ({
+      ...prev,
+      faceVerification: { 
+        status: 'skipped_dev_mode', 
+        image: capturedImage || 'skipped',
+        timestamp: new Date().toISOString() 
+      }
+    }));
+  };
+
+  // Retry Face Verification
+  const handleRetryFaceVerification = () => {
+    setFaceVerificationStatus('idle');
+    setFaceVerificationError('');
+    setCapturedImage(null);
+  };
+
+  // Skip Address Verification (Development Mode)
+  const handleSkipAddressVerification = () => {
+    if (!isDevelopmentMode) return;
+    
+    setAddressVerificationStatus('success');
+    setVerificationData((prev: any) => ({
+      ...prev,
+      addressVerification: { 
+        status: 'skipped_dev_mode', 
+        address: { house: 'Dev House', street: 'Dev Street', city: 'Dev City' },
+        timestamp: new Date().toISOString() 
+      }
+    }));
   };
 
   // Address Verification
@@ -296,6 +375,21 @@ export default function InlineKYCSteps({
       setEmailVerificationStatus('error');
       alert('Failed to send OTP: ' + (error.message || 'Unknown error'));
     }
+  };
+
+  // Skip Email Verification (Development Mode)
+  const handleSkipEmailVerification = () => {
+    if (!isDevelopmentMode) return;
+    
+    setEmailVerificationStatus('success');
+    setVerificationData((prev: any) => ({
+      ...prev,
+      emailVerification: { 
+        status: 'skipped_dev_mode', 
+        email: verificationEmail, 
+        timestamp: new Date().toISOString() 
+      }
+    }));
   };
 
   // Email Verification
@@ -352,6 +446,21 @@ export default function InlineKYCSteps({
       setMobileVerificationStatus('error');
       alert('Failed to send OTP: ' + (error.message || 'Unknown error'));
     }
+  };
+
+  // Skip Mobile Verification (Development Mode)
+  const handleSkipMobileVerification = () => {
+    if (!isDevelopmentMode) return;
+    
+    setMobileVerificationStatus('success');
+    setVerificationData((prev: any) => ({
+      ...prev,
+      mobileVerification: {
+        status: 'skipped_dev_mode',
+        phone: verificationPhone,
+        timestamp: new Date().toISOString()
+      }
+    }));
   };
 
   // Mobile Verification
@@ -432,9 +541,9 @@ export default function InlineKYCSteps({
           ))}
         </div>
         <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>Documents</span>
-          <span>Identity</span>
-          <span>Contact</span>
+          <span className="text-center">Documents</span>
+          <span className="flex-1 ml-18 text-center">Identity</span>
+          <span className="flex-1 mr-24 text-center">Contact</span>
         </div>
       </div>
 
@@ -501,26 +610,41 @@ export default function InlineKYCSteps({
                   <div className="flex items-center gap-2 mb-1">
                     <CheckCircle className="w-5 h-5" />
                     <span className="font-semibold text-sm">Verified Successfully</span>
+                    {panData?.status === 'skipped_dev_mode' && (
+                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                    )}
                   </div>
                   <div className="text-xs ml-7">{panData?.pan} - {panData?.status}</div>
                 </div>
               )}
 
               {panVerificationStatus !== 'success' && (
-                <button
-                  onClick={handlePANVerification}
-                  disabled={panVerificationStatus === 'loading'}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {panVerificationStatus === 'loading' ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Verifying...</>
-                  ) : (
-                    'Verify PAN'
+                <div className="space-y-2">
+                  <button
+                    onClick={handlePANVerification}
+                    disabled={panVerificationStatus === 'loading'}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {panVerificationStatus === 'loading' ? (
+                      <><Loader2 className="w-5 h-5 animate-spin" /> Verifying...</>
+                    ) : (
+                      'Verify PAN'
+                    )}
+                  </button>
+                  
+                  {isDevelopmentMode && (
+                    <button
+                      onClick={handleSkipPANVerification}
+                      className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Skip PAN (Dev Mode)
+                    </button>
                   )}
-                </button>
+                </div>
               )}
 
-              <button onClick={() => setSelectedDocumentType(null)} className="w-full text-gray-600 text-sm hover:text-gray-800">
+              <button onClick={() => setSelectedDocumentType(null)} className="w-full text-gray-600 text-sm hover:text-gray-800 mt-2">
                 Choose Different Method
               </button>
             </div>
@@ -550,17 +674,29 @@ export default function InlineKYCSteps({
                     </div>
                   )}
 
-                  <button
-                    onClick={handleAadhaarGenerateOTP}
-                    disabled={aadhaarVerificationStatus === 'loading'}
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {aadhaarVerificationStatus === 'loading' ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" /> Generating OTP...</>
-                    ) : (
-                      'Generate OTP'
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleAadhaarGenerateOTP}
+                      disabled={aadhaarVerificationStatus === 'loading'}
+                      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {aadhaarVerificationStatus === 'loading' ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Generating OTP...</>
+                      ) : (
+                        'Generate OTP'
+                      )}
+                    </button>
+                    
+                    {isDevelopmentMode && (
+                      <button
+                        onClick={handleSkipAadhaarVerification}
+                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Skip Aadhaar (Dev Mode)
+                      </button>
                     )}
-                  </button>
+                  </div>
                 </>
               )}
 
@@ -595,23 +731,38 @@ export default function InlineKYCSteps({
                       <div className="flex items-center gap-2 mb-1">
                         <CheckCircle className="w-5 h-5" />
                         <span className="font-semibold text-sm">Verified Successfully</span>
+                        {aadhaarData?.status === 'SKIPPED_DEV_MODE' && (
+                          <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                        )}
                       </div>
                       <div className="text-xs ml-7">{aadhaarData?.name}</div>
                     </div>
                   )}
 
                   {aadhaarVerificationStatus !== 'success' && (
-                    <button
-                      onClick={handleAadhaarVerifyOTP}
-                      disabled={aadhaarVerificationStatus === 'loading'}
-                      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {aadhaarVerificationStatus === 'loading' ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" /> Verifying...</>
-                      ) : (
-                        'Verify OTP'
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleAadhaarVerifyOTP}
+                        disabled={aadhaarVerificationStatus === 'loading'}
+                        className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {aadhaarVerificationStatus === 'loading' ? (
+                          <><Loader2 className="w-5 h-5 animate-spin" /> Verifying...</>
+                        ) : (
+                          'Verify OTP'
+                        )}
+                      </button>
+                      
+                      {isDevelopmentMode && (
+                        <button
+                          onClick={handleSkipAadhaarVerification}
+                          className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                        >
+                          <Zap className="w-4 h-4" />
+                          Skip Aadhaar (Dev Mode)
+                        </button>
                       )}
-                    </button>
+                    </div>
                   )}
 
                   <button onClick={() => setAadhaarStep('input')} className="w-full text-blue-600 text-sm hover:text-blue-800">
@@ -665,6 +816,17 @@ export default function InlineKYCSteps({
 
               {faceVerificationStatus === 'idle' && !showCamera && !capturedImage && (
                 <div>
+                  {/* Development Mode Banner */}
+                  {isDevelopmentMode && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <Zap className="w-4 h-4" />
+                        <span className="text-xs font-semibold">Development Mode Active</span>
+                      </div>
+                      <p className="text-xs text-yellow-700 mt-1">You can skip verification for testing</p>
+                    </div>
+                  )}
+
                   {/* Instructions */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <h4 className="font-semibold text-sm text-blue-900 mb-2">Photo Guidelines</h4>
@@ -690,13 +852,25 @@ export default function InlineKYCSteps({
                     </div>
                   </div>
 
-                  <button
-                    onClick={startCamera}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                  >
-                    <Camera className="w-5 h-5" />
-                    Open Camera
-                  </button>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      onClick={startCamera}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-5 h-5" />
+                      Open Camera
+                    </button>
+                    
+                    {isDevelopmentMode && (
+                      <button
+                        onClick={handleSkipFaceVerification}
+                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Skip Verification (Dev Mode)
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -776,6 +950,42 @@ export default function InlineKYCSteps({
                 </div>
               )}
 
+              {faceVerificationStatus === 'error' && (
+                <div>
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <XCircle className="w-5 h-5" />
+                      <span className="font-semibold text-sm">Verification Failed</span>
+                    </div>
+                    <p className="text-xs ml-7">{faceVerificationError}</p>
+                  </div>
+                  
+                  {capturedImage && (
+                    <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
+                      <img src={capturedImage} alt="Failed verification" className="w-full h-32 object-cover" />
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleRetryFaceVerification}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Retry
+                    </button>
+                    {isDevelopmentMode && (
+                      <button
+                        onClick={handleSkipFaceVerification}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition flex items-center justify-center gap-2"
+                      >
+                        Skip (Dev)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {faceVerificationStatus === 'success' && (
                 <div>
                   <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
@@ -784,6 +994,9 @@ export default function InlineKYCSteps({
                   <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
                     Face verified successfully
+                    {verificationData.faceVerification?.status === 'skipped_dev_mode' && (
+                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                    )}
                   </div>
                 </div>
               )}
@@ -807,13 +1020,25 @@ export default function InlineKYCSteps({
                       <div>{aadhaarData.address.vtc}, {aadhaarData.address.state} - {aadhaarData.address.pincode}</div>
                     </div>
                   )}
-                  <button
-                    onClick={handleAddressVerification}
-                    disabled={faceVerificationStatus !== 'success'}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-                  >
-                    Verify Address
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleAddressVerification}
+                      disabled={faceVerificationStatus !== 'success'}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      Verify Address
+                    </button>
+                    
+                    {isDevelopmentMode && (
+                      <button
+                        onClick={handleSkipAddressVerification}
+                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Skip Address (Dev Mode)
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -827,6 +1052,9 @@ export default function InlineKYCSteps({
                 <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
                   Address verified successfully
+                  {verificationData.addressVerification?.status === 'skipped_dev_mode' && (
+                    <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                  )}
                 </div>
               )}
             </div>
@@ -903,19 +1131,34 @@ export default function InlineKYCSteps({
                   <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
                     Email verified
+                    {verificationData.emailVerification?.status === 'skipped_dev_mode' && (
+                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                    )}
                   </div>
                 ) : (
-                  <button
-                    onClick={handleEmailVerification}
-                    disabled={emailVerificationStatus === 'loading'}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {emailVerificationStatus === 'loading' ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
-                    ) : (
-                      'Verify Email'
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleEmailVerification}
+                      disabled={emailVerificationStatus === 'loading'}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {emailVerificationStatus === 'loading' ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
+                      ) : (
+                        'Verify Email'
+                      )}
+                    </button>
+                    
+                    {isDevelopmentMode && (
+                      <button
+                        onClick={handleSkipEmailVerification}
+                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Skip Email (Dev Mode)
+                      </button>
                     )}
-                  </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -967,19 +1210,34 @@ export default function InlineKYCSteps({
                   <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
                     Phone verified
+                    {verificationData.mobileVerification?.status === 'skipped_dev_mode' && (
+                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                    )}
                   </div>
                 ) : (
-                  <button
-                    onClick={handleMobileVerification}
-                    disabled={mobileVerificationStatus === 'loading'}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {mobileVerificationStatus === 'loading' ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
-                    ) : (
-                      'Verify Phone'
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleMobileVerification}
+                      disabled={mobileVerificationStatus === 'loading'}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {mobileVerificationStatus === 'loading' ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
+                      ) : (
+                        'Verify Phone'
+                      )}
+                    </button>
+                    
+                    {isDevelopmentMode && (
+                      <button
+                        onClick={handleSkipMobileVerification}
+                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Skip Phone (Dev Mode)
+                      </button>
                     )}
-                  </button>
+                  </div>
                 )}
               </div>
             </div>

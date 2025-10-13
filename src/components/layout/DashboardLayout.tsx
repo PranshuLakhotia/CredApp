@@ -360,7 +360,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Search Bar */}
-              <Search className="hidden sm:flex">
+              {/* <Search className="hidden sm:flex">
                 <SearchIconWrapper>
                   <SearchIcon />
                 </SearchIconWrapper>
@@ -368,7 +368,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   placeholder="Search credentials, skills..."
                   inputProps={{ 'aria-label': 'search' }}
                 />
-              </Search>
+              </Search> */}
 
               {/* Font Size Controls */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
@@ -427,7 +427,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
               <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
               {/* Theme Toggle */}
-              <IconButton
+              {/* <IconButton
                 size="medium"
                 color="inherit"
                 onClick={handleThemeToggle}
@@ -440,7 +440,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 }}
               >
                 {isDarkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
-              </IconButton>
+              </IconButton> */}
 
               {/* Refresh */}
               <IconButton
@@ -462,7 +462,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
               <LanguageSelector />
 
               {/* Apps Menu */}
-              <IconButton
+              {/* <IconButton
                 size="medium"
                 color="inherit"
                 onClick={handleAppsMenu}
@@ -475,7 +475,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 }}
               >
                 <Apps fontSize="small" />
-              </IconButton>
+              </IconButton> */}
 
               {/* Notifications */}
               <IconButton
