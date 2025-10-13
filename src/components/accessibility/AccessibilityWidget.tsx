@@ -21,12 +21,16 @@ export const AccessibilityWidget: React.FC = () => {
       
       // ESC to close sidebar
       if (e.key === 'Escape' && isSidebarOpen) {
+        e.preventDefault();
         setIsSidebarOpen(false);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Only add event listener when component is mounted
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
   }, [isSidebarOpen]);
 
   return (

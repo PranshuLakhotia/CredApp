@@ -18,13 +18,20 @@ export default function Home() {
   };
 
   useEffect(() => {
+    console.log('Main page.tsx useEffect triggered:');
+    console.log('- isLoading:', isLoading);
+    console.log('- user:', user);
+    console.log('- user.role:', user?.role);
+    
     if (!isLoading) {
       if (user) {
         // Redirect to appropriate dashboard based on user role
         const role = user.role || 'learner';
+        console.log('- Main page redirecting to:', `/dashboard/${role}`);
         router.push(`/dashboard/${role}`);
       } else {
         // Show landing page if not authenticated
+        console.log('- No user, showing landing page');
         setShowLanding(true);
       }
     }
