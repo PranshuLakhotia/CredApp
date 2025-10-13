@@ -145,6 +145,18 @@ export class AuthService {
   // Login user
   static async login(data: LoginRequest): Promise<LoginResponse> {
     const response: AxiosResponse<LoginResponse> = await api.post('/api/v1/auth/login', data);
+    
+    // Handle remember me functionality
+    if (data.remember_me) {
+      // Store tokens in localStorage with longer expiration for remember me
+      localStorage.setItem('remember_me', 'true');
+      localStorage.setItem('remember_email', data.email);
+    } else {
+      // Clear remember me data if not checked
+      localStorage.removeItem('remember_me');
+      localStorage.removeItem('remember_email');
+    }
+    
     return response.data;
   }
 

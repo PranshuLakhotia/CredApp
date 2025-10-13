@@ -147,22 +147,40 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
   
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const pathname = usePathname();
   const router = useRouter();
 
-  // Provide default user data if not logged in
+  // Determine user role from current path if not available in user object
+  const getRoleFromPath = (path: string): UserRole => {
+    if (path.includes('/dashboard/institution')) return 'institution';
+    if (path.includes('/dashboard/employer')) return 'employer';
+    if (path.includes('/dashboard/admin')) return 'admin';
+    return 'learner'; // default
+  };
+
+  // Redirect to register if user is not logged in
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/auth/register');
+    }
+  }, [isLoading, user, router]);
+
+  // Provide default user data if not logged in (temporary fallback)
   const currentUser = user || {
     id: 'default-user',
     full_name: 'Demo User',
     email: 'demo@credify.com',
-    role: 'learner' as UserRole,
+    role: getRoleFromPath(pathname),
     is_verified: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
+
+  // Ensure user has a role (either from user object or derived from path)
+  const userRole = currentUser.role || getRoleFromPath(pathname);
 
   const handleDrawerToggle = () => {
     setSidebarExpanded(!sidebarExpanded);
@@ -268,20 +286,20 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <DashboardSidebar
         sidebarExpanded={sidebarExpanded}
         setSidebarExpanded={setSidebarExpanded}
-        userRole={(currentUser.role as UserRole) || 'learner'}
-      />
+        userRole={userRole}
+      />  
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-screen">
         {/* Top Navigation Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
               {/* Page Title */}
               <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
                 {title || 'Dashboard Overview'}
@@ -340,9 +358,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Search Bar */}
-              <Search>
+              <Search className="hidden sm:flex">
                 <SearchIconWrapper>
                   <SearchIcon />
                 </SearchIconWrapper>
@@ -497,7 +515,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         {/* Main Content */}
         <div 
           id="dashboard-main-content" 
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-auto min-h-0 max-h-full"
           style={{ transition: 'font-size 0.2s ease' }}
         >
           {children}

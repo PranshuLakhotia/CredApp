@@ -9,9 +9,15 @@ import { AuthService } from '@/services/auth.service';
 
 export default function LoginFormNew() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('john.doe@gmail.com');
+  const [email, setEmail] = useState(() => {
+    // Check if user was previously remembered
+    return localStorage.getItem('remember_email') || 'john.doe@gmail.com';
+  });
   const [password, setPassword] = useState('password123');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Check if remember me was previously checked
+    return localStorage.getItem('remember_me') === 'true';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { login, isLoading, error, clearError, user } = useAuth();

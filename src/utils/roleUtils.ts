@@ -75,15 +75,19 @@ export function canAccessDashboard(userRoles: any[], dashboardPath: string): boo
     return false;
   }
 
-  // Extract role type from dashboard path
-  const pathToRole: { [key: string]: string } = {
-    '/dashboard/learner': 'learner',
-    '/dashboard/employer': 'employer',
-    '/dashboard/institution': 'issuer',
-    '/dashboard/admin': 'admin',
-  };
+  // Extract role type from dashboard path (supports sub-paths)
+  let requiredRole: string | undefined;
+  
+  if (dashboardPath.startsWith('/dashboard/learner')) {
+    requiredRole = 'learner';
+  } else if (dashboardPath.startsWith('/dashboard/employer')) {
+    requiredRole = 'employer';
+  } else if (dashboardPath.startsWith('/dashboard/institution')) {
+    requiredRole = 'issuer';
+  } else if (dashboardPath.startsWith('/dashboard/admin')) {
+    requiredRole = 'admin';
+  }
 
-  const requiredRole = pathToRole[dashboardPath];
   if (!requiredRole) {
     return false;
   }
