@@ -145,6 +145,18 @@ export class AuthService {
   // Login user
   static async login(data: LoginRequest): Promise<LoginResponse> {
     const response: AxiosResponse<LoginResponse> = await api.post('/api/v1/auth/login', data);
+    
+    // Handle remember me functionality
+    if (data.remember_me) {
+      // Store tokens in localStorage with longer expiration for remember me
+      localStorage.setItem('remember_me', 'true');
+      localStorage.setItem('remember_email', data.email);
+    } else {
+      // Clear remember me data if not checked
+      localStorage.removeItem('remember_me');
+      localStorage.removeItem('remember_email');
+    }
+    
     return response.data;
   }
 
@@ -251,6 +263,31 @@ export class AuthService {
   // Fetch course recommendations
   static async getRecommendations(): Promise<any[]> {
     const response = await api.get('/api/v1/learner/recommendations/');
+    return response.data;
+  }
+
+  // Fetch available roles for registration (public endpoint - no auth required)
+  static async getRoles(): Promise<{ roles: any[], total: number }> {
+    try {
+      // Create a separate axios instance without auth headers for public endpoints
+      const publicApi = axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const response = await publicApi.get('/api/v1/roles');
+      return response.data;
+    } catch (error: any) {
+      console.error('AuthService.getRoles - Error:', error);
+      throw error;
+    }
+  }
+
+  // Get user roles information
+  static async getUserRoles(userId: string): Promise<any> {
+    const response = await api.get(`/api/v1/roles/user/${userId}`);
     return response.data;
   }
 }

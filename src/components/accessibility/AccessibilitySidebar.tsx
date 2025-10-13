@@ -11,6 +11,31 @@ interface AccessibilitySidebarProps {
 export const AccessibilitySidebar: React.FC<AccessibilitySidebarProps> = ({ isOpen, onClose }) => {
   const { settings, toggleSetting, resetSettings } = useAccessibility();
 
+  // Handle ESC key to close sidebar
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen && typeof window !== 'undefined') {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
+  // Focus management when sidebar opens
+  React.useEffect(() => {
+    if (isOpen) {
+      // Focus the close button when sidebar opens
+      const closeButton = document.querySelector('[aria-label="Close accessibility options"]') as HTMLElement;
+      if (closeButton) {
+        closeButton.focus();
+      }
+    }
+  }, [isOpen]);
+
   const accessibilityOptions = [
     {
       key: 'textToSpeech' as const,
@@ -106,11 +131,19 @@ export const AccessibilitySidebar: React.FC<AccessibilitySidebarProps> = ({ isOp
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop with Blur Effect */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+          className="fixed inset-0 backdrop-blur-sm bg-white bg-opacity-10 z-40 transition-all duration-300"
           onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onClose();
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close accessibility panel"
         />
       )}
 

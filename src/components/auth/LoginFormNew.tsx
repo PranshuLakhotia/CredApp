@@ -3,16 +3,24 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginRequest } from '@/types/auth';
+import { getUserDashboardPath } from '@/utils/roleUtils';
+import { AuthService } from '@/services/auth.service';
 
 
 export default function LoginFormNew() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('john.doe@gmail.com');
+  const [email, setEmail] = useState(() => {
+    // Check if user was previously remembered
+    return localStorage.getItem('remember_email') || 'john.doe@gmail.com';
+  });
   const [password, setPassword] = useState('password123');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Check if remember me was previously checked
+    return localStorage.getItem('remember_me') === 'true';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, isLoading, error, clearError, user } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,7 +45,14 @@ export default function LoginFormNew() {
       };
       
       await login(loginData);
-      router.push('/dashboard/learner');
+      
+      // Get current user to determine their role
+      const currentUser = await AuthService.getCurrentUser();
+      
+      // Determine dashboard path based on user's role
+      const dashboardPath = await getUserDashboardPath(currentUser, (currentUser as any).id || (currentUser as any)._id);
+      
+      router.push(dashboardPath);
     } catch (error) {
       console.error('Login failed:', error);
     } finally {

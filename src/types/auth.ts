@@ -27,6 +27,7 @@ export interface RegisterRequest {
   full_name: string;
   password: string;
   confirm_password: string;
+  role_type?: string; // Role type selected during registration
   phone_number?: string;
   date_of_birth?: string;
   gender?: string;
@@ -37,6 +38,18 @@ export interface RegisterRequest {
     country?: string;
     postal_code?: string;
   };
+  kyc_verification?: any;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  role_type: string;
+  permissions: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Form data types for UI components
