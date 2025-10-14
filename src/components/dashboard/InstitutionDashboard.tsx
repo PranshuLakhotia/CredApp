@@ -215,6 +215,13 @@ export default function InstitutionDashboard() {
   };
 
   const handleGenerateApiKey = async () => {
+    // Check verification status before allowing API key generation
+    if (verificationStatus !== 'verified') {
+      alert('Your verification is still in progress. Please wait for verification to complete before generating API keys.');
+      setNewKeyDialog(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
@@ -720,11 +727,20 @@ export default function InstitutionDashboard() {
         <Card sx={{ textAlign: 'center', p: 6 }}>
           <Warning sx={{ fontSize: 80, color: '#f59e0b', mb: 2 }} />
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-            Verification Pending
+            Verification In Progress
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
             Your verification request is under review. We'll notify you via email within 2-3 business days.
           </Typography>
+          <Alert severity="info" sx={{ textAlign: 'left', maxWidth: 500, mx: 'auto' }}>
+            <Typography variant="body2">
+              <strong>What's next?</strong><br />
+              • You cannot generate API keys until verification is complete<br />
+              • You cannot issue credentials until verification is complete<br />
+              • Once verified, you'll have full access to all issuer features<br />
+              • Check your email for updates on verification status
+            </Typography>
+          </Alert>
         </Card>
       </Box>
     );
@@ -766,8 +782,64 @@ export default function InstitutionDashboard() {
           />
         </Box>
         <Typography variant="body1" color="text.secondary">
-          Manage your API keys and issue credentials
+          Manage your API keys and issue digital credentials
         </Typography>
+      </Box>
+
+      {/* Quick Actions */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          Quick Actions
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            startIcon={<Description />}
+            onClick={() => {
+              console.log('🎯 CLICKING ISSUE SINGLE CREDENTIAL BUTTON');
+              window.location.href = '/dashboard/institution/credentials';
+            }}
+            sx={{
+              bgcolor: '#10b981',
+              textTransform: 'none',
+              '&:hover': { bgcolor: '#059669' }
+            }}
+          >
+            Issue Single Credential
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Business />}
+            onClick={() => window.location.href = '/dashboard/institution/bulk-credentials'}
+            sx={{
+              borderColor: '#10b981',
+              color: '#10b981',
+              textTransform: 'none',
+              '&:hover': { 
+                borderColor: '#059669',
+                backgroundColor: '#f0fdf4'
+              }
+            }}
+          >
+            Bulk Credential Upload
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<VerifiedUser />}
+            onClick={() => window.location.href = '/dashboard/institution/credentials'}
+            sx={{
+              borderColor: '#3b82f6',
+              color: '#3b82f6',
+              textTransform: 'none',
+              '&:hover': { 
+                borderColor: '#2563eb',
+                backgroundColor: '#eff6ff'
+              }
+            }}
+          >
+            View Issued Credentials
+          </Button>
+        </Box>
       </Box>
 
       {/* API Keys Section */}
@@ -785,17 +857,24 @@ export default function InstitutionDashboard() {
             variant="contained"
             startIcon={<Key />}
             onClick={() => setNewKeyDialog(true)}
+            disabled={verificationStatus !== 'verified'}
             sx={{
-              bgcolor: '#3b82f6',
+              bgcolor: verificationStatus === 'verified' ? '#3b82f6' : '#9ca3af',
               textTransform: 'none',
-              '&:hover': { bgcolor: '#2563eb' }
+              '&:hover': { 
+                bgcolor: verificationStatus === 'verified' ? '#2563eb' : '#9ca3af'
+              }
             }}
           >
             Generate New Key
           </Button>
         </Box>
 
-        {apiKeys.length === 0 ? (
+        {verificationStatus !== 'verified' ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <strong>Verification Required:</strong> You must complete the verification process before you can generate API keys or issue credentials. Your verification is currently in progress.
+          </Alert>
+        ) : apiKeys.length === 0 ? (
           <Alert severity="info">
             No API keys generated yet. Click "Generate New Key" to create your first API key.
           </Alert>

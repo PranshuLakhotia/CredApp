@@ -1,46 +1,68 @@
 'use client';
 
-import React, { useState, ChangeEvent, DragEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { 
-  UploadCloud, 
-  FileText, 
+  Plus, 
+  Trash2, 
+  Upload, 
   CheckCircle, 
   XCircle, 
-  Download, 
-  AlertTriangle,
   Clock,
-  CheckCircle2,
-  X,
-  Edit3,
-  RotateCcw,
-  Eye,
-  EyeOff
+  AlertTriangle,
+  User,
+  FileText,
+  Edit,
+  RefreshCw
 } from 'lucide-react';
 
 // Import functions from single credential page
 import { fetchApiKeys } from '../credentials/page';
 
-// Copy the exact working functions from single credential page
-const performVerificationForBulk = async (learnerId: string, apiKey: string) => {
+// OCR extraction function
+const extractDataFromCertificate = async (certificateFile: File, apiKey: string): Promise<any> => {
+  try {
+    console.log('🔍 Starting OCR extraction for certificate:', certificateFile.name);
+
+    const formData = new FormData();
+    formData.append('file', certificateFile);
+
+    const response = await fetch('http://localhost:8000/api/v1/issuer/credentials/extract-ocr', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+      },
+      body: formData,
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ OCR extraction successful:', result);
+      return result;
+    } else {
+      const errorText = await response.text();
+      console.error('❌ OCR extraction failed:', response.status, errorText);
+      throw new Error(`OCR extraction failed: ${response.status} - ${errorText}`);
+    }
+  } catch (error) {
+    console.error('💥 OCR extraction error:', error);
+    throw error;
+  }
+};
+
+// Validation function
+const validateLearner = async (learnerId: string, apiKey: string) => {
   try {
     console.log('🔍 Checking learner:', learnerId);
-    console.log('🔑 Using API key:', apiKey ? apiKey.substring(0, 20) + '...' : 'No API key');
-    
-    const token = localStorage.getItem('access_token');
-    console.log('🔍 DEBUG: Token in performVerificationForBulk:', token ? token.substring(0, 20) + '...' : 'No token');
     
     const learnerResponse = await fetch(`http://localhost:8000/api/v1/issuer/users/${learnerId}/is-learner`, {
       headers: {
         'x-api-key': apiKey,
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
       }
     });
-    
-    console.log('📡 Learner API response status:', learnerResponse.status);
-    console.log('📡 Learner API response headers:', learnerResponse.headers);
     
     if (learnerResponse.ok) {
       const learnerData = await learnerResponse.json();
@@ -57,561 +79,565 @@ const performVerificationForBulk = async (learnerId: string, apiKey: string) => 
   }
 };
 
-interface CSVRow {
-  learner_id: string;
-  certificate_title: string;
-  mode: string;
-  duration: string;
-  skills: string;
-  certificate_path: string;
-}
+// Credential creation function
+const createCredential = async (payload: any, apiKey: string) => {
+  try {
+    console.log('📝 Creating credential in database...');
+    
+    const createResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
+      method: 'POST',
+          headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+        'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+      },
+      body: JSON.stringify(payload)
+    });
 
-interface ProcessedRow extends CSVRow {
+    console.log('📡 Create credential response status:', createResponse.status);
+
+    if (!createResponse.ok) {
+      const errorData = await createResponse.json();
+      console.error('❌ Failed to create credential:', errorData);
+      throw new Error(`Failed to create credential: ${errorData.detail || errorData.message || 'Unknown error'}`);
+    }
+
+    const createResult = await createResponse.json();
+    console.log('✅ Credential created successfully:', createResult);
+    return createResult;
+      } catch (error) {
+    console.error('💥 Error creating credential:', error);
+    throw error;
+  }
+};
+
+// Blockchain issuance function
+const issueCredentialOnBlockchain = async (credentialId: string, learnerAddress: string) => {
+  try {
+    console.log('⛓️ Issuing credential on blockchain...');
+    
+    const issuePayload = {
+      credential_id: credentialId,
+      learner_address: learnerAddress,
+      generate_qr: true,
+      wait_for_confirmation: false
+    };
+
+    console.log('📤 Sending blockchain issue request:', issuePayload);
+
+    const issueResponse = await fetch('http://localhost:8000/api/v1/blockchain/credentials/issue', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+      },
+      body: JSON.stringify(issuePayload)
+    });
+
+    console.log('📡 Blockchain issue response status:', issueResponse.status);
+
+    if (!issueResponse.ok) {
+      const errorData = await issueResponse.json();
+      console.error('❌ Failed to issue credential on blockchain:', errorData);
+      throw new Error(`Failed to issue credential on blockchain: ${errorData.detail || errorData.message || 'Unknown error'}`);
+    }
+
+    const issueResult = await issueResponse.json();
+    console.log('✅ Credential issued on blockchain successfully:', issueResult);
+    return issueResult;
+    } catch (error) {
+    console.error('💥 Error issuing credential on blockchain:', error);
+    throw error;
+  }
+};
+
+// QR overlay function
+const overlayQrOnCertificate = async (certificateFile: File, credentialId: string, qrData: any, apiKey: string) => {
+  try {
+    console.log('📄 Overlaying QR code on certificate...');
+    
+    // Read the file as ArrayBuffer to ensure it's properly sent
+    const fileArrayBuffer = await certificateFile.arrayBuffer();
+    const fileBlob = new Blob([fileArrayBuffer], { type: certificateFile.type });
+    
+    console.log('📄 Certificate File Info:');
+    console.log('  - Name:', certificateFile.name);
+    console.log('  - Size:', certificateFile.size, 'bytes');
+    console.log('  - Type:', certificateFile.type);
+    console.log('  - ArrayBuffer size:', fileArrayBuffer.byteLength, 'bytes');
+    
+    const overlayFormData = new FormData();
+    overlayFormData.append('certificate_file', fileBlob, certificateFile.name);
+    overlayFormData.append('credential_id', credentialId);
+    overlayFormData.append('qr_data', JSON.stringify(qrData || {}));
+
+    console.log('📤 QR Overlay Request Data:');
+    console.log('  - Credential ID:', credentialId);
+    console.log('  - File Blob size:', fileBlob.size, 'bytes');
+    console.log('  - File Type:', fileBlob.type);
+    console.log('  - QR Data:', qrData);
+
+    const overlayResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials/overlay-qr', {
+      method: 'POST',
+      headers: {
+        'X-API-Key': apiKey,
+        'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+      },
+      body: overlayFormData
+    });
+
+    console.log('📡 QR overlay response status:', overlayResponse.status);
+
+    if (!overlayResponse.ok) {
+      const errorText = await overlayResponse.text();
+      console.error('❌ Failed to overlay QR and upload - Raw Response:', errorText);
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error('❌ Error Data:', JSON.stringify(errorData, null, 2));
+        throw new Error(`QR overlay failed: ${errorData.detail || errorData.message || 'Unknown error'}`);
+      } catch {
+        console.error('❌ Non-JSON Error Response:', errorText);
+        throw new Error(`QR overlay failed: ${errorText}`);
+      }
+    }
+
+    const overlayResult = await overlayResponse.json();
+    console.log('✅ Certificate with QR uploaded:', overlayResult);
+    return overlayResult;
+  } catch (error) {
+    console.error('💥 Error overlaying QR:', error);
+    throw error;
+  }
+};
+
+interface CredentialEntry {
   id: string;
+  learnerId: string;
+  certificateFile: File | null;
   status: 'pending' | 'processing' | 'success' | 'error';
   error?: string;
-  credential_id?: string;
-  retry_count: number;
+  result?: any;
+  progress?: {
+    step: string;
+    description: string;
+  };
+  isEditing?: boolean;
 }
 
-interface BatchInfo {
-  batch_id: string;
-  created_at: string;
-  total_rows: number;
-  processed_rows: number;
-  success_count: number;
-  error_count: number;
-}
+// Edit Entry Component
+const EditEntryComponent = ({ 
+  entry, 
+  onSave, 
+  onCancel 
+}: { 
+  entry: CredentialEntry;
+  onSave: (data: Partial<CredentialEntry>) => void;
+  onCancel: () => void;
+}) => {
+  const [learnerId, setLearnerId] = useState(entry.learnerId);
+  const [certificateFile, setCertificateFile] = useState<File | null>(entry.certificateFile);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        alert('Please select a valid file (PDF, JPG, JPEG, or PNG)');
+        return;
+      }
+      setCertificateFile(file);
+    }
+  };
+
+  const handleSave = () => {
+    if (!learnerId.trim()) {
+      alert('Learner ID is required');
+      return;
+    }
+    if (!certificateFile) {
+      alert('Certificate file is required');
+      return;
+    }
+    onSave({ learnerId: learnerId.trim(), certificateFile });
+  };
+
+  return (
+    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <h4 className="font-medium text-yellow-900 mb-4">Edit Entry Details</h4>
+      
+      <div className="space-y-4">
+        {/* Learner ID */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Learner ID *
+          </label>
+          <input
+            type="text"
+            value={learnerId}
+            onChange={(e) => setLearnerId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter learner ID"
+          />
+        </div>
+
+        {/* Certificate File */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Certificate File *
+          </label>
+          <input
+            type="file"
+            onChange={handleFileChange}
+            accept=".pdf,.jpg,.jpeg,.png"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {certificateFile && (
+            <p className="text-sm text-gray-600 mt-1">
+              Selected: {certificateFile.name}
+            </p>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-3 pt-2">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Save Changes
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function BulkCredentialsPage() {
   const { user } = useAuth();
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvData, setCsvData] = useState<CSVRow[]>([]);
-  const [processedRows, setProcessedRows] = useState<ProcessedRow[]>([]);
-  const [batchInfo, setBatchInfo] = useState<BatchInfo | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'validating' | 'processing' | 'completed' | 'error' | 'success'>('idle');
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [message, setMessage] = useState<string>('');
-  const [showErrorDetails, setShowErrorDetails] = useState(false);
+  const [entries, setEntries] = useState<CredentialEntry[]>([
+    { id: '1', learnerId: '', certificateFile: null, status: 'pending' }
+  ]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [editingRow, setEditingRow] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<ProcessedRow | null>(null);
-  const [successfulCredentials, setSuccessfulCredentials] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [processingComplete, setProcessingComplete] = useState(false);
 
-
-  // Generate unique batch ID
-  const generateBatchId = () => {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substr(2, 9);
-    return `BATCH_${timestamp}_${random}`;
+  // Add new entry
+  const addEntry = () => {
+    setEntries(prev => {
+      const newId = (prev.length + 1).toString();
+      return [...prev, { 
+        id: newId, 
+        learnerId: '', 
+        certificateFile: null, 
+        status: 'pending' 
+      }];
+    });
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type === 'text/csv') {
-      await processCSVFile(file);
-    } else {
-      setCsvFile(null);
-      setUploadStatus('error');
-      setMessage('Please upload a valid CSV file.');
-      setValidationErrors(['Invalid file type. Only CSV files are allowed.']);
-    }
+  // Remove entry
+  const removeEntry = (id: string) => {
+    setEntries(prev => {
+      if (prev.length > 1) {
+        return prev.filter(entry => entry.id !== id);
+      }
+      return prev;
+    });
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Update learner ID
+  const updateLearnerId = (id: string, learnerId: string) => {
+    setEntries(prev => prev.map(entry => 
+      entry.id === id ? { ...entry, learnerId } : entry
+    ));
   };
 
-  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type === 'text/csv') {
-      await processCSVFile(file);
-    } else {
-      setCsvFile(null);
-      setUploadStatus('error');
-      setMessage('Please drop a valid CSV file.');
-      setValidationErrors(['Invalid file type. Only CSV files are allowed.']);
-    }
+  // Update certificate file
+  const updateCertificateFile = (id: string, file: File | null) => {
+    setEntries(prev => prev.map(entry => 
+      entry.id === id ? { ...entry, certificateFile: file } : entry
+    ));
   };
 
-  const processCSVFile = async (file: File) => {
-    setCsvFile(file);
-    setUploadStatus('validating');
-    setMessage('Validating CSV file...');
-    setValidationErrors([]);
+  // Update entry status
+  const updateEntryStatus = (id: string, status: CredentialEntry['status'], error?: string, result?: any, progress?: CredentialEntry['progress']) => {
+    console.log(`🔄 Updating entry ${id} status to:`, status, { error, result: !!result, progress });
+    setEntries(prev => prev.map(entry => 
+      entry.id === id ? { ...entry, status, error, result, progress } : entry
+    ));
+  };
 
+  // Process a single credential entry
+  const processCredentialEntry = async (entry: CredentialEntry, index: number): Promise<void> => {
     try {
-      const text = await file.text();
-      console.log('CSV file content:', text); // Debug log
+      console.log(`🚀 Processing entry ${index + 1}: ${entry.learnerId}`);
       
-      // Handle different line endings (Windows \r\n, Mac \r, Unix \n)
-      const lines = text.split(/\r?\n|\r/).filter(line => line.trim());
-      console.log('CSV lines:', lines); // Debug log
-      
-      if (lines.length < 2) {
-        throw new Error('CSV file must contain at least a header row and one data row.');
-      }
-
-      // Parse CSV headers - handle quotes and semicolons better
-      let headerLine = lines[0];
-      headerLine = headerLine.replace(/;+$/, '').trim(); // Remove trailing semicolons
-      const headers = headerLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-      console.log('CSV headers:', headers); // Debug log
-      const requiredHeaders = ['learner_id', 'certificate_title', 'mode', 'duration', 'skills', 'certificate_path'];
-      
-      // Validate headers
-      const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-      if (missingHeaders.length > 0) {
-        console.log('Missing headers:', missingHeaders); // Debug log
-        throw new Error(`Missing required columns: ${missingHeaders.join(', ')}`);
-      }
-
-      const csvRows: CSVRow[] = [];
-      const errors: string[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        let line = lines[i];
-        console.log(`Processing line ${i + 1}:`, line); // Debug log
-        
-        // Remove trailing semicolons and clean up the line
-        line = line.replace(/;+$/, '').trim();
-        console.log(`Cleaned line ${i + 1}:`, line); // Debug log
-        
-        // Simple CSV parsing - handle quotes and commas better
-        const values: string[] = [];
-        let currentValue = '';
-        let inQuotes = false;
-        
-        for (let j = 0; j < line.length; j++) {
-          const char = line[j];
-          
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            values.push(currentValue.trim());
-            currentValue = '';
-          } else {
-            currentValue += char;
-          }
-        }
-        values.push(currentValue.trim()); // Add the last value
-        
-        console.log(`Parsed values for row ${i + 1}:`, values); // Debug log
-        
-        if (values.length !== headers.length) {
-          errors.push(`Row ${i + 1}: Column count mismatch (expected ${headers.length}, got ${values.length})`);
-          continue;
-        }
-
-        const row: CSVRow = {
-          learner_id: values[headers.indexOf('learner_id')] || '',
-          certificate_title: values[headers.indexOf('certificate_title')] || '',
-          mode: values[headers.indexOf('mode')] || '',
-          duration: values[headers.indexOf('duration')] || '',
-          skills: values[headers.indexOf('skills')] || '',
-          certificate_path: values[headers.indexOf('certificate_path')] || ''
-        };
-
-        console.log(`Row ${i + 1} data:`, row); // Debug log
-
-        // Validate row data
-        const rowErrors: string[] = [];
-        if (!row.learner_id.trim()) rowErrors.push('learner_id is required');
-        if (!row.certificate_title.trim()) rowErrors.push('certificate_title is required');
-        if (!row.mode.trim()) rowErrors.push('mode is required');
-        if (!row.duration.trim()) rowErrors.push('duration is required');
-        if (!row.skills.trim()) rowErrors.push('skills is required');
-        if (!row.certificate_path.trim()) rowErrors.push('certificate_path is required');
-
-        if (rowErrors.length > 0) {
-          errors.push(`Row ${i + 1}: ${rowErrors.join(', ')}`);
-        } else {
-          csvRows.push(row);
-        }
-      }
-
-      console.log('Validation errors found:', errors); // Debug log
-      
-      if (errors.length > 0) {
-        setValidationErrors(errors);
-        setUploadStatus('error');
-        setMessage(`CSV validation failed. Please fix the errors and try again.`);
-        console.log('Setting validation errors:', errors); // Debug log
-        return;
-      }
-
-      setCsvData(csvRows);
-      console.log('CSV data set:', csvRows); // Debug log
-      
-      // Initialize batch info
-      const batchId = generateBatchId();
-      setBatchInfo({
-        batch_id: batchId,
-        created_at: new Date().toISOString(),
-        total_rows: csvRows.length,
-        processed_rows: 0,
-        success_count: 0,
-        error_count: 0
+      updateEntryStatus(entry.id, 'processing', undefined, undefined, {
+        step: 'Fetching API Key',
+        description: 'Authenticating with server...'
       });
 
-      // Initialize processed rows
-      const initialProcessedRows: ProcessedRow[] = csvRows.map((row, index) => ({
-        ...row,
-        id: `row_${index}`,
-        status: 'pending',
-        retry_count: 0
-      }));
-      setProcessedRows(initialProcessedRows);
-
-      setUploadStatus('idle');
-      setMessage(`CSV file validated successfully! Found ${csvRows.length} valid entries.`);
-      console.log('CSV processing completed successfully'); // Debug log
-
-    } catch (error) {
-      console.error('Error processing CSV:', error);
-      setUploadStatus('error');
-      setMessage(`Error processing CSV file: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setValidationErrors([error instanceof Error ? error.message : 'Unknown error']);
-    }
-  };
-
-
-  const handleLocalFile = async (filePath: string): Promise<string> => {
-    try {
-      // For local development, we'll create a file input to let user select the file
-      // and convert it to a blob URL that can be used
-      return new Promise((resolve, reject) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.pdf';
-        input.onchange = (e) => {
-          const file = (e.target as HTMLInputElement).files?.[0];
-          if (file) {
-            const blobUrl = URL.createObjectURL(file);
-            resolve(blobUrl);
-          } else {
-            reject(new Error('No file selected'));
-          }
-        };
-        input.click();
-      });
-    } catch (error) {
-      console.error('Error handling local file:', error);
-      // Fallback: return the original path or empty string
-      return filePath.startsWith('http') ? filePath : '';
-    }
-  };
-
-  const processCredential = async (row: ProcessedRow): Promise<ProcessedRow> => {
-    try {
-      // Update row status to processing with animation
-      const updatedRow = { ...row, status: 'processing' as const };
-      setProcessedRows(prev => prev.map(r => r.id === row.id ? updatedRow : r));
-      
-      // Add a small delay for visual feedback
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // DEBUG: Test basic authentication first
-      const token = localStorage.getItem('access_token');
-      console.log('🔍 DEBUG: Token exists?', !!token);
-      console.log('🔍 DEBUG: Token preview:', token ? token.substring(0, 50) + '...' : 'No token');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please log in again.');
-      }
-
-      // Get API key first (exact same as single credential page)
-      console.log('🔍 DEBUG: About to call fetchApiKeys...');
+      // Get API key
       const apiKeys = await fetchApiKeys();
-      console.log('🔍 DEBUG: fetchApiKeys returned:', apiKeys);
-      
       if (!apiKeys || apiKeys.length === 0) {
         throw new Error('No API keys found. Please generate an API key first.');
       }
-      
       const apiKey = apiKeys[0].key;
-      console.log('🚀 Starting credential issuance process...');
-      console.log('🔑 Using API Key:', apiKey ? apiKey.substring(0, 20) + '...' : 'No API key');
-      console.log('🎫 Access Token:', token ? token.substring(0, 20) + '...' : 'No token');
 
-      // VALIDATION STEP 1: Validate learner using exact same function as single credential
-      const learnerVerification = await performVerificationForBulk(row.learner_id, apiKey);
-      if (!learnerVerification.success) {
-        throw new Error(learnerVerification.error);
+      // Step 1: OCR Extraction
+      updateEntryStatus(entry.id, 'processing', undefined, undefined, {
+        step: 'OCR Extraction',
+        description: 'Extracting data from certificate...'
+      });
+
+      if (!entry.certificateFile) {
+        throw new Error('Certificate file is required');
       }
-      
-      const learnerData = learnerVerification.data;
+
+      const ocrResult = await extractDataFromCertificate(entry.certificateFile, apiKey);
+      console.log('✅ OCR extraction completed:', ocrResult);
+
+      // Step 2: Learner Validation
+      updateEntryStatus(entry.id, 'processing', undefined, undefined, {
+        step: 'Learner Validation',
+        description: 'Verifying learner credentials...'
+      });
+
+      const learnerValidation = await validateLearner(entry.learnerId, apiKey);
+      if (!learnerValidation.success) {
+        throw new Error(learnerValidation.error);
+      }
+
+      const learnerData = learnerValidation.data;
       if (!learnerData.is_learner) {
-        throw new Error(`User ${row.learner_id} is not registered as a learner`);
+        throw new Error(`User ${entry.learnerId} is not registered as a learner`);
       }
 
-      console.log(`✅ Learner validated: ${learnerData.user_info.full_name}`);
+      // Step 3: Create Credential
+      updateEntryStatus(entry.id, 'processing', undefined, undefined, {
+        step: 'Creating Credential',
+        description: 'Creating credential in database...'
+      });
 
-      // VALIDATION STEP 2: Validate certificate file exists (for local paths)
-      if (!row.certificate_path.startsWith('http')) {
-        // For local paths, we'll validate that the file exists by trying to access it
-        // This is a basic check - in production, you might want more sophisticated validation
-        if (!row.certificate_path.trim()) {
-          throw new Error('Certificate path is required and cannot be empty');
-        }
-        // Additional validation could be added here for file existence
-      }
-
-      // API key already obtained above
-
-      // Parse skills
-      const skills = row.skills.split(',').map(s => s.trim()).filter(s => s);
-      if (skills.length === 0) {
-        throw new Error('At least one skill is required');
-      }
-
-      // Handle certificate file (local path or URL)
-      let certificateUrl = row.certificate_path;
-      if (!certificateUrl.startsWith('http')) {
-        // It's a local path, we need to handle it differently
-        // For now, we'll use the path as-is and let the backend handle it
-        certificateUrl = row.certificate_path;
-      }
-
-      // STEP 1: Create Credential in Database (exact copy from single credential)
-      console.log('📝 Step 1: Creating credential in database...');
-      
-      // Get learner data from verification results (same pattern as single credential)
-      const learnerUserInfo = learnerData?.user_info;
-      const learnerAddress = learnerUserInfo?.wallet_address || "0x3AF15A0035a717ddb5b4B4D727B7EE94A52Cc4e3"; // Fallback if no wallet address
+      const credentialData = {
+        credential_name: ocrResult.credential_title || ocrResult.credential_name || 'Certificate',
+        issuer_name: ocrResult.issuer_name || user?.full_name || 'Institution',
+        learner_name: ocrResult.learner_name || 'Learner',
+        issue_date: ocrResult.issued_date || new Date().toISOString().split('T')[0],
+        expiry_date: ocrResult.expiry_date || null,
+        skill_tags: ocrResult.skill_tags || [],
+        nsqf_level: ocrResult.nsqf_level || 6,
+        description: ocrResult.description || `${ocrResult.credential_title || 'Certificate'} issued by ${user?.full_name || 'Institution'}`,
+        tags: [],
+        duration: ocrResult.duration || '4 Weeks',
+        mode: ocrResult.mode || 'Online'
+      };
 
       const createPayload = {
-        credential_id: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        learner_id: entry.learnerId,
+        credential_data: credentialData,
+        metadata: {
+          learner_address: learnerData.user_info?.wallet_address || "0x3AF15A0035a717ddb5b4B4D727B7EE94A52Cc4e3",
+          completion_date: credentialData.issue_date
+        },
         vc_payload: {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
           "type": ["VerifiableCredential"],
           "credentialSubject": {
-            "learner_address": learnerAddress,
-            "name": learnerUserInfo?.full_name || "Learner Name",
-            "course": row.certificate_title,
+            "learner_address": learnerData.user_info?.wallet_address || "0x3AF15A0035a717ddb5b4B4D727B7EE94A52Cc4e3",
+            "name": ocrResult.learner_name || "Learner Name",
+            "course": credentialData.credential_name,
             "grade": "A+",
-            "completion_date": new Date().toISOString().split('T')[0],
-            "skills": skills,
-            "duration": row.duration,
-            "mode": row.mode
+            "completion_date": credentialData.issue_date,
+            "skills": credentialData.skill_tags,
+            "duration": credentialData.duration,
+            "mode": credentialData.mode
           },
           "issuer": {
-            "name": user?.full_name || 'Institution',
-            "did": "did:example:tech-university" // This should come from issuer profile
+            "name": credentialData.issuer_name,
+            "did": "did:example:tech-university"
           },
           "issuanceDate": new Date().toISOString()
         },
-        artifact_url: certificateUrl,
+        artifact_url: entry.certificateFile ? URL.createObjectURL(entry.certificateFile) : "",
         idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         credential_type: "digital-certificate"
       };
 
-      console.log('📤 Sending create credential request:', createPayload);
-
-      const createResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': apiKey
-        },
-        body: JSON.stringify(createPayload)
-      });
-
-      console.log('📡 Create credential response status:', createResponse.status);
-
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json();
-        console.error('❌ Failed to create credential:', errorData);
-        throw new Error(`Failed to create credential: ${errorData.detail || errorData.message || 'Unknown error'}`);
-      }
-
-      const createResult = await createResponse.json();
+      console.log('📤 Credential Creation Payload:', JSON.stringify(createPayload, null, 2));
+      const createResult = await createCredential(createPayload, apiKey);
       console.log('✅ Credential created successfully:', createResult);
 
-      // STEP 2: Issue on Blockchain (exact copy from single credential)
-      console.log('⛓️ Step 2: Issuing credential on blockchain...');
-
-      const issuePayload = {
-        credential_id: createResult.credential_id,
-        learner_address: learnerAddress,
-        generate_qr: true,
-        wait_for_confirmation: false
-      };
-
-      console.log('📤 Sending blockchain issue request:', issuePayload);
-
-      const issueResponse = await fetch('http://localhost:8000/api/v1/blockchain/credentials/issue', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify(issuePayload)
+      // Step 4: Issue on Blockchain
+      updateEntryStatus(entry.id, 'processing', undefined, undefined, {
+        step: 'Blockchain Issuance',
+        description: 'Deploying to blockchain...'
       });
 
-      console.log('📡 Blockchain issue response status:', issueResponse.status);
+      const learnerAddress = learnerData.user_info?.wallet_address || "0x3AF15A0035a717ddb5b4B4D727B7EE94A52Cc4e3";
+      console.log('⛓️ Blockchain Issuance Data:');
+      console.log('  - Credential ID:', createResult.credential_id);
+      console.log('  - Learner Address:', learnerAddress);
+      
+      const issueResult = await issueCredentialOnBlockchain(
+        createResult.credential_id, 
+        learnerAddress
+      );
+      console.log('✅ Blockchain issuance completed:', issueResult);
 
-      if (!issueResponse.ok) {
-        const errorData = await issueResponse.json();
-        console.error('❌ Failed to issue credential on blockchain:', errorData);
-        throw new Error(`Failed to issue credential on blockchain: ${errorData.detail || errorData.message || 'Unknown error'}`);
-      }
+      // Step 5: Overlay QR Code
+      updateEntryStatus(entry.id, 'processing', undefined, undefined, {
+        step: 'Adding QR Code',
+        description: 'Embedding QR code in certificate...'
+      });
 
-      const issueResult = await issueResponse.json();
-      console.log('✅ Credential issued on blockchain successfully:', issueResult);
+      const overlayResult = await overlayQrOnCertificate(
+        entry.certificateFile,
+        createResult.credential_id,
+        issueResult.qr_code_data,
+        apiKey
+      );
 
-      // Store successful credential details
-      const successfulCredential = {
+      // Success!
+      const finalResult = {
         ...issueResult,
-        originalRow: row,
-        learnerInfo: learnerData.user_info
-      };
-      setSuccessfulCredentials(prev => [...prev, successfulCredential]);
-
-      // Success
-      return {
-        ...row,
-        status: 'success',
-        credential_id: issueResult.credential_id
+          credential_id: createResult.credential_id,
+          certificate_url: overlayResult.certificate_url,
+        extracted_data: ocrResult,
+        learner_data: learnerData.user_info
       };
 
-    } catch (error) {
-      return {
-        ...row,
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        retry_count: row.retry_count + 1
-      };
+      updateEntryStatus(entry.id, 'success', undefined, finalResult);
+      console.log(`✅ Entry ${index + 1} completed successfully`);
+
+      } catch (error) {
+      console.error(`❌ Entry ${index + 1} failed:`, error);
+      updateEntryStatus(entry.id, 'error', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
+  // Process all credentials
   const processAllCredentials = async () => {
-    if (csvData.length === 0) return;
+    // Validate entries
+    const validEntries = entries.filter(entry => 
+      entry.learnerId.trim() && entry.certificateFile
+    );
+
+    if (validEntries.length === 0) {
+      alert('Please add at least one entry with learner ID and certificate file.');
+      return;
+    }
+
+    if (validEntries.length !== entries.length) {
+      alert('Please fill in all learner IDs and upload all certificate files.');
+      return;
+    }
 
     setIsProcessing(true);
-    setUploadStatus('processing');
-    setMessage('Processing credentials...');
+    setShowResults(true);
+    setProcessingComplete(false);
 
-    // Check for duplicate learner IDs in the CSV
-    const learnerIds = csvData.map(row => row.learner_id);
-    const duplicateLearners = learnerIds.filter((id, index) => learnerIds.indexOf(id) !== index);
-    
-    if (duplicateLearners.length > 0) {
-      console.warn('⚠️ Duplicate learner IDs found:', duplicateLearners);
-      // We'll still process but warn the user
-    }
+    // Reset all entry statuses
+    setEntries(prev => prev.map(entry => ({ ...entry, status: 'pending', error: undefined, result: undefined })));
 
-    // Process credentials in batches of 3 to avoid overwhelming the server and ensure better error handling
-    const batchSize = 3;
-    const batches: CSVRow[][] = [];
-    for (let i = 0; i < csvData.length; i += batchSize) {
-      batches.push(csvData.slice(i, i + batchSize));
-    }
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const batch of batches) {
-      const promises = batch.map(async (_, index) => {
-        const rowIndex = batches.indexOf(batch) * batchSize + index;
-        const row = processedRows[rowIndex];
-        if (!row) return;
-
-        const result = await processCredential(row);
-        
-        setProcessedRows(prev => prev.map(r => r.id === row.id ? result : r));
-        
-        if (result.status === 'success') {
-          successCount++;
-        } else {
-          errorCount++;
-        }
-
-        // Update batch info
-        setBatchInfo(prev => prev ? {
-          ...prev,
-          processed_rows: prev.processed_rows + 1,
-          success_count: successCount,
-          error_count: errorCount
-        } : null);
-      });
-
-      await Promise.all(promises);
+    // Process entries sequentially
+    for (let i = 0; i < validEntries.length; i++) {
+      const entry = validEntries[i];
+      await processCredentialEntry(entry, i);
+      
+      // Add a small delay between entries for better UX
+      if (i < validEntries.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
     setIsProcessing(false);
-    setUploadStatus('completed');
-    setMessage(`Bulk processing completed! Success: ${successCount}, Errors: ${errorCount}`);
+    setProcessingComplete(true);
   };
 
-  const retryFailedCredentials = async () => {
-    const failedRows = processedRows.filter(row => row.status === 'error');
-    if (failedRows.length === 0) return;
+  // Reset form
+  const resetForm = () => {
+    setEntries([{ id: '1', learnerId: '', certificateFile: null, status: 'pending' }]);
+    setIsProcessing(false);
+    setShowResults(false);
+    setProcessingComplete(false);
+  };
 
-    setIsProcessing(true);
-    setUploadStatus('processing');
+  // Edit entry
+  const startEditingEntry = (entryId: string) => {
+    setEntries(prev => prev.map(entry => 
+      entry.id === entryId 
+        ? { ...entry, isEditing: true }
+        : entry
+    ));
+  };
 
-    for (const row of failedRows) {
-      const result = await processCredential(row);
-      setProcessedRows(prev => prev.map(r => r.id === row.id ? result : r));
+  // Cancel editing
+  const cancelEditingEntry = (entryId: string) => {
+    setEntries(prev => prev.map(entry => 
+      entry.id === entryId 
+        ? { ...entry, isEditing: false }
+        : entry
+    ));
+  };
+
+  // Save edited entry
+  const saveEditedEntry = (entryId: string, updatedData: Partial<CredentialEntry>) => {
+    setEntries(prev => prev.map(entry => 
+      entry.id === entryId 
+        ? { 
+            ...entry, 
+            ...updatedData, 
+            isEditing: false,
+            status: 'pending',
+            error: undefined,
+            result: undefined,
+            progress: undefined
+          }
+        : entry
+    ));
+  };
+
+  // Retry failed entry
+  const retryEntry = async (entryId: string) => {
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    // Find the entry index
+    const entryIndex = entries.findIndex(e => e.id === entryId);
+    if (entryIndex === -1) return;
+
+    // Reset entry status and process
+    setEntries(prev => prev.map(e => 
+      e.id === entryId 
+        ? { 
+            ...e, 
+            status: 'processing', 
+            error: undefined, 
+            result: undefined,
+            progress: { step: 'Preparing', description: 'Starting retry...' }
+          }
+        : e
+    ));
+
+    try {
+      await processCredentialEntry(entry, entryIndex);
+    } catch (error) {
+      console.error('Error retrying entry:', error);
     }
-
-    setIsProcessing(false);
-    setUploadStatus('completed');
   };
 
-  const startEditingRow = (row: ProcessedRow) => {
-    setEditingRow(row.id);
-    setEditingData({ ...row });
-  };
-
-  const cancelEditing = () => {
-    setEditingRow(null);
-    setEditingData(null);
-  };
-
-  const saveEditedRow = async () => {
-    if (!editingData) return;
-
-    // Update the row data
-    setProcessedRows(prev => prev.map(r => r.id === editingData.id ? editingData : r));
-    
-    // Process the edited row
-    setIsProcessing(true);
-    const result = await processCredential(editingData);
-    setProcessedRows(prev => prev.map(r => r.id === editingData.id ? result : r));
-    
-    setEditingRow(null);
-    setEditingData(null);
-    setIsProcessing(false);
-  };
-
-  const handleEditFieldChange = (field: keyof ProcessedRow, value: string) => {
-    if (!editingData) return;
-    setEditingData({ ...editingData, [field]: value });
-  };
-
-  const downloadCsvTemplate = () => {
-    // Use placeholder learner IDs that need to be replaced with actual learner IDs
-    const template = "learner_id,certificate_title,mode,duration,skills,certificate_path\nREPLACE_WITH_VALID_LEARNER_ID,Python Programming,Online,4 Weeks,Python,Django,C:/Users/username/Documents/certificates/python-programming.pdf\nREPLACE_WITH_VALID_LEARNER_ID,React Development,Online,6 Weeks,React,JavaScript,HTML,CSS,C:/Users/username/Documents/certificates/react-development.pdf";
-    const blob = new Blob([template], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bulk_credentials_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: CredentialEntry['status']) => {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'error':
         return <XCircle className="w-5 h-5 text-red-600" />;
       case 'processing':
@@ -621,7 +647,7 @@ export default function BulkCredentialsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: CredentialEntry['status']) => {
     switch (status) {
       case 'success':
         return 'bg-green-50 border-green-200';
@@ -634,494 +660,314 @@ export default function BulkCredentialsPage() {
     }
   };
 
+  const successCount = entries.filter(entry => entry.status === 'success').length;
+  const errorCount = entries.filter(entry => entry.status === 'error').length;
+
   return (
     <RoleGuard allowedPath="/dashboard/institution/bulk-credentials" requiredRole="issuer">
-      <DashboardLayout title="Issue Bulk Credentials">
-        <div className="w-full p-4 sm:p-6">
+      <DashboardLayout title="Bulk Credential Issuer">
+        <div className="w-full p-4 sm:p-8">
+          <div className="bg-white rounded-lg p-8">
+            
           {/* Header */}
           <div className="mb-8">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Issue Bulk Credentials</h1>
-              <p className="text-gray-600 mt-2 text-sm sm:text-base">
-                Upload a CSV file to issue multiple digital credentials at once.
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Bulk Credential Issuer</h1>
+              <p className="text-gray-600">
+                Add multiple credential entries and issue them all at once with automated processing.
               </p>
-            </div>
           </div>
 
-          {/* Processing Status - Show when processing */}
-          {uploadStatus === 'processing' && batchInfo && (
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 mb-6">
+            {/* Form Section */}
+            {!showResults && (
+              <div className="space-y-6">
+                {/* Entries */}
+                {entries.map((entry, index) => (
+                  <div key={entry.id} className="border border-gray-200 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-                  <h3 className="text-lg font-semibold text-gray-900">Processing Credentials</h3>
-                </div>
-                <span className="text-sm text-gray-500">Batch ID: {batchInfo.batch_id}</span>
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Progress: {batchInfo.processed_rows} / {batchInfo.total_rows}</span>
-                  <span>{Math.round((batchInfo.processed_rows / batchInfo.total_rows) * 100)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-4 rounded-full transition-all duration-500 ease-out relative"
-                    style={{ width: `${(batchInfo.processed_rows / batchInfo.total_rows) * 100}%` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{batchInfo.success_count}</div>
-                  <div className="text-sm text-green-700">Success</div>
-                </div>
-                <div className="text-center p-3 bg-red-50 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600">{batchInfo.error_count}</div>
-                  <div className="text-sm text-red-700">Errors</div>
-                </div>
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{batchInfo.total_rows - batchInfo.processed_rows}</div>
-                  <div className="text-sm text-blue-700">Remaining</div>
-                </div>
-              </div>
-
-              {/* Current Processing Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                  <span className="text-sm text-blue-800">
-                    Processing entries one by one... Please wait while we issue your credentials.
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Results - Show when completed */}
-          {uploadStatus === 'completed' && batchInfo && (
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Processing Complete</h3>
-                <span className="text-sm text-gray-500">Batch ID: {batchInfo.batch_id}</span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{batchInfo.success_count}</div>
-                  <div className="text-sm text-gray-600">Credentials Issued Successfully</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600">{batchInfo.error_count}</div>
-                  <div className="text-sm text-gray-600">Failed</div>
-                </div>
-              </div>
-
-              {batchInfo.error_count > 0 && (
-                <div className="mt-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <User className="w-5 h-5 mr-2" />
+                        Entry #{index + 1}
+                      </h3>
+                      {entries.length > 1 && (
                   <button
-                    onClick={retryFailedCredentials}
-                    className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
-                  >
-                    Retry Failed Credentials ({batchInfo.error_count})
+                          onClick={() => removeEntry(entry.id)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                        >
+                          <Trash2 className="w-5 h-5" />
                   </button>
-                </div>
               )}
             </div>
-          )}
 
-          {/* CSV Upload Section - Only show when no file uploaded */}
-          {!csvFile && uploadStatus === 'idle' && (
-            <div className="bg-white shadow-md rounded-lg border border-gray-200 p-8 mb-8">
-              <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center hover:border-blue-400 transition-colors"
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-              >
-                <UploadCloud className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-lg text-gray-600 mb-2">
-                  Drag and drop your CSV file here, or
-                </p>
-                <label htmlFor="file-upload" className="relative cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors">
-                  <span>Browse files</span>
-                  <input id="file-upload" name="file-upload" type="file" accept=".csv" className="sr-only" onChange={handleFileChange} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Learner ID */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Learner ID *
                 </label>
-                <p className="text-sm text-gray-500 mt-4">Only CSV files are supported</p>
+                        <input
+                          type="text"
+                          value={entry.learnerId}
+                          onChange={(e) => updateLearnerId(entry.id, e.target.value)}
+                          placeholder="Enter learner ID"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
               </div>
 
-              <div className="mt-6 text-center">
-                <button
-                  onClick={downloadCsvTemplate}
-                  className="text-blue-600 hover:text-blue-800 underline text-sm"
-                >
-                  Download CSV Template
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Validation Errors */}
-          {validationErrors.length > 0 && (
-            <div className="bg-white shadow-md rounded-lg border border-red-200 p-6 mb-8">
-              <div className="flex items-center mb-4">
-                <AlertTriangle className="h-6 w-6 text-red-600 mr-3" />
-                <h3 className="text-lg font-semibold text-red-800">CSV Validation Failed</h3>
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => {
-                    setCsvFile(null);
-                    setCsvData([]);
-                    setProcessedRows([]);
-                    setBatchInfo(null);
-                    setUploadStatus('idle');
-                    setMessage('');
-                    setValidationErrors([]);
-                  }}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-                >
-                  Upload Different File
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Success Message */}
-          {uploadStatus === 'idle' && csvData.length > 0 && (
-            <div className="bg-white shadow-md rounded-lg border border-green-200 p-6 mb-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-green-800">CSV File Validated Successfully</h3>
-                    <p className="text-sm text-green-600">Found {csvData.length} valid entries ready for processing</p>
+                      {/* Certificate Upload */}
+                <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Certificate File *
+                  </label>
+                        <div className="relative">
+                  <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => updateCertificateFile(entry.id, e.target.files?.[0] || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                          {entry.certificateFile && (
+                            <div className="mt-2 flex items-center text-sm text-green-600">
+                              <FileText className="w-4 h-4 mr-1" />
+                              {entry.certificateFile.name}
                   </div>
-                </div>
+                )}
+              </div>
+            </div>
+              </div>
+              </div>
+                ))}
+
+                {/* Add Entry Button */}
+                <div className="flex justify-center">
+                <button
+                    onClick={addEntry}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add Another Entry
+                </button>
+              </div>
+
+                {/* Issue Credentials Button */}
+                <div className="flex justify-center pt-6">
                 <button
                   onClick={processAllCredentials}
-                  disabled={isProcessing}
-                  className={`px-6 py-2 rounded-lg font-medium transition ${
-                    isProcessing
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                  }`}
-                >
-                  {isProcessing ? 'Processing...' : 'Issue Credentials'}
+                    className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-lg"
+                  >
+                    Issue All Credentials
                 </button>
               </div>
             </div>
           )}
 
-
-          {/* Processing Errors - Only show when there are errors */}
-          {processedRows.some(row => row.status === 'error') && (
-            <div className="bg-white shadow-md rounded-lg border border-red-200 p-6 mb-8">
+            {/* Processing/Results Section */}
+            {showResults && (
+              <div className="space-y-6">
+                {/* Summary */}
+                <div className="bg-gray-50 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-red-800">Processing Errors</h3>
-                <div className="flex space-x-2">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      {isProcessing ? 'Processing Credentials...' : 'Processing Complete'}
+                    </h2>
+                    {processingComplete && (
                   <button
-                    onClick={retryFailedCredentials}
-                    disabled={isProcessing}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2 inline" />
-                    Retry All Failed ({processedRows.filter(row => row.status === 'error').length})
+                        onClick={resetForm}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Issue More Credentials
                   </button>
-                </div>
+                    )}
               </div>
 
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {processedRows.filter(row => row.status === 'error').map((row) => (
-                  <div key={row.id} className="p-4 border border-red-200 bg-red-50 rounded-lg">
-                    {editingRow === row.id ? (
-                      /* Edit Mode */
-                      <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{entries.length}</div>
+                      <div className="text-sm text-gray-600">Total Entries</div>
+                          </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{successCount}</div>
+                      <div className="text-sm text-gray-600">Issued</div>
+                        </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">{errorCount}</div>
+                      <div className="text-sm text-gray-600">Failed</div>
+                          </div>
+                          </div>
+                          </div>
+
+                {/* Progress Bar */}
+                {isProcessing && (
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${((successCount + errorCount) / entries.length) * 100}%` 
+                      }}
+                            />
+                          </div>
+                )}
+
+                {/* Entries Status */}
+                <div className="space-y-4">
+                  {entries.map((entry, index) => (
+                    <div 
+                      key={entry.id} 
+                      className={`border rounded-lg p-6 transition-all duration-500 ${getStatusColor(entry.status)}`}
+                    >
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-gray-900">Edit Entry</h4>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={cancelEditing}
-                              className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 transition"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={saveEditedRow}
-                              disabled={isProcessing}
-                              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition disabled:opacity-50"
-                            >
-                              {isProcessing ? 'Processing...' : 'Save & Retry'}
-                            </button>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Learner ID</label>
-                            <input
-                              type="text"
-                              value={editingData?.learner_id || ''}
-                              onChange={(e) => handleEditFieldChange('learner_id', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Title</label>
-                            <input
-                              type="text"
-                              value={editingData?.certificate_title || ''}
-                              onChange={(e) => handleEditFieldChange('certificate_title', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Mode</label>
-                            <input
-                              type="text"
-                              value={editingData?.mode || ''}
-                              onChange={(e) => handleEditFieldChange('mode', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                            <input
-                              type="text"
-                              value={editingData?.duration || ''}
-                              onChange={(e) => handleEditFieldChange('duration', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Skills</label>
-                            <input
-                              type="text"
-                              value={editingData?.skills || ''}
-                              onChange={(e) => handleEditFieldChange('skills', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="e.g., Python,Django,Flask"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Path</label>
-                            <input
-                              type="text"
-                              value={editingData?.certificate_path || ''}
-                              onChange={(e) => handleEditFieldChange('certificate_path', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                              placeholder="e.g., C:/path/to/certificate.pdf"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="p-3 bg-red-100 border border-red-200 rounded-md">
-                          <div className="text-sm text-red-800">
-                            <strong>Original Error:</strong> {row.error}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* View Mode */
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
                             <div className="flex items-center space-x-3">
-                              <XCircle className="w-5 h-5 text-red-600" />
+                          {getStatusIcon(entry.status)}
                               <div>
-                                <div className="font-medium text-gray-900">
-                                  {row.certificate_title}
-                                </div>
-                                <div className="text-sm text-gray-600">
-                                  Learner ID: {row.learner_id}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="mt-3 p-3 bg-red-100 border border-red-200 rounded-md">
-                              <div className="text-sm text-red-800">
-                                <strong>Error:</strong> {row.error}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right ml-4">
-                            <div className="text-sm font-medium text-red-600 mb-2">
-                              Error
-                            </div>
-                            {row.retry_count > 0 && (
-                              <div className="text-xs text-gray-500 mb-2">
-                                Retries: {row.retry_count}
-                              </div>
+                            <h3 className="font-medium text-gray-900">
+                              Entry #{index + 1} - {entry.learnerId}
+                            </h3>
+                            {entry.certificateFile && (
+                              <p className="text-sm text-gray-600">
+                                {entry.certificateFile.name}
+                              </p>
                             )}
+                            {entry.progress && entry.status === 'processing' && (
+                              <div className="mt-2">
+                                <p className="text-sm font-medium text-blue-900">
+                                  {entry.progress.step}
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  {entry.progress.description}
+                                </p>
+                                </div>
+                    )}
+                            {entry.error && (
+                              <p className="text-sm text-red-700 mt-1">
+                                {entry.error}
+                              </p>
+                            )}
+                                </div>
+                              </div>
+
+                      {/* Edit/Retry Section for Failed Entries */}
+                      {entry.status === 'error' && (
+                        <div className="mt-4">
+                          {entry.isEditing ? (
+                            <EditEntryComponent
+                              entry={entry}
+                              onSave={(data) => saveEditedEntry(entry.id, data)}
+                              onCancel={() => cancelEditingEntry(entry.id)}
+                            />
+                          ) : (
+                            <div className="flex space-x-3">
                             <button
-                              onClick={() => startEditingRow(row)}
-                              disabled={isProcessing}
-                              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
-                            >
-                              <Edit3 className="w-3 h-3 mr-1 inline" />
-                              Edit & Retry
+                                onClick={() => startEditingEntry(entry.id)}
+                                className="flex items-center px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition-colors"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Details
+                              </button>
+                              <button
+                                onClick={() => retryEntry(entry.id)}
+                                className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Retry
                             </button>
-                          </div>
-                        </div>
                       </div>
                     )}
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 
-          {/* Successful Credentials - Show when there are successful entries */}
-          {successfulCredentials.length > 0 && (
-            <div className="bg-white shadow-md rounded-lg border border-green-200 p-6 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-green-800">Successfully Issued Credentials</h3>
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                  {successfulCredentials.length} Credential{successfulCredentials.length > 1 ? 's' : ''}
+                        <div className="text-right">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            entry.status === 'success' 
+                              ? 'bg-green-100 text-green-800'
+                              : entry.status === 'error'
+                              ? 'bg-red-100 text-red-800'
+                              : entry.status === 'processing'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {entry.status === 'success' && 'Issued'}
+                            {entry.status === 'error' && 'Failed'}
+                            {entry.status === 'processing' && 'Processing...'}
+                            {entry.status === 'pending' && 'Pending'}
                 </span>
+                            </div>
               </div>
 
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {successfulCredentials.map((credential, index) => (
-                  <div key={index} className="p-4 border border-green-200 bg-green-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {credential.originalRow.certificate_title}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              Learner: {credential.learnerInfo.full_name} ({credential.originalRow.learner_id})
-                            </div>
-                          </div>
+                      {/* Success Details */}
+                      {entry.status === 'success' && entry.result && (
+                        <div className="mt-4 p-4 bg-green-100 rounded-lg">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-green-900">Credential Details</h4>
+                            {/* View Certificate Button */}
+                            {entry.result.certificate_url && (
+                            <button
+                                onClick={() => window.open(entry.result.certificate_url, '_blank')}
+                                className="flex items-center px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                                <FileText className="w-4 h-4 mr-2" />
+                                View Certificate
+                            </button>
+                    )}
                         </div>
                         
-                        {/* Credential Details */}
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Credential ID</label>
-                            <p className="text-xs text-gray-900 font-mono bg-white p-2 rounded border break-all">
-                              {credential.credential_id}
+                              <span className="font-medium">Credential ID:</span>
+                              <p className="text-green-800 font-mono break-all">
+                                {entry.result.credential_id}
                             </p>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Blockchain Hash</label>
-                            <p className="text-xs text-gray-900 font-mono bg-white p-2 rounded border break-all">
-                              {credential.credential_hash || 'N/A'}
+                              <span className="font-medium">Blockchain Hash:</span>
+                              <p className="text-green-800 font-mono break-all">
+                                {entry.result.credential_hash || 'N/A'}
                             </p>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {credential.status || 'Issued'}
-                            </span>
+                              <span className="font-medium">Status:</span>
+                              <p className="text-green-800 font-semibold">Issued Successfully</p>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">Issued At</label>
-                            <p className="text-xs text-gray-900 bg-white p-2 rounded border">
-                              {new Date().toLocaleString()}
+                              <span className="font-medium">Certificate:</span>
+                              <p className="text-green-800">
+                                {entry.result.certificate_url ? 'Available with QR Code' : 'Not Available'}
                             </p>
                           </div>
                         </div>
 
-                        {/* QR Code if available */}
-                        {credential.qr_code_data?.qr_code_image && (
-                          <div className="mt-3">
-                            <label className="block text-xs font-medium text-gray-700 mb-1">QR Code</label>
-                            <div className="flex items-center space-x-3">
-                              <div className="bg-white p-2 rounded border">
+                          {/* QR Code */}
+                          {entry.result.qr_code_data?.qr_code_image && (
+                            <div className="mt-4 p-3 bg-white rounded-lg border">
+                              <h5 className="font-medium text-green-900 mb-2">Verification QR Code</h5>
+                              <div className="flex items-center space-x-4">
                                 <img
-                                  src={`data:image/png;base64,${credential.qr_code_data.qr_code_image}`}
-                                  alt="Credential QR Code"
-                                  className="w-16 h-16"
+                                  src={`data:image/png;base64,${entry.result.qr_code_data.qr_code_image}`}
+                                  alt="QR Code"
+                                  className="w-16 h-16 border rounded"
                                 />
-                              </div>
-                              {credential.qr_code_data.verification_url && (
-                                <div>
+                                <div className="flex-1">
+                                  <p className="text-sm text-green-800 mb-2">
+                                    Scan this QR code to verify the credential
+                                  </p>
+                                  {entry.result.qr_code_data.verification_url && (
                                   <button
-                                    onClick={() => window.open(credential.qr_code_data.verification_url, '_blank')}
-                                    className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
-                                  >
-                                    View Certificate
+                                      onClick={() => window.open(entry.result.qr_code_data.verification_url, '_blank')}
+                                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                                    >
+                                      Verify Online
                                   </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
                       </div>
-                    </div>
+                      )}
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* CSV Template and Instructions - Only show when no file uploaded */}
-          {!csvFile && uploadStatus === 'idle' && (
-            <div className="bg-white shadow-md rounded-lg border border-gray-200 p-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">CSV Template & Instructions</h3>
-              <p className="text-gray-600 mb-4">
-                To ensure a successful bulk upload, please use the provided CSV template and follow these guidelines:
-              </p>
-              <button
-                onClick={downloadCsvTemplate}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <Download className="-ml-1 mr-2 h-5 w-5" />
-                Download CSV Template
-              </button>
-              
-              <div className="mt-6 space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Required Columns:</h4>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <code className="text-sm text-gray-800">learner_id, certificate_title, mode, duration, skills, certificate_path</code>
                   </div>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Column Descriptions:</h4>
-                  <ul className="text-sm text-gray-700 space-y-2">
-                    <li><span className="font-semibold">learner_id:</span> The unique identifier for a VALID LEARNER (must be registered as a learner in the system)</li>
-                    <li><span className="font-semibold">certificate_title:</span> The title of the certificate (e.g., "Python Programming")</li>
-                    <li><span className="font-semibold">mode:</span> Delivery mode (Online, Offline, or Hybrid)</li>
-                    <li><span className="font-semibold">duration:</span> Course duration (e.g., "4 Weeks", "6 Months")</li>
-                    <li><span className="font-semibold">skills:</span> Comma-separated list of skills (e.g., "Python,Django,Flask")</li>
-                    <li><span className="font-semibold">certificate_path:</span> Local file path to the certificate PDF template (e.g., "C:/Users/username/Documents/certificates/course.pdf")</li>
-                  </ul>
-                </div>
-                
-                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
-                  <div className="flex">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-semibold text-yellow-800">Important Notes:</h4>
-                      <ul className="text-sm text-yellow-700 mt-1 space-y-1">
-                        <li>• Do not change the column headers in the template</li>
-                        <li>• All fields are required and cannot be empty</li>
-                        <li>• Skills should be comma-separated without spaces</li>
-                        <li>• Each batch gets a unique batch ID for tracking</li>
-                        <li>• Failed entries can be retried individually</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </DashboardLayout>
     </RoleGuard>
