@@ -35,8 +35,12 @@ interface Recommendation {
   title: string;
   description: string;
   nsqf_level: number;
-  skills: string;
+  sector: string;
+  skills?: string;
+  skills_covered?: string[];
+  duration: string;
   similarity_score: number;
+  match_reasons?: string[];
 }
 
 export default function RecommendationsPage() {
@@ -72,8 +76,20 @@ export default function RecommendationsPage() {
     return '#F44336'; // Red for advanced
   };
 
-  const getSkillsArray = (skills: string) => {
-    return skills.split(';').slice(0, 3); // Show only first 3 skills
+  const getSkillsArray = (skills: string | string[] | undefined | null) => {
+    if (!skills) return [];
+    
+    // If it's already an array, return first 3
+    if (Array.isArray(skills)) {
+      return skills.slice(0, 3);
+    }
+    
+    // If it's a string, split and return first 3
+    if (typeof skills === 'string') {
+      return skills.split(';').slice(0, 3);
+    }
+    
+    return [];
   };
 
   return (
@@ -268,7 +284,7 @@ export default function RecommendationsPage() {
 
                       {/* Description */}
                       <Typography variant="body2" color="text.secondary" sx={{ 
-                        mb: 3, 
+                        mb: 2, 
                         lineHeight: 1.6,
                         display: '-webkit-box',
                         WebkitLineClamp: 3,
@@ -278,13 +294,33 @@ export default function RecommendationsPage() {
                         {rec.description}
                       </Typography>
 
+                      {/* Course Details */}
+                      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                        {rec.duration && (
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            <Clock size={14} />
+                            <Typography variant="caption" color="text.secondary">
+                              {rec.duration}
+                            </Typography>
+                          </Stack>
+                        )}
+                        {rec.sector && (
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            <BookOpen size={14} />
+                            <Typography variant="caption" color="text.secondary">
+                              {rec.sector}
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Stack>
+
                       {/* Skills */}
                       <Box sx={{ mb: 3 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
                           Key Skills
                         </Typography>
                         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          {getSkillsArray(rec.skills).map((skill, skillIndex) => (
+                          {getSkillsArray(rec.skills_covered || rec.skills).map((skill, skillIndex) => (
                             <Chip
                               key={skillIndex}
                               label={skill.trim()}
@@ -297,14 +333,17 @@ export default function RecommendationsPage() {
                               }}
                             />
                           ))}
-                          {rec.skills.split(';').length > 3 && (
-                            <Chip
-                              label={`+${rec.skills.split(';').length - 3} more`}
-                              size="small"
-                              variant="outlined"
-                              color="secondary"
-                            />
-                          )}
+                          {(() => {
+                            const skills = rec.skills_covered || (rec.skills ? rec.skills.split(';') : []);
+                            return skills.length > 3 && (
+                              <Chip
+                                label={`+${skills.length - 3} more`}
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                              />
+                            );
+                          })()}
                         </Stack>
                       </Box>
 
