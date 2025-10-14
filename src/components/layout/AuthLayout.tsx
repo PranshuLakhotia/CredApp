@@ -3,7 +3,6 @@
 import React from 'react';
 import { Box, Container, Grid, Paper, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -28,7 +27,7 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
     >
       <Container maxWidth="lg">
         <Grid container spacing={4} alignItems="center" justifyContent="center">
-          {/* Left side - Illustration (hidden on mobile) */}
+          {/* Left side -Illustration (hidden on mobile) */}
           {!isMobile && (
             <Grid item xs={12} md={6}>
               <motion.div
@@ -39,7 +38,13 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
                 <Box
                   sx={{
                     display: 'flex',
-                  {/* Illustration */}
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  }}
+                >
+                  {/*Illustration */}
                   {illustration && (
                     <Box
                       sx={{
@@ -62,7 +67,6 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
                           ease: 'easeInOut',
                         }}
                       >
-                        {/* Placeholder for illustration - you can replace with actual images */}
                         <Box
                           sx={{
                             width: 280,
@@ -84,7 +88,7 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
                     </Box>
                   )}
 
-                  <Typography variant="body1" sx={{ opacity: 0.8, maxWidth: 400 }}>
+                  <Typography variant="body1" sx={{ opacity: 0.8, maxWidth: 400, color: 'white', textAlign: 'center' }}>
                     Securely manage and verify your digital credentials with our comprehensive platform.
                   </Typography>
                 </Box>
@@ -92,7 +96,7 @@ export default function AuthLayout({ children, title, subtitle, illustration }: 
             </Grid>
           )}
 
-          {/* Right side - Form */}
+          {/* Right side -Form */}
           <Grid item xs={12} md={6}>
             <motion.div
               initial={{ opacity: 0, x: 50 }}
