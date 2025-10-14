@@ -39,6 +39,33 @@ import {
   Download,
 } from '@mui/icons-material';
 import LearnerService, { LearnerCredential } from '@/services/learner.service';
+import { Line, Doughnut } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  ArcElement,
+} from 'chart.js';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  ArcElement
+);
+
 
 // --- STATS placeholders; values computed from API ---
 const baseStats = [
@@ -56,93 +83,179 @@ const categories = [
   { label: 'Others', color: '#94a3b8' },
 ];
 
-// --- SVG CHART COMPONENTS (kept minimal) ---
+// Profile impressions data
+const impressionsData = [
+  { time: "0:00", impressions: 160 },
+  { time: "2:00", impressions: 140 },
+  { time: "4:00", impressions: 180 },
+  { time: "6:00", impressions: 120 },
+  { time: "8:00", impressions: 115 },
+  { time: "10:00", impressions: 140 },
+  { time: "12:00", impressions: 100 },
+  { time: "14:00", impressions: 110 },
+  { time: "16:00", impressions: 90 },
+];
 
-const LineChart = () => (
-  <Box sx={{ position: 'relative', height: 240, mt: 3 }}>
-    <Box sx={{ position: 'absolute', top: 0, left: 0 }}>
-      <Typography variant="body2" color="text.secondary" mb={0.5}>
-        Total number of profile impressions
-      </Typography>
-      <Typography variant="h3" fontWeight={700} color="#1e293b">
-        1,235
-      </Typography>
+// --- LINE CHART COMPONENT using Chart.js ---
+const LineChart = () => {
+  const chartData = {
+    labels: impressionsData.map(d => d.time),
+    datasets: [
+      {
+        label: 'Profile Impressions',
+        data: impressionsData.map(d => d.impressions),
+        fill: true,
+        backgroundColor: (context: any) => {
+          const ctx = context.chart.ctx;
+          const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+          gradient.addColorStop(0, 'rgba(124, 77, 255, 0.15)');
+          gradient.addColorStop(1, 'rgba(124, 77, 255, 0)');
+          return gradient;
+        },
+        borderColor: '#7c4dff',
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: '#7c4dff',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 7,
+        pointHoverBackgroundColor: '#7c4dff',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 3,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#7c4dff',
+        borderWidth: 1,
+        displayColors: false,
+        callbacks: {
+          label: function(context: any) {
+            return `Impressions: ${context.parsed.y}`;
+          }
+        }
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.05)',
+        },
+        ticks: {
+          color: '#64748b',
+          font: {
+            size: 11,
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.05)',
+        },
+        ticks: {
+          color: '#64748b',
+          font: {
+            size: 11,
+          },
+        },
+      },
+    },
+  };
+
+  return (
+    <Box sx={{ position: 'relative', height: 240, mt: 3 }}>
+      <Line data={chartData} options={options} />
     </Box>
-    <svg width="100%" height="100%" viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7c4dff" stopOpacity={0.15} />
-          <stop offset="100%" stopColor="#7c4dff" stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      {/* Vertical Grid Lines */}
-      {[0, 100, 200, 300, 400, 500, 600].map(x => (
-        <line key={x} x1={x} y1="40" x2={x} y2="200" stroke="#e5e7eb" strokeWidth="1" opacity="0.3" />
-      ))}
-      {/* Area + Line */}
-      <path d="M 0 160 L 80 140 L 160 180 L 240 120 L 320 115 L 400 140 L 480 100 L 560 110 L 600 90 V 240 H 0 Z" fill="url(#lineGradient)" />
-      <path d="M 0 160 L 80 140 L 160 180 L 240 120 L 320 115 L 400 140 L 480 100 L 560 110 L 600 90" stroke="#7c4dff" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Data Points */}
-      {[
-        { x: 240, y: 120 },
-        { x: 400, y: 140 },
-        { x: 480, y: 100 },
-        { x: 600, y: 90 },
-      ].map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="5" fill="#7c4dff" stroke="white" strokeWidth="2" />
-      ))}
-    </svg>
-    <Box sx={{ position: 'absolute', bottom: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-      <Typography variant="caption" color="text.secondary">29 July 00:00</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-        <Typography variant="h6" fontWeight={700} color="#1e293b">2321.0</Typography>
-        <Chip label="+3.4%" size="small" sx={{ bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 600, height: 20, fontSize: '0.7rem' }} />
+  );
+};
+
+// --- DONUT CHART COMPONENT using Chart.js ---
+const DonutChart = () => {
+  const chartData = {
+    labels: [
+      "Co-curricular",
+      "Performing Arts",
+      "Other",
+      "Academics",
+      "Technical",
+    ],
+    datasets: [
+      {
+        label: "Certificates",
+        data: [15, 12, 8, 10, 3],
+        backgroundColor: [
+          "#8b5cf6", // purple
+          "#ec4899", // pink
+          "#06b6d4", // cyan
+          "#f59e0b", // orange
+          "#10b981", // green
+        ],
+        borderColor: "#ffffff",
+        borderWidth: 3,
+        hoverOffset: 10,
+        hoverBorderWidth: 4,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: true,
+    cutout: '70%',
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#7c4dff',
+        borderWidth: 1,
+        displayColors: true,
+        callbacks: {
+          label: function(context: any) {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: ${value} (${percentage}%)`;
+          }
+        }
+      },
+    },
+  };
+
+  const totalCertificates = chartData.datasets[0].data.reduce((a, b) => a + b, 0);
+
+  return (
+    <Box sx={{ position: 'relative', width: 200, height: 200, mx: 'auto', my: 2 }}>
+      <Doughnut data={chartData} options={options} />
+      <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
+        <Typography variant="h3" fontWeight={700} color="#1e293b">{totalCertificates}</Typography>
+        <Typography variant="caption" color="text.secondary">In total</Typography>
       </Box>
     </Box>
-  </Box>
-);
+  );
+};
 
-const DonutChart = () => (
-  <Box sx={{ position: 'relative', width: 200, height: 200, mx: 'auto', my: 2 }}>
-    <svg width="100%" height="100%" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#f0f0f0" strokeWidth="14" />
-      {/* Purple segment */}
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#8b5cf6" strokeWidth="14" strokeDasharray="220" strokeDashoffset="55" strokeLinecap="round" transform="rotate(-90 50 50)" />
-      {/* Pink segment */}
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#ec4899" strokeWidth="14" strokeDasharray="220" strokeDashoffset="110" strokeLinecap="round" transform="rotate(90 50 50)" />
-      {/* Cyan segment */}
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#06b6d4" strokeWidth="14" strokeDasharray="220" strokeDashoffset="165" strokeLinecap="round" transform="rotate(180 50 50)" />
-      {/* Orange segment */}
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#f59e0b" strokeWidth="14" strokeDasharray="220" strokeDashoffset="192" strokeLinecap="round" transform="rotate(260 50 50)" />
-      {/* Green segment */}
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#10b981" strokeWidth="14" strokeDasharray="220" strokeDashoffset="208" strokeLinecap="round" transform="rotate(310 50 50)" />
-    </svg>
-    <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-      <Typography variant="h3" fontWeight={700} color="#1e293b">48</Typography>
-      <Typography variant="caption" color="text.secondary">In total</Typography>
-    </Box>
-    {/* Labels */}
-    <Box sx={{ position: 'absolute', top: -10, left: '20%', bgcolor: 'white', px: 1, py: 0.5, borderRadius: 1, boxShadow: 1 }}>
-      <Typography variant="caption" fontSize="0.65rem">Co-curricular</Typography>
-    </Box>
-    <Box sx={{ position: 'absolute', top: '30%', right: -20, bgcolor: 'white', px: 1, py: 0.5, borderRadius: 1, boxShadow: 1 }}>
-      <Typography variant="caption" fontSize="0.65rem">Performing Arts</Typography>
-    </Box>
-    <Box sx={{ position: 'absolute', bottom: 10, right: '15%', bgcolor: 'white', px: 1, py: 0.5, borderRadius: 1, boxShadow: 1 }}>
-      <Typography variant="caption" fontSize="0.65rem">Other</Typography>
-    </Box>
-    <Box sx={{ position: 'absolute', bottom: '25%', left: -15, bgcolor: 'white', px: 1, py: 0.5, borderRadius: 1, boxShadow: 1 }}>
-      <Typography variant="caption" fontSize="0.65rem">Academics</Typography>
-    </Box>
-    <Box sx={{ position: 'absolute', bottom: '50%', left: -10, bgcolor: 'white', px: 1, py: 0.5, borderRadius: 1, boxShadow: 1 }}>
-      <Typography variant="caption" fontSize="0.65rem">Technical</Typography>
-    </Box>
-  </Box>
-);
-
-
-
-  
 const BarChart = () => {
   const data = [
     { label: 'Python', value: 50, color: '#a5b4fc' },
@@ -561,11 +674,21 @@ export default function LearnerDashboard() {
       </Box>
 
       {/* Line Chart + Top Skills */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 3, mb: 3, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
         <Card sx={{ flex: '1 1 60%', p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Typography variant="h6" fontWeight={700} color="#1e293b">
-            Total Profile Impressions
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box>
+              <Typography variant="body2" color="text.secondary" mb={0.5}>
+                Total number of profile impressions
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h3" fontWeight={700} color="#1e293b">
+                  1,235
+                </Typography>
+                <Chip label="+3.4%" size="small" sx={{ bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 600, height: 24, fontSize: '0.75rem' }} />
+              </Box>
+            </Box>
+          </Box>
           <LineChart />
         </Card>
 

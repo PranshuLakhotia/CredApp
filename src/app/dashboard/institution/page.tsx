@@ -5,6 +5,27 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from '@/hooks/useTranslations';
+import { kycService } from '@/services/kyc.service';
+import {
+  Box,
+  Typography,
+  Stepper,
+  Step,
+  StepLabel,
+  Button,
+  TextField,
+  Paper,
+  Card,
+  Alert,
+  CircularProgress,
+  Chip,
+} from '@mui/material';
+import {
+  Business,
+  CheckCircle,
+  Warning,
+  Search,
+} from '@mui/icons-material';
 
 interface IssuedCredential {
   credential_id: string;
@@ -108,9 +129,77 @@ interface DashboardStats {
   blockchain_confirmed_rate: number;
 }
 
+interface IssuerVerificationData {
+  organization_name: string;
+  organization_type: string;
+  registration_number: string;
+  year_established: string;
+  website: string;
+  govt_id_type: string;
+  govt_id_number: string;
+  tax_id: string;
+  registration_certificate_url: string;
+  official_email: string;
+  official_phone: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  representative_name: string;
+  representative_designation: string;
+  representative_email: string;
+  representative_phone: string;
+  representative_id_proof_url: string;
+}
+
+const verificationSteps = [
+  'Organization Details',
+  'Government Documents',
+  'Contact Information',
+  'Authorized Representative'
+];
+
 export default function InstitutionDashboardPage() {
   const { user } = useAuth();
   const t = useTranslations('institution');
+  
+  // Verification states
+  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'rejected' | 'not_submitted'>('not_submitted');
+  const [activeStep, setActiveStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [gstinNumber, setGstinNumber] = useState('');
+  const [gstinVerified, setGstinVerified] = useState(false);
+  const [gstinLoading, setGstinLoading] = useState(false);
+  const [gstinError, setGstinError] = useState('');
+  const [gstinData, setGstinData] = useState<any>(null);
+  const [formData, setFormData] = useState<IssuerVerificationData>({
+    organization_name: '',
+    organization_type: '',
+    registration_number: '',
+    year_established: '',
+    website: '',
+    govt_id_type: '',
+    govt_id_number: '',
+    tax_id: '',
+    registration_certificate_url: '',
+    official_email: '',
+    official_phone: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: 'India',
+    representative_name: '',
+    representative_designation: '',
+    representative_email: '',
+    representative_phone: '',
+    representative_id_proof_url: '',
+  });
+  
+  // Dashboard states
   const [credentials, setCredentials] = useState<IssuedCredential[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total_credentials: 0,
@@ -133,6 +222,136 @@ export default function InstitutionDashboardPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // Fetch verification status on mount
+  useEffect(() => {
+    fetchVerificationStatus();
+  }, []);
+
+  // Auto-approve after 10 seconds when status is pending
+  useEffect(() => {
+    if (verificationStatus === 'pending' && user?.id) {
+      const timer = setTimeout(async () => {
+        try {
+          const response = await fetch(`http://localhost:8000/api/v1/issuer/verification/${user.id}/approve`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            },
+          });
+
+          if (response.ok) {
+            setVerificationStatus('verified');
+            alert('Verification approved! You can now access the dashboard.');
+          }
+        } catch (error) {
+          console.error('Error auto-approving verification:', error);
+        }
+      }, 10000); // 10 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [verificationStatus, user?.id]);
+
+  const fetchVerificationStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVerificationStatus(data.status);
+      }
+    } catch (error) {
+      console.error('Error fetching verification status:', error);
+    }
+  };
+
+  const handleInputChange = (field: keyof IssuerVerificationData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleNext = () => {
+    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  };
+
+  const handleSubmitVerification = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/v1/issuer/submit-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setVerificationStatus('pending');
+        alert('Verification request submitted successfully! Auto-approval will happen in 10 seconds.');
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail || 'Failed to submit verification'}`);
+      }
+    } catch (error) {
+      console.error('Error submitting verification:', error);
+      alert('Failed to submit verification request');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGSTINVerification = async () => {
+    if (!gstinNumber || gstinNumber.length !== 15) {
+      setGstinError('Please enter a valid 15-character GSTIN');
+      return;
+    }
+
+    try {
+      setGstinLoading(true);
+      setGstinError('');
+
+      const response = await kycService.searchGSTIN(gstinNumber);
+
+      if (response.code === 200 && response.data?.data) {
+        const gstData = response.data.data;
+        setGstinData(gstData);
+        setGstinVerified(true);
+
+        // Auto-fill form data from GSTIN response
+        setFormData(prev => ({
+          ...prev,
+          organization_name: gstData.lgnm || gstData.tradeNam || '',
+          tax_id: gstinNumber,
+          address_line1: gstData.pradr?.addr?.st || '',
+          address_line2: gstData.pradr?.addr?.loc || '',
+          city: gstData.pradr?.addr?.loc || '',
+          state: gstData.pradr?.addr?.stcd || '',
+          postal_code: gstData.pradr?.addr?.pncd || '',
+        }));
+
+        alert('GSTIN verified successfully! Form auto-filled with organization details.');
+      } else if (response.data?.message === 'No records found') {
+        setGstinError('No records found for this GSTIN. Please check the number.');
+      } else {
+        setGstinError('GSTIN verification failed. Please try again.');
+      }
+    } catch (error: any) {
+      setGstinError(error.message || 'Failed to verify GSTIN');
+    } finally {
+      setGstinLoading(false);
+    }
+  };
 
   // Fetch Issued Credentials
   const fetchCredentials = async (pageNum: number = 1, append: boolean = false) => {
@@ -302,13 +521,480 @@ export default function InstitutionDashboardPage() {
     }
   };
 
+  const renderStepContent = (step: number) => {
+    switch (step) {
+      case 0:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Organization Name"
+              required
+              fullWidth
+              value={formData.organization_name}
+              onChange={(e) => handleInputChange('organization_name', e.target.value)}
+              placeholder="e.g., PhysicsWallah, BYJU'S, Unacademy"
+              helperText={gstinData ? '✓ Auto-filled from GSTIN' : 'Enter your organization name'}
+              InputProps={{
+                readOnly: !!gstinData,
+                sx: gstinData ? { bgcolor: '#f0fdf4' } : {}
+              }}
+            />
+            <TextField
+              label="Organization Type"
+              required
+              fullWidth
+              select
+              SelectProps={{ native: true }}
+              value={formData.organization_type}
+              onChange={(e) => handleInputChange('organization_type', e.target.value)}
+            >
+              <option value="">Select Type</option>
+              <option value="educational_institution">Educational Institution</option>
+              <option value="university">University</option>
+              <option value="training_center">Training Center</option>
+              <option value="certification_body">Certification Body</option>
+              <option value="online_platform">Online Learning Platform</option>
+            </TextField>
+            <TextField
+              label="Registration Number"
+              required
+              fullWidth
+              value={formData.registration_number}
+              onChange={(e) => handleInputChange('registration_number', e.target.value)}
+              placeholder="Company/Trust/Society Registration Number"
+            />
+            <TextField
+              label="Year Established"
+              required
+              fullWidth
+              type="number"
+              value={formData.year_established}
+              onChange={(e) => handleInputChange('year_established', e.target.value)}
+              placeholder="e.g., 2020"
+            />
+            <TextField
+              label="Official Website"
+              required
+              fullWidth
+              type="url"
+              value={formData.website}
+              onChange={(e) => handleInputChange('website', e.target.value)}
+              placeholder="https://www.yourorganization.com"
+            />
+          </Box>
+        );
+
+      case 1:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Government ID Type"
+              required
+              fullWidth
+              select
+              SelectProps={{ native: true }}
+              value={formData.govt_id_type}
+              onChange={(e) => handleInputChange('govt_id_type', e.target.value)}
+            >
+              <option value="">Select ID Type</option>
+              <option value="pan">PAN Card</option>
+              <option value="cin">Corporate Identification Number (CIN)</option>
+              <option value="llpin">Limited Liability Partnership Identification Number (LLPIN)</option>
+              <option value="trust_registration">Trust Registration Number</option>
+            </TextField>
+            <TextField
+              label="Government ID Number"
+              required
+              fullWidth
+              value={formData.govt_id_number}
+              onChange={(e) => handleInputChange('govt_id_number', e.target.value)}
+              placeholder="Enter ID Number"
+            />
+            <TextField
+              label="Tax ID / GSTIN"
+              required
+              fullWidth
+              value={formData.tax_id}
+              onChange={(e) => handleInputChange('tax_id', e.target.value)}
+              placeholder="e.g., 29ABCDE1234F1Z5"
+              helperText={gstinData ? '✓ Verified from GSTIN' : 'Enter GSTIN or Tax ID'}
+              InputProps={{
+                readOnly: !!gstinData,
+                sx: gstinData ? { bgcolor: '#f0fdf4' } : {}
+              }}
+            />
+            <TextField
+              label="Registration Certificate URL"
+              required
+              fullWidth
+              type="url"
+              value={formData.registration_certificate_url}
+              onChange={(e) => handleInputChange('registration_certificate_url', e.target.value)}
+              placeholder="Upload to cloud and paste URL"
+              helperText="Upload your registration certificate to Google Drive/Dropbox and paste the public link"
+            />
+          </Box>
+        );
+
+      case 2:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Official Email"
+              required
+              fullWidth
+              type="email"
+              value={formData.official_email}
+              onChange={(e) => handleInputChange('official_email', e.target.value)}
+              placeholder="contact@organization.com"
+            />
+            <TextField
+              label="Official Phone"
+              required
+              fullWidth
+              value={formData.official_phone}
+              onChange={(e) => handleInputChange('official_phone', e.target.value)}
+              placeholder="+91 9876543210"
+            />
+            <TextField
+              label="Address Line 1"
+              required
+              fullWidth
+              value={formData.address_line1}
+              onChange={(e) => handleInputChange('address_line1', e.target.value)}
+              placeholder="Building No., Street Name"
+              helperText={gstinData ? '✓ Auto-filled from GSTIN' : ''}
+              InputProps={{
+                sx: gstinData && formData.address_line1 ? { bgcolor: '#f0fdf4' } : {}
+              }}
+            />
+            <TextField
+              label="Address Line 2"
+              fullWidth
+              value={formData.address_line2}
+              onChange={(e) => handleInputChange('address_line2', e.target.value)}
+              placeholder="Locality, Landmark"
+              InputProps={{
+                sx: gstinData && formData.address_line2 ? { bgcolor: '#f0fdf4' } : {}
+              }}
+            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+              <TextField
+                label="City"
+                required
+                value={formData.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                InputProps={{
+                  sx: gstinData && formData.city ? { bgcolor: '#f0fdf4' } : {}
+                }}
+              />
+              <TextField
+                label="State"
+                required
+                value={formData.state}
+                onChange={(e) => handleInputChange('state', e.target.value)}
+                InputProps={{
+                  sx: gstinData && formData.state ? { bgcolor: '#f0fdf4' } : {}
+                }}
+              />
+              <TextField
+                label="Postal Code"
+                required
+                value={formData.postal_code}
+                onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                InputProps={{
+                  sx: gstinData && formData.postal_code ? { bgcolor: '#f0fdf4' } : {}
+                }}
+              />
+              <TextField
+                label="Country"
+                required
+                value={formData.country}
+                onChange={(e) => handleInputChange('country', e.target.value)}
+              />
+            </Box>
+          </Box>
+        );
+
+      case 3:
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Representative Name"
+              required
+              fullWidth
+              value={formData.representative_name}
+              onChange={(e) => handleInputChange('representative_name', e.target.value)}
+              placeholder="Full name of authorized person"
+            />
+            <TextField
+              label="Designation"
+              required
+              fullWidth
+              value={formData.representative_designation}
+              onChange={(e) => handleInputChange('representative_designation', e.target.value)}
+              placeholder="e.g., CEO, Director, Principal"
+            />
+            <TextField
+              label="Representative Email"
+              required
+              fullWidth
+              type="email"
+              value={formData.representative_email}
+              onChange={(e) => handleInputChange('representative_email', e.target.value)}
+            />
+            <TextField
+              label="Representative Phone"
+              required
+              fullWidth
+              value={formData.representative_phone}
+              onChange={(e) => handleInputChange('representative_phone', e.target.value)}
+            />
+            <TextField
+              label="ID Proof URL (Aadhaar/PAN/Passport)"
+              required
+              fullWidth
+              type="url"
+              value={formData.representative_id_proof_url}
+              onChange={(e) => handleInputChange('representative_id_proof_url', e.target.value)}
+              placeholder="Upload ID proof and paste URL"
+              helperText="Upload representative's ID proof to cloud storage and paste the public link"
+            />
+          </Box>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Render verification form if not submitted
+  if (verificationStatus === 'not_submitted') {
+    return (
+      <RoleGuard allowedPath="/dashboard/institution" requiredRole="issuer">
+        <DashboardLayout title={t('dashboard')}>
+          <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                Institution Verification
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Complete the verification process to start issuing credentials
+              </Typography>
+            </Box>
+
+            <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3 }}>
+              {/* GSTIN Verification Step */}
+              {!gstinVerified ? (
+                <Box>
+                  <Box sx={{ mb: 4, textAlign: 'center' }}>
+                    <Business sx={{ fontSize: 60, color: '#3b82f6', mb: 2 }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                      Verify Your Organization
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Enter your GSTIN to auto-fill organization details
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ maxWidth: 500, mx: 'auto' }}>
+                    <TextField
+                      label="GSTIN Number"
+                      fullWidth
+                      required
+                      value={gstinNumber}
+                      onChange={(e) => {
+                        setGstinNumber(e.target.value.toUpperCase());
+                        setGstinError('');
+                      }}
+                      placeholder="29ABCDE1234F1Z5"
+                      helperText="15-character GST Identification Number"
+                      inputProps={{ maxLength: 15 }}
+                      disabled={gstinLoading}
+                      error={!!gstinError}
+                      sx={{ mb: 2 }}
+                    />
+
+                    {gstinError && (
+                      <Alert severity="error" sx={{ mb: 2 }}>
+                        {gstinError}
+                      </Alert>
+                    )}
+
+                    {gstinData && (
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        <strong>Organization Found:</strong> {gstinData.lgnm || gstinData.tradeNam}
+                        <br />
+                        <Typography variant="caption">
+                          Status: {gstinData.sts} | Type: {gstinData.dty}
+                        </Typography>
+                      </Alert>
+                    )}
+
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      size="large"
+                      onClick={handleGSTINVerification}
+                      disabled={gstinLoading || gstinNumber.length !== 15}
+                      startIcon={gstinLoading ? <CircularProgress size={20} /> : <Search />}
+                      sx={{
+                        bgcolor: '#3b82f6',
+                        textTransform: 'none',
+                        py: 1.5,
+                        '&:hover': { bgcolor: '#2563eb' }
+                      }}
+                    >
+                      {gstinLoading ? 'Verifying GSTIN...' : 'Verify & Auto-Fill'}
+                    </Button>
+
+                    <Button
+                      fullWidth
+                      onClick={() => setGstinVerified(true)}
+                      sx={{ mt: 2, textTransform: 'none', color: 'text.secondary' }}
+                    >
+                      Skip & Fill Manually
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <>
+                  {gstinData && (
+                    <Alert severity="success" icon={<CheckCircle />} sx={{ mb: 3 }}>
+                      <strong>GSTIN Verified:</strong> {gstinData.lgnm || gstinData.tradeNam} ({gstinNumber})
+                    </Alert>
+                  )}
+
+                  <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+                    {verificationSteps.map((label) => (
+                      <Step key={label}>
+                        <StepLabel>{label}</StepLabel>
+                      </Step>
+                    ))}
+                  </Stepper>
+
+                  {renderStepContent(activeStep)}
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+                    <Button
+                      disabled={activeStep === 0}
+                      onClick={handleBack}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Back
+                    </Button>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      {activeStep === verificationSteps.length - 1 ? (
+                        <Button
+                          variant="contained"
+                          onClick={handleSubmitVerification}
+                          disabled={loading}
+                          sx={{
+                            bgcolor: '#3b82f6',
+                            textTransform: 'none',
+                            px: 4,
+                            '&:hover': { bgcolor: '#2563eb' }
+                          }}
+                        >
+                          {loading ? <CircularProgress size={24} /> : 'Submit for Verification'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="contained"
+                          onClick={handleNext}
+                          sx={{
+                            bgcolor: '#3b82f6',
+                            textTransform: 'none',
+                            px: 4,
+                            '&:hover': { bgcolor: '#2563eb' }
+                          }}
+                        >
+                          Next
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                </>
+              )}
+            </Paper>
+          </Box>
+        </DashboardLayout>
+      </RoleGuard>
+    );
+  }
+
+  // Render pending status with countdown
+  if (verificationStatus === 'pending') {
+    return (
+      <RoleGuard allowedPath="/dashboard/institution" requiredRole="issuer">
+        <DashboardLayout title={t('dashboard')}>
+          <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
+            <Card sx={{ textAlign: 'center', p: 6 }}>
+              <Warning sx={{ fontSize: 80, color: '#f59e0b', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+                Verification In Progress
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Your verification request is under review. Auto-approval will happen in 10 seconds...
+              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                <CircularProgress />
+              </Box>
+              <Alert severity="info" sx={{ textAlign: 'left', maxWidth: 500, mx: 'auto' }}>
+                <Typography variant="body2">
+                  <strong>What's happening?</strong><br />
+                  • Your verification is being processed automatically<br />
+                  • You'll be redirected to the dashboard shortly<br />
+                  • Once verified, you'll have full access to all issuer features
+                </Typography>
+              </Alert>
+            </Card>
+          </Box>
+        </DashboardLayout>
+      </RoleGuard>
+    );
+  }
+
+  // Render rejected status
+  if (verificationStatus === 'rejected') {
+    return (
+      <RoleGuard allowedPath="/dashboard/institution" requiredRole="issuer">
+        <DashboardLayout title={t('dashboard')}>
+          <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
+            <Card sx={{ textAlign: 'center', p: 6 }}>
+              <Warning sx={{ fontSize: 80, color: '#ef4444', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+                Verification Rejected
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Your verification request was rejected. Please contact support for more information.
+              </Typography>
+              <Button variant="contained" sx={{ textTransform: 'none' }}>
+                Contact Support
+              </Button>
+            </Card>
+          </Box>
+        </DashboardLayout>
+      </RoleGuard>
+    );
+  }
+
+  // Render verified dashboard
   return (
     <RoleGuard allowedPath="/dashboard/institution" requiredRole="issuer">
       <DashboardLayout title={t('dashboard')}>
         <div className="w-full p-4 sm:p-6">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">{t('dashboardOverview')}</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900">{t('dashboardOverview')}</h1>
+              <Chip
+                icon={<CheckCircle />}
+                label="Verified"
+                color="success"
+                sx={{ fontWeight: 600 }}
+              />
+            </div>
             <p className="text-gray-600 mt-2">{t('dashboardDescription')}</p>
           </div>
 
