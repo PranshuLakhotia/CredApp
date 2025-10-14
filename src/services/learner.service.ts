@@ -25,7 +25,12 @@ export interface LearnerCredential {
   skill_tags?: string[];
   tags?: string[];
   status?: string;
+  blockchain_status?: string;
   issued_date?: string;
+  completion_date?: string;
+  credential_type?: string;
+  credential_hash?: string;
+  qr_code_image?: string;
 }
 
 export interface LearnerCredentialsResponse {
@@ -36,6 +41,8 @@ export interface LearnerCredentialsResponse {
 }
 
 export interface ShareResponse {
+  user_id: string;
+  share_token: string;
   share_id: string;
   share_url: string;
   expires_at: string;

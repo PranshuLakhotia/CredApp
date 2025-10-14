@@ -2,7 +2,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -17,6 +17,12 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Pagination,
 } from '@mui/material';
 import {
   School,
@@ -24,13 +30,13 @@ import {
   Timeline,
   MoreVert,
   Search,
-  FilterList,
-  Sort,
   ViewModule,
   ViewList,
   EmojiEvents,
   PeopleOutline,
   ArrowForward,
+  Close,
+  Download,
 } from '@mui/icons-material';
 import LearnerService, { LearnerCredential } from '@/services/learner.service';
 
@@ -163,9 +169,16 @@ const BarChart = () => {
 };
 
 // --- CREDENTIAL CARD COMPONENT (API-driven) ---
-const CredentialCard = ({ credential }: { credential: LearnerCredential }) => {
+interface CredentialCardProps {
+  credential: LearnerCredential;
+  onViewDetails: (cred: LearnerCredential) => void;
+  onDownload: (cred: LearnerCredential) => void;
+}
+
+const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetails, onDownload }) => {
   const verified = (credential.status || '').toLowerCase() === 'verified';
   const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
+  
   return (
     <Card sx={{ p: 3, borderRadius: 2, bgcolor: '#fafbfc', boxShadow: 'none', border: '1px solid #e5e7eb', transition: 'all 0.2s', '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: 'translateY(-2px)' } }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -174,30 +187,42 @@ const CredentialCard = ({ credential }: { credential: LearnerCredential }) => {
             {credential.credential_title || '-'}
           </Typography>
           <Typography variant="body2" color="text.secondary" mb={0.5}>
-            Issuer : {credential.issuer_name || '-'}
+            Issuer: {credential.issuer_name || '-'}
           </Typography>
           {credential.nsqf_level !== undefined && (
             <Typography variant="body2" color="text.secondary" mb={0.5}>
-              NSQF Level : {credential.nsqf_level}
+              NSQF Level: {credential.nsqf_level}
             </Typography>
           )}
           <Typography variant="body2" color="text.secondary" mb={2}>
-            Issued Date : {issuedDate}
+            Issued Date: {issuedDate}
           </Typography>
           {/* Skill tags */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-            {(credential.skill_tags || []).map((t) => (
+            {(credential.skill_tags || []).slice(0, 3).map((t) => (
               <Chip key={t} label={t} size="small" sx={{ bgcolor: '#eef2ff', color: '#4338ca' }} />
-            ))}
-            {(credential.tags || []).map((t) => (
-              <Chip key={t} label={t} size="small" sx={{ bgcolor: '#ecfeff', color: '#0e7490' }} />
             ))}
           </Box>
         </Box>
-        <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ml: 2 }}>
-          <EmojiEvents sx={{ fontSize: 36, color: '#7c4dff' }} />
+        
+        {/* QR Code or Icon */}
+        <Box sx={{ flexShrink: 0, ml: 2 }}>
+          {credential.qr_code_image ? (
+            <Box 
+              component="img" 
+              src={`data:image/png;base64,${credential.qr_code_image}`}
+              alt="QR Code"
+              sx={{ width: 64, height: 64, borderRadius: 1, border: '1px solid #e5e7eb', cursor: 'pointer' }}
+              onClick={() => onViewDetails(credential)}
+            />
+          ) : (
+            <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <EmojiEvents sx={{ fontSize: 36, color: '#7c4dff' }} />
+            </Box>
+          )}
         </Box>
       </Box>
+      
       {verified && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
           <Verified sx={{ fontSize: 18, color: '#26c6da' }} />
@@ -206,35 +231,199 @@ const CredentialCard = ({ credential }: { credential: LearnerCredential }) => {
           </Typography>
         </Box>
       )}
+      
       <Box sx={{ display: 'flex', gap: 2 }}>
-        <Button variant="text" size="small" sx={{ color: '#7c4dff', textTransform: 'none', fontWeight: 600, p: 0, minWidth: 'auto' }}>
+        <Button 
+          variant="text" 
+          size="small" 
+          onClick={() => onViewDetails(credential)}
+          sx={{ color: '#7c4dff', textTransform: 'none', fontWeight: 600, p: 0, minWidth: 'auto' }}
+        >
           View Details
         </Button>
-        <Button variant="text" size="small" sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}>
+        <Button 
+          variant="text" 
+          size="small"
+          onClick={() => onDownload(credential)}
+          sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}
+        >
           Download
-        </Button>
-        <Button variant="text" size="small" sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}>
-          Share
         </Button>
       </Box>
     </Card>
   );
 };
 
+// --- VIEW DETAILS MODAL ---
+interface ViewDetailsModalProps {
+  credential: LearnerCredential | null;
+  open: boolean;
+  onClose: () => void;
+  onDownload: (cred: LearnerCredential) => void;
+}
+
+const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({ credential, open, onClose, onDownload }) => {
+  if (!credential) return null;
+
+  const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
+  const completionDate = credential.completion_date ? new Date(credential.completion_date).toLocaleDateString() : '-';
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', pb: 2 }}>
+        <Typography variant="h5" fontWeight={700}>
+          Credential Details
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <Close />
+        </IconButton>
+      </DialogTitle>
+      
+      <DialogContent sx={{ pt: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '200px 1fr' }, gap: 3, mb: 4 }}>
+          {/* QR Code */}
+          {credential.qr_code_image && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Box 
+                component="img" 
+                src={`data:image/png;base64,${credential.qr_code_image}`}
+                alt="QR Code"
+                sx={{ width: 180, height: 180, borderRadius: 2, border: '2px solid #e5e7eb', mb: 1 }}
+              />
+              <Typography variant="caption" color="text.secondary" textAlign="center">
+                Scan to verify
+              </Typography>
+            </Box>
+          )}
+          
+          {/* Details Grid */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3 }}>
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Credential Title</Typography>
+              <Typography variant="body1" fontWeight={600} mt={0.5}>{credential.credential_title || '-'}</Typography>
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Issuer</Typography>
+              <Typography variant="body1" fontWeight={600} mt={0.5}>{credential.issuer_name || '-'}</Typography>
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Issue Date</Typography>
+              <Typography variant="body2" mt={0.5}>{issuedDate}</Typography>
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Completion Date</Typography>
+              <Typography variant="body2" mt={0.5}>{completionDate}</Typography>
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>NSQF Level</Typography>
+              <Typography variant="body2" mt={0.5}>{credential.nsqf_level || '-'}</Typography>
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Type</Typography>
+              <Typography variant="body2" mt={0.5}>{credential.credential_type || '-'}</Typography>
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Status</Typography>
+              <Chip 
+                label={credential.status || 'Unknown'} 
+                size="small" 
+                color={credential.status === 'verified' ? 'success' : 'warning'}
+                sx={{ mt: 0.5 }}
+              />
+            </Box>
+            
+            <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>Blockchain Status</Typography>
+              <Chip 
+                label={credential.blockchain_status || 'Unknown'} 
+                size="small" 
+                color={credential.blockchain_status === 'confirmed' ? 'success' : 'default'}
+                sx={{ mt: 0.5 }}
+              />
+            </Box>
+          </Box>
+        </Box>
+        
+        {/* Credential Hash */}
+        {credential.credential_hash && (
+          <Box sx={{ bgcolor: '#fef3c7', p: 3, borderRadius: 2, mb: 3, border: '1px solid #fde047' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>Credential Hash</Typography>
+            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all', mt: 1 }}>
+              {credential.credential_hash}
+            </Typography>
+          </Box>
+        )}
+        
+        {/* Skills */}
+        {(credential.skill_tags && credential.skill_tags.length > 0) && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Skills Certified</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {credential.skill_tags.map((skill) => (
+                <Chip key={skill} label={skill} size="medium" sx={{ bgcolor: '#eef2ff', color: '#4338ca', fontWeight: 500 }} />
+              ))}
+            </Box>
+          </Box>
+        )}
+        
+        {/* Tags */}
+        {(credential.tags && credential.tags.length > 0) && (
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Tags</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {credential.tags.map((tag) => (
+                <Chip key={tag} label={tag} size="medium" sx={{ bgcolor: '#ecfeff', color: '#0e7490', fontWeight: 500 }} />
+              ))}
+            </Box>
+          </Box>
+        )}
+      </DialogContent>
+      
+      <DialogActions sx={{ borderTop: '1px solid #e5e7eb', p: 3, gap: 2 }}>
+        <Button onClick={onClose} sx={{ textTransform: 'none', color: '#64748b' }}>
+          Close
+        </Button>
+        <Button 
+          variant="contained" 
+          startIcon={<Download />}
+          onClick={() => onDownload(credential)}
+          sx={{ textTransform: 'none', bgcolor: '#7c4dff', '&:hover': { bgcolor: '#6a3de8' } }}
+        >
+          Download Certificate
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // --- MAIN DASHBOARD COMPONENT ---
 export default function LearnerDashboard() {
-  const [credentials, setCredentials] = React.useState<LearnerCredential[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [credentials, setCredentials] = useState<LearnerCredential[]>([]);
+  const [totalCredentials, setTotalCredentials] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCredential, setSelectedCredential] = useState<LearnerCredential | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
 
-  // query state
-  const [query, setQuery] = React.useState('');
-  const [status, setStatus] = React.useState<string>(''); // '', 'verified', etc.
-  const [issuer, setIssuer] = React.useState('');
-  const [nsqfLevel, setNsqfLevel] = React.useState<number | ''>('');
-  const [sortBy, setSortBy] = React.useState<'issued_date_desc' | 'issued_date_asc'>('issued_date_desc');
-  const [skip, setSkip] = React.useState(0);
-  const [limit, setLimit] = React.useState(9);
+  // Filter states
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<string>('');
+  const [issuer, setIssuer] = useState('');
+  const [nsqfLevel, setNsqfLevel] = useState<number | ''>('');
+  const [sortBy, setSortBy] = useState<'issued_date_desc' | 'issued_date_asc'>('issued_date_desc');
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(9);
+
+  const skip = (page - 1) * limit;
+  const totalPages = Math.ceil(totalCredentials / limit);
 
   const total = credentials.length;
   const verifiedCount = credentials.filter(c => (c.status || '').toLowerCase() === 'verified').length;
@@ -247,7 +436,7 @@ export default function LearnerDashboard() {
     return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [credentials]);
 
-  const load = React.useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -255,10 +444,11 @@ export default function LearnerDashboard() {
       if (status) params.status = status;
       if (issuer) params.issuer = issuer;
       if (nsqfLevel) params.nsqf_level = nsqfLevel;
-      // tags/search not provided by this route; simple client filter will be used for query
+      
       const data = await LearnerService.getLearnerCredentials(params);
       let items = data.credentials || [];
-      // client-side search filter
+      
+      // Client-side search filter
       if (query.trim()) {
         const q = query.toLowerCase();
         items = items.filter((c) =>
@@ -268,13 +458,16 @@ export default function LearnerDashboard() {
           (c.tags || []).some(t => t.toLowerCase().includes(q))
         );
       }
-      // sort by issued_date
+      
+      // Sort by issued_date
       items.sort((a, b) => {
         const da = a.issued_date ? new Date(a.issued_date).getTime() : 0;
         const db = b.issued_date ? new Date(b.issued_date).getTime() : 0;
         return sortBy === 'issued_date_desc' ? db - da : da - db;
       });
+      
       setCredentials(items);
+      setTotalCredentials(data.total || items.length);
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Failed to load credentials');
     } finally {
@@ -282,11 +475,32 @@ export default function LearnerDashboard() {
     }
   }, [status, issuer, nsqfLevel, query, sortBy, skip, limit]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     load();
   }, [load]);
 
-  const pages = Math.max(1, Math.ceil((credentials.length || 0) / Math.max(1, limit)));
+  const handleViewDetails = (credential: LearnerCredential) => {
+    setSelectedCredential(credential);
+    setViewDetailsOpen(true);
+  };
+
+  const handleDownload = async (credential: LearnerCredential) => {
+    try {
+      // TODO: Implement actual download functionality
+      console.log('Download credential:', credential._id);
+      alert('Download functionality will be implemented with PDF generation');
+    } catch (error) {
+      console.error('Download error:', error);
+    }
+  };
+
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+
+  const handleFilterChange = () => {
+    setPage(1); // Reset to first page when filters change
+  };
 
   return (
     <Box sx={{ px: { xs: 2, md: 4 }, py: 4, bgcolor: '#fafbfc', minHeight: '100vh' }}>
@@ -313,7 +527,7 @@ export default function LearnerDashboard() {
       {/* Top Stats Cards Row (computed) */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mb: 3 }}>
         {baseStats.map((stat) => {
-          const value = stat.key === 'total' ? total : stat.key === 'verified' ? verifiedCount : pendingCount;
+          const value = stat.key === 'total' ? totalCredentials : stat.key === 'verified' ? verifiedCount : pendingCount;
           return (
             <Card key={stat.label} sx={{ flex: '1 1 220px', p: 2.5, borderRadius: 3, bgcolor: stat.bgColor, boxShadow: 'none' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -337,7 +551,7 @@ export default function LearnerDashboard() {
         })}
         <Card sx={{ flex: '1 1 300px', p: 2.5, borderRadius: 3, bgcolor: '#e3f2fd', boxShadow: 'none' }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5 }}>
-            NQFQ Progress
+            NSQF Progress
           </Typography>
           <LinearProgress variant="determinate" value={57} sx={{ height: 10, borderRadius: 5, bgcolor: '#bbdefb', '& .MuiLinearProgress-bar': { bgcolor: '#1976d2', borderRadius: 5 } }} />
           <Typography variant="h6" pt={1} sx={{ fontWeight: 700, color: '#1e293b', textAlign: 'right' }}>
@@ -442,7 +656,7 @@ export default function LearnerDashboard() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <PeopleOutline sx={{ color: '#64748b' }} />
               <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                {isLoading ? 'Loading...' : `${credentials.length} Certificate${credentials.length === 1 ? '' : 's'} Found`}
+                {isLoading ? 'Loading...' : `${totalCredentials} Certificate${totalCredentials === 1 ? '' : 's'} Found`}
               </Typography>
             </Box>
             <Box sx={{ flex: 1 }} />
@@ -450,7 +664,7 @@ export default function LearnerDashboard() {
               size="small"
               placeholder="Search Skills, Tags, Title, Issuer"
               value={query}
-              onChange={(e) => { setQuery(e.target.value); setSkip(0); }}
+              onChange={(e) => { setQuery(e.target.value); handleFilterChange(); }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -462,17 +676,41 @@ export default function LearnerDashboard() {
             />
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel id="status-label">Status</InputLabel>
-              <Select labelId="status-label" label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setSkip(0); }}>
+              <Select 
+                labelId="status-label" 
+                label="Status" 
+                value={status} 
+                onChange={(e) => { setStatus(e.target.value); handleFilterChange(); }}
+              >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="verified">Verified</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="blockchain_pending">Blockchain Pending</MenuItem>
               </Select>
             </FormControl>
-            <TextField size="small" label="Issuer" value={issuer} onChange={(e) => { setIssuer(e.target.value); setSkip(0); }} sx={{ width: 180, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
-            <TextField size="small" label="NSQF" type="number" value={nsqfLevel} onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); setSkip(0); }} sx={{ width: 100, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+            <TextField 
+              size="small" 
+              label="Issuer" 
+              value={issuer} 
+              onChange={(e) => { setIssuer(e.target.value); handleFilterChange(); }} 
+              sx={{ width: 180, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} 
+            />
+            <TextField 
+              size="small" 
+              label="NSQF" 
+              type="number" 
+              value={nsqfLevel} 
+              onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); handleFilterChange(); }} 
+              sx={{ width: 100, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} 
+            />
             <FormControl size="small" sx={{ minWidth: 170 }}>
               <InputLabel id="sort-label">Sort</InputLabel>
-              <Select labelId="sort-label" label="Sort" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+              <Select 
+                labelId="sort-label" 
+                label="Sort" 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
                 <MenuItem value="issued_date_desc">Newest First</MenuItem>
                 <MenuItem value="issued_date_asc">Oldest First</MenuItem>
               </Select>
@@ -491,8 +729,9 @@ export default function LearnerDashboard() {
           }}
         >
           {isLoading ? (
-            <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
-              <Typography>Loading credentials...</Typography>
+            <Card sx={{ p: 3, gridColumn: '1 / -1', textAlign: 'center' }}>
+              <CircularProgress />
+              <Typography mt={2}>Loading credentials...</Typography>
             </Card>
           ) : credentials.length === 0 ? (
             <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
@@ -500,27 +739,60 @@ export default function LearnerDashboard() {
             </Card>
           ) : (
             credentials.map((cred) => (
-              <CredentialCard key={cred._id} credential={cred} />
+              <CredentialCard 
+                key={cred._id} 
+                credential={cred}
+                onViewDetails={handleViewDetails}
+                onDownload={handleDownload}
+              />
             ))
           )}
         </Box>
 
         {/* Pagination */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4 }}>
-          <Typography variant="body2" color="text.secondary">
-            Page {Math.floor(skip / Math.max(1, limit)) + 1} of {pages}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 2, color: '#64748b', borderColor: '#e5e7eb', textTransform: 'none' }} disabled={skip === 0} onClick={() => setSkip(Math.max(0, skip - limit))}>
-              ← Back
-            </Button>
-            <TextField size="small" label="Per Page" type="number" value={limit} onChange={(e) => { const v = Number(e.target.value) || 1; setLimit(Math.max(1, Math.min(100, v))); setSkip(0); }} sx={{ width: 100 }} />
-            <Button size="small" variant="outlined" sx={{ minWidth: 32, px: 2, color: '#64748b', borderColor: '#e5e7eb', textTransform: 'none' }} disabled={credentials.length < limit} onClick={() => setSkip(skip + limit)}>
-              Next →
-            </Button>
+        {!isLoading && credentials.length > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 4, gap: 2, flexWrap: 'wrap' }}>
+            <Pagination 
+              count={totalPages} 
+              page={page} 
+              onChange={handlePageChange}
+              color="primary"
+              showFirstButton
+              showLastButton
+              sx={{ 
+                '& .MuiPaginationItem-root': { 
+                  fontWeight: 600 
+                },
+                '& .Mui-selected': {
+                  bgcolor: '#7c4dff !important',
+                  color: 'white'
+                }
+              }}
+            />
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Per Page</InputLabel>
+              <Select 
+                value={limit} 
+                label="Per Page"
+                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              >
+                <MenuItem value={9}>9 per page</MenuItem>
+                <MenuItem value={12}>12 per page</MenuItem>
+                <MenuItem value={18}>18 per page</MenuItem>
+                <MenuItem value={24}>24 per page</MenuItem>
+              </Select>
+            </FormControl>
           </Box>
-        </Box>
+        )}
       </Box>
+
+      {/* View Details Modal */}
+      <ViewDetailsModal
+        credential={selectedCredential}
+        open={viewDetailsOpen}
+        onClose={() => setViewDetailsOpen(false)}
+        onDownload={handleDownload}
+      />
     </Box>
   );
 }

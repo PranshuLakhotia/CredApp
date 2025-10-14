@@ -322,12 +322,12 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Side - Form or KYC Steps */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-16">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 md:p-12 lg:p-16">
         {currentStep === 'signup' ? (
-          <div className="w-full max-w-xl">
+          <div className="w-full max-w-xl px-2 sm:px-0">
           {/* Logo */}
-          <div className="flex items-center justify-end gap-2 mb-6">
-          <svg width="150" height="100" viewBox="0 0 388 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex items-center justify-end sm:justify-end gap-2 mb-4 sm:mb-6">
+          <svg className="w-32 sm:w-40 md:w-36 h-auto" viewBox="0 0 388 106" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path fillRule="evenodd" clipRule="evenodd" d="M87.3006 25.5C87.3671 25.2868 87.4336 25.0743 87.5 24.8623C88.6384 20.8014 88.3406 18.7631 85 15.8623L66 1.8623C61.0271 -1.00737 58.8635 -0.600929 56 3.3623L43.5 24.8623H6C2.68629 24.8623 0 27.5486 0 30.8623V99.8623C0 103.176 2.68629 105.862 6 105.862H57C61.4057 99.4154 56.1561 95.8321 45.3873 88.4814C39.7427 84.6284 32.5817 79.7403 24.5 72.8623C24.5 72.8623 23.8567 72.2839 23.5 71.8623C20.7252 68.5829 21.0542 65.2012 23.5 60.8623L43.1457 25.5H87.3006ZM58.9336 105.862H58.5C58.6427 105.883 58.7872 105.882 58.9336 105.862Z" fill="#0279F2"/>
         <path d="M87.5 24.8623C87.4336 25.0743 87.3671 25.2868 87.3006 25.5C84.6983 33.8392 82.0368 43.0725 79.3996 52.2216C71.6681 79.0444 64.1453 105.143 58.9336 105.862H102C105.314 105.862 108 103.176 108 99.8623V30.8623C108 27.5486 105.314 24.8623 102 24.8623H87.5Z" fill="#014B99"/>
         <path d="M165.29 58.2866H150.326C149.638 53.2986 147.058 51.7506 143.962 51.7506C138.974 51.7506 136.308 56.2226 136.308 64.5646C136.308 72.8206 139.06 77.2926 144.392 77.2926C147.574 77.2926 149.81 75.4006 150.67 71.7026H165.548C163.57 83.3986 155.056 89.3326 144.048 89.3326C129.858 89.3326 121 79.7866 121 64.5646C121 48.7406 130.116 39.7106 143.962 39.7106C154.884 39.7106 163.656 45.8166 165.29 58.2866Z" fill="#014B99"/>
@@ -343,12 +343,12 @@ export default function SignUpPage() {
 
           {/* Sign Up Form */}
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Sign up</h1>
-            <p className="text-gray-600 mb-8">Let's get you all set up so you can access your personal account.</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">Sign up</h1>
+            <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">Let's get you all set up so you can access your personal account.</p>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               {/* First Name & Last Name */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     First Name
@@ -713,7 +713,7 @@ export default function SignUpPage() {
               <button
                 type="submit"
                 disabled={isLoading || isSubmitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading || isSubmitting ? 'Creating Account...' : 'Create Account'}
               </button>
