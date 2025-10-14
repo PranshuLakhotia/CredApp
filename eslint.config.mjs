@@ -19,7 +19,14 @@ const eslintConfig = [
       "prefer-const": "warn",
       "@typescript-eslint/prefer-as-const": "warn",
       "react-hooks/exhaustive-deps": "warn",
-      "@next/next/no-img-element": "warn"
+      "@next/next/no-img-element": "warn",
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        {
+          "ts-ignore": true,
+          "ts-expect-error": true
+        }
+      ]
     }
   }
 ];
