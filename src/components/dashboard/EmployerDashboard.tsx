@@ -15,6 +15,9 @@ import {
   ListItem,
   ListItemText,
   ListItemAvatar,
+  Tabs,
+  Tab,
+  Divider,
 } from '@mui/material';
 import {
   Search,
@@ -32,9 +35,13 @@ import {
   Business,
   Assignment,
   Notifications,
+  Add,
+  Work,
 } from '@mui/icons-material';
 import StatsCard from './StatsCard';
 import { useRouter } from 'next/navigation';
+import PostJobModal from '@/components/modals/PostJobModal';
+import JobListings from '@/components/employer/JobListings';
 
 // Mock data for employer dashboard
 const mockHiringData = {
@@ -57,11 +64,83 @@ const mockTopSkills = [
   { skill: 'Machine Learning', demand: 68, growth: '+25%' },
 ];
 
+// Mock jobs data
+const initialMockJobs = [
+  {
+    id: '1',
+    title: 'Senior React Developer',
+    company: 'Tech Solutions Inc.',
+    location: 'Mumbai, India',
+    type: 'full-time' as const,
+    experience_level: 'senior' as const,
+    salary_range: { min: 800000, max: 1200000, currency: 'INR' },
+    description: 'We are looking for a Senior React Developer to join our dynamic team. You will be responsible for developing user interface components and implementing them following well-known React.js workflows.',
+    requirements: ['5+ years of React experience', 'Strong JavaScript skills', 'Experience with Redux'],
+    responsibilities: ['Develop new user-facing features', 'Build reusable components', 'Optimize components for performance'],
+    skills_required: ['React', 'JavaScript', 'Redux', 'HTML', 'CSS'],
+    benefits: ['Health insurance', 'Flexible working hours', 'Work from home'],
+    application_deadline: '2024-12-31',
+    remote_friendly: true,
+    urgent: false,
+    posted_date: '2024-01-15T10:00:00Z',
+    status: 'active' as const,
+    applications_count: 24
+  },
+  {
+    id: '2',
+    title: 'Python Data Scientist',
+    company: 'Data Analytics Corp',
+    location: 'Bangalore, India',
+    type: 'full-time' as const,
+    experience_level: 'mid' as const,
+    salary_range: { min: 600000, max: 900000, currency: 'INR' },
+    description: 'Join our data science team to work on cutting-edge machine learning projects. You will analyze large datasets and build predictive models.',
+    requirements: ['3+ years Python experience', 'Machine Learning knowledge', 'Statistics background'],
+    responsibilities: ['Analyze complex datasets', 'Build ML models', 'Present insights to stakeholders'],
+    skills_required: ['Python', 'Machine Learning', 'SQL', 'Pandas', 'Scikit-learn'],
+    benefits: ['Competitive salary', 'Learning budget', 'Team outings'],
+    application_deadline: '2024-11-30',
+    remote_friendly: false,
+    urgent: true,
+    posted_date: '2024-01-10T14:30:00Z',
+    status: 'active' as const,
+    applications_count: 18
+  }
+];
+
 export default function EmployerDashboard() {
   const router = useRouter();
+  const [tabValue, setTabValue] = useState(0);
+  const [postJobModalOpen, setPostJobModalOpen] = useState(false);
+  const [jobs, setJobs] = useState(initialMockJobs);
 
   const handleSearchLearners = () => {
     router.push('/dashboard/employer/search-learners');
+  };
+
+  const handlePostJob = () => {
+    setPostJobModalOpen(true);
+  };
+
+  const handleJobPosted = (newJob: any) => {
+    setJobs(prev => [newJob, ...prev]);
+  };
+
+  const handleEditJob = (job: any) => {
+    console.log('Edit job:', job);
+    // TODO: Implement edit job functionality
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    setJobs(prev => prev.filter(job => job.id !== jobId));
+  };
+
+  const handleViewApplications = (jobId: string) => {
+    router.push(`/dashboard/employer/jobs/${jobId}/applications`);
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
   };
 
   return (
@@ -159,18 +238,21 @@ export default function EmployerDashboard() {
                 <Button
                   variant="outlined"
                   size="large"
-                  startIcon={<PersonAdd />}
+                  startIcon={<Add />}
+                  onClick={handlePostJob}
                   sx={{
                     px: 4,
                     py: 2,
                     borderRadius: 3,
                     fontWeight: 600,
-                    borderColor: '#3b82f6',
-                    color: '#3b82f6',
+                    borderColor: '#10b981',
+                    color: '#10b981',
                     '&:hover': {
-                      borderColor: '#2563eb',
-                      bgcolor: 'rgba(59, 130, 246, 0.05)',
-                    }
+                      borderColor: '#059669',
+                      bgcolor: 'rgba(16, 185, 129, 0.05)',
+                      transform: 'translateY(-2px)',
+                    },
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   Post New Job
@@ -346,6 +428,116 @@ export default function EmployerDashboard() {
           </Card>
         </Box>
       </Box>
+
+      {/* Jobs Management Section */}
+      <Box sx={{ mt: 6 }}>
+        <Card 
+          elevation={0}
+          sx={{ 
+            border: '1px solid #e2e8f0',
+            borderRadius: 4,
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+          }}
+        >
+          <CardContent sx={{ p: 0 }}>
+            {/* Tabs Header */}
+            <Box sx={{ borderBottom: '1px solid #e2e8f0', px: 4, pt: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                  Job Management
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={handlePostJob}
+                  sx={{
+                    borderRadius: 3,
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                      boxShadow: '0 6px 16px rgba(16, 185, 129, 0.5)',
+                      transform: 'translateY(-2px)',
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Post New Job
+                </Button>
+              </Box>
+              
+              <Tabs 
+                value={tabValue} 
+                onChange={handleTabChange}
+                sx={{
+                  '& .MuiTabs-indicator': {
+                    backgroundColor: '#3b82f6',
+                    height: 3,
+                    borderRadius: '3px 3px 0 0'
+                  }
+                }}
+              >
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Work sx={{ fontSize: 18 }} />
+                      <span>Active Jobs ({jobs.filter(job => job.status === 'active').length})</span>
+                    </Box>
+                  }
+                  sx={{ 
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    fontSize: '0.95rem'
+                  }}
+                />
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Analytics sx={{ fontSize: 18 }} />
+                      <span>All Jobs ({jobs.length})</span>
+                    </Box>
+                  }
+                  sx={{ 
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    fontSize: '0.95rem'
+                  }}
+                />
+              </Tabs>
+            </Box>
+
+            {/* Tab Content */}
+            <Box sx={{ p: 4 }}>
+              {tabValue === 0 && (
+                <JobListings
+                  jobs={jobs.filter(job => job.status === 'active')}
+                  onEditJob={handleEditJob}
+                  onDeleteJob={handleDeleteJob}
+                  onViewApplications={handleViewApplications}
+                />
+              )}
+              {tabValue === 1 && (
+                <JobListings
+                  jobs={jobs}
+                  onEditJob={handleEditJob}
+                  onDeleteJob={handleDeleteJob}
+                  onViewApplications={handleViewApplications}
+                />
+              )}
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Post Job Modal */}
+      <PostJobModal
+        open={postJobModalOpen}
+        onClose={() => setPostJobModalOpen(false)}
+        onJobPosted={handleJobPosted}
+      />
     </Box>
   );
 }

@@ -14,12 +14,26 @@ interface FormData {
   issueDate: string;
   learnerId: string;
   skills: string[];
+  nsqfLevel: string;
+  description: string;
+  tags: string[];
+  tagInput: string;
+}
+
+interface OcrData {
+  credential_name: string;
+  issuer_name: string;
+  issued_date: string;
+  expiry_date: string;
+  skill_tags: string[];
+  description: string;
+  learner_id: string;
 }
 
 export const fetchApiKeys = async () => {
   try {
     console.log('🔑 Fetching API keys...');
-    const token = localStorage.getItem('access_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     console.log('🎫 Access token exists:', !!token);
     
     const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
@@ -45,146 +59,35 @@ export const fetchApiKeys = async () => {
   }
 };
 
-export const validateLearner = async (learnerId: string) => {
-  try {
-    console.log('🔍 Checking learner:', learnerId);
-    
-    // Get API key first
-    const apiKeys = await fetchApiKeys();
-    if (!apiKeys || apiKeys.length === 0) {
-      throw new Error('No API keys found. Please generate an API key first.');
-    }
-    
-    const apiKey = apiKeys[0].key;
-    console.log('🔑 Using API key:', apiKey);
-    
-    const learnerResponse = await fetch(`http://localhost:8000/api/v1/issuer/users/${learnerId}/is-learner`, {
-      headers: {
-        'x-api-key': apiKey,
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      }
-    });
-    
-    console.log('📡 Learner API response status:', learnerResponse.status);
-    console.log('📡 Learner API response headers:', learnerResponse.headers);
-    
-    if (learnerResponse.ok) {
-      const learnerData = await learnerResponse.json();
-      console.log('✅ Learner data received:', learnerData);
-      
-      if (!learnerData.is_learner) {
-        throw new Error(`User ${learnerId} is not registered as a learner`);
-      }
-      
-      return learnerData;
-    } else {
-      const errorText = await learnerResponse.text();
-      console.error('❌ Learner API failed:', learnerResponse.status, errorText);
-      throw new Error(`Learner validation failed: ${learnerResponse.status} - ${errorText}`);
-    }
-  } catch (error) {
-    console.error('💥 Learner verification exception:', error);
-    throw error;
-  }
-};
-
-export const createCredential = async (payload: any) => {
-  try {
-    console.log('📝 Step 1: Creating credential in database...');
-    console.log('📤 Sending create credential request:', payload);
-
-    const apiKeys = await fetchApiKeys();
-    if (!apiKeys || apiKeys.length === 0) {
-      throw new Error('No API keys found. Please generate an API key first.');
-    }
-    
-    const apiKey = apiKeys[0].key;
-
-    const createResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey
-      },
-      body: JSON.stringify(payload)
-    });
-
-    console.log('📡 Create credential response status:', createResponse.status);
-
-    if (!createResponse.ok) {
-      const errorData = await createResponse.json();
-      console.error('❌ Failed to create credential:', errorData);
-      throw new Error(`Failed to create credential: ${errorData.detail || errorData.message || 'Unknown error'}`);
-    }
-
-    const createResult = await createResponse.json();
-    console.log('✅ Credential created successfully:', createResult);
-    return createResult;
-  } catch (error) {
-    console.error('💥 Error creating credential:', error);
-    throw error;
-  }
-};
-
-export const issueCredentialOnBlockchain = async (credentialId: string, learnerAddress: string) => {
-  try {
-    console.log('⛓️ Step 2: Issuing credential on blockchain...');
-
-    const issuePayload = {
-      credential_id: credentialId,
-      learner_address: learnerAddress,
-      generate_qr: true,
-      wait_for_confirmation: false
-    };
-
-    console.log('📤 Sending blockchain issue request:', issuePayload);
-
-    const issueResponse = await fetch('http://localhost:8000/api/v1/blockchain/credentials/issue', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-      },
-      body: JSON.stringify(issuePayload)
-    });
-
-    console.log('📡 Blockchain issue response status:', issueResponse.status);
-
-    if (!issueResponse.ok) {
-      const errorData = await issueResponse.json();
-      console.error('❌ Failed to issue credential on blockchain:', errorData);
-      throw new Error(`Failed to issue credential on blockchain: ${errorData.detail || errorData.message || 'Unknown error'}`);
-    }
-
-    const issueResult = await issueResponse.json();
-    console.log('✅ Credential issued on blockchain successfully:', issueResult);
-    return issueResult;
-  } catch (error) {
-    console.error('💥 Error issuing credential on blockchain:', error);
-    throw error;
-  }
-};
-
 export default function CertificateForm(): React.JSX.Element {
   const { user } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
     certificateTitle: '',
-    issuerOrganization: user?.full_name || 'Institution', // Use logged-in user's name
+    issuerOrganization: user?.full_name || 'Institution',
     mode: 'Online',
     duration: '4 Weeks',
-    issueDate: new Date().toISOString().split('T')[0], // Today's date
+    issueDate: new Date().toISOString().split('T')[0],
     learnerId: '',
     skills: [],
+    nsqfLevel: '',
+    description: '',
+    tags: [],
+    tagInput: '',
   });
 
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [skillInput, setSkillInput] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [currentStep, setCurrentStep] = useState<number>(1);
+  
+  // OCR extraction states
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [ocrData, setOcrData] = useState<OcrData | null>(null);
+  const [showExtractedData, setShowExtractedData] = useState<boolean>(false);
+  const [learnerIdMatch, setLearnerIdMatch] = useState<boolean>(false);
+  
+  // Verification states
   const [verificationStatus, setVerificationStatus] = useState<{
     learnerCheck: 'pending' | 'success' | 'error';
     apiKeyCheck: 'pending' | 'success' | 'error';
@@ -197,6 +100,8 @@ export default function CertificateForm(): React.JSX.Element {
     allVerified: false
   });
   const [verificationData, setVerificationData] = useState<any>(null);
+  
+  // Certificate issuance states
   const [isIssuingCertificate, setIsIssuingCertificate] = useState<boolean>(false);
   const [issuedCertificate, setIssuedCertificate] = useState<any>(null);
   const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
@@ -204,18 +109,14 @@ export default function CertificateForm(): React.JSX.Element {
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
-    // Check required fields
-    if (!formData.certificateTitle.trim()) {
-      newErrors.certificateTitle = 'Certificate title is required';
-    }
     if (!formData.learnerId.trim()) {
       newErrors.learnerId = 'Learner ID is required';
     }
-    if (formData.skills.length === 0) {
-      newErrors.skills = 'At least one skill is required';
-    }
     if (!pdfFile) {
       newErrors.pdfFile = 'PDF certificate template is required';
+    }
+    if (!formData.nsqfLevel) {
+      newErrors.nsqfLevel = 'NSQF Level is required';
     }
 
     setErrors(newErrors);
@@ -226,7 +127,6 @@ export default function CertificateForm(): React.JSX.Element {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -235,21 +135,8 @@ export default function CertificateForm(): React.JSX.Element {
   const handleSelectChange = (name: string, value: string): void => {
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear error when user makes a selection
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setBannerFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBannerPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -262,7 +149,6 @@ export default function CertificateForm(): React.JSX.Element {
       }));
       setSkillInput('');
       
-      // Clear skills error when user adds a skill
       if (errors.skills) {
         setErrors(prev => ({ ...prev, skills: '' }));
       }
@@ -276,25 +162,87 @@ export default function CertificateForm(): React.JSX.Element {
     }));
   };
 
-  const handleSave = (): void => {
-    console.log('Saved:', { ...formData, banner: bannerFile });
-    alert('Form saved!');
-  };
+  const handleExtractData = async (): Promise<void> => {
+    if (!pdfFile) {
+      alert('Please upload a PDF certificate first');
+      return;
+    }
 
-  const handleCancel = (): void => {
-    setFormData({
-      certificateTitle: '',
-      issuerOrganization: user?.full_name || 'Institution', // Keep the issuer organization
-      mode: 'Online',
-      duration: '4 Weeks',
-      issueDate: new Date().toISOString().split('T')[0], // Today's date
-      learnerId: '',
-      skills: [],
-    });
-    setBannerFile(null);
-    setBannerPreview(null);
-    setErrors({});
-    setCurrentStep(1);
+    if (!formData.learnerId.trim()) {
+      alert('Please enter a Learner ID first');
+      return;
+    }
+
+    setIsExtracting(true);
+    
+    try {
+      const apiKeys = await fetchApiKeys();
+      if (!apiKeys || apiKeys.length === 0) {
+        alert('No API keys found. Please generate an API key first.');
+        setIsExtracting(false);
+        return;
+      }
+      
+      const apiKey = apiKeys[0].key;
+      
+      // Store the user-entered learner ID before extraction
+      const userEnteredLearnerId = formData.learnerId.trim();
+      
+      const formDataToSend = new FormData();
+      formDataToSend.append('file', pdfFile);
+
+      console.log('📤 Sending OCR extraction request...');
+      console.log('👤 User entered Learner ID:', userEnteredLearnerId);
+      
+      const response = await fetch('http://localhost:8000/api/v1/issuer/credentials/extract-ocr', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+        },
+        body: formDataToSend
+      });
+
+      if (response.ok) {
+        const extractedData = await response.json();
+        console.log('✅ OCR extraction successful:', extractedData);
+        
+        setOcrData(extractedData);
+        
+        // Compare user-entered Learner ID with OCR-extracted Learner ID
+        const ocrLearnerId = (extractedData.learner_id || '').trim();
+        const matches = userEnteredLearnerId === ocrLearnerId;
+        
+        console.log('🔍 Learner ID Verification:');
+        console.log('  User Entered:', `"${userEnteredLearnerId}"`);
+        console.log('  OCR Extracted:', `"${ocrLearnerId}"`);
+        console.log('  Match:', matches);
+        
+        setLearnerIdMatch(matches);
+        
+        // Auto-fill form data with OCR results (but keep user-entered learner ID)
+        setFormData(prev => ({
+          ...prev,
+          certificateTitle: extractedData.credential_name || prev.certificateTitle,
+          // Keep the user-entered learner ID
+          learnerId: userEnteredLearnerId,
+          issueDate: extractedData.issued_date || prev.issueDate,
+          skills: extractedData.skill_tags && extractedData.skill_tags.length > 0 
+            ? extractedData.skill_tags 
+            : prev.skills
+        }));
+        
+        setShowExtractedData(true);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ OCR extraction failed:', errorData);
+        alert(`OCR extraction failed: ${errorData.detail || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('💥 Error during OCR extraction:', error);
+      alert('An error occurred during OCR extraction. Please try again.');
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleVerify = (): void => {
@@ -305,7 +253,6 @@ export default function CertificateForm(): React.JSX.Element {
 
   const performVerification = async (): Promise<void> => {
     try {
-      // Get API key first
       const apiKeys = await fetchApiKeys();
       if (!apiKeys || apiKeys.length === 0) {
         setVerificationStatus(prev => ({ ...prev, apiKeyCheck: 'error' }));
@@ -314,7 +261,6 @@ export default function CertificateForm(): React.JSX.Element {
       
       const apiKey = apiKeys[0].key;
 
-      // Reset verification status
       setVerificationStatus({
         learnerCheck: 'pending',
         apiKeyCheck: 'pending',
@@ -327,17 +273,13 @@ export default function CertificateForm(): React.JSX.Element {
       // 1. Check if user is a learner
       try {
         console.log('🔍 Checking learner:', formData.learnerId);
-        console.log('🔑 Using API key:', apiKey);
         
         const learnerResponse = await fetch(`http://localhost:8000/api/v1/issuer/users/${formData.learnerId}/is-learner`, {
           headers: {
             'x-api-key': apiKey,
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
           }
         });
-        
-        console.log('📡 Learner API response status:', learnerResponse.status);
-        console.log('📡 Learner API response headers:', learnerResponse.headers);
         
         if (learnerResponse.ok) {
           const learnerData = await learnerResponse.json();
@@ -345,8 +287,7 @@ export default function CertificateForm(): React.JSX.Element {
           verificationResults.learnerData = learnerData;
           setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
         } else {
-          const errorText = await learnerResponse.text();
-          console.error('❌ Learner API failed:', learnerResponse.status, errorText);
+          console.error('❌ Learner API failed');
           setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
         }
       } catch (error) {
@@ -361,11 +302,9 @@ export default function CertificateForm(): React.JSX.Element {
         const apiKeyResponse = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
           headers: {
             'x-api-key': apiKey,
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
           }
         });
-        
-        console.log('📡 API Key response status:', apiKeyResponse.status);
         
         if (apiKeyResponse.ok) {
           const apiKeyData = await apiKeyResponse.json();
@@ -373,8 +312,7 @@ export default function CertificateForm(): React.JSX.Element {
           verificationResults.apiKeyData = apiKeyData;
           setVerificationStatus(prev => ({ ...prev, apiKeyCheck: 'success' }));
         } else {
-          const errorText = await apiKeyResponse.text();
-          console.error('❌ API Key check failed:', apiKeyResponse.status, errorText);
+          console.error('❌ API Key check failed');
           setVerificationStatus(prev => ({ ...prev, apiKeyCheck: 'error' }));
         }
       } catch (error) {
@@ -389,11 +327,9 @@ export default function CertificateForm(): React.JSX.Element {
         const blockchainResponse = await fetch('http://localhost:8000/api/v1/blockchain/network/status', {
           headers: {
             'x-api-key': apiKey,
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
           }
         });
-        
-        console.log('📡 Blockchain response status:', blockchainResponse.status);
         
         if (blockchainResponse.ok) {
           const blockchainData = await blockchainResponse.json();
@@ -401,8 +337,7 @@ export default function CertificateForm(): React.JSX.Element {
           verificationResults.blockchainData = blockchainData;
           setVerificationStatus(prev => ({ ...prev, blockchainCheck: 'success' }));
         } else {
-          const errorText = await blockchainResponse.text();
-          console.error('❌ Blockchain check failed:', blockchainResponse.status, errorText);
+          console.error('❌ Blockchain check failed');
           setVerificationStatus(prev => ({ ...prev, blockchainCheck: 'error' }));
         }
       } catch (error) {
@@ -410,7 +345,6 @@ export default function CertificateForm(): React.JSX.Element {
         setVerificationStatus(prev => ({ ...prev, blockchainCheck: 'error' }));
       }
 
-      // Check if all verifications passed after a short delay to ensure state updates
       setTimeout(() => {
         setVerificationStatus(prev => {
           const allPassed = prev.learnerCheck === 'success' && 
@@ -436,60 +370,77 @@ export default function CertificateForm(): React.JSX.Element {
     setIsIssuingCertificate(true);
     
     try {
-      // Get API key from the institution's API keys
       const apiKeys = await fetchApiKeys();
       if (!apiKeys || apiKeys.length === 0) {
         alert('No API keys found. Please generate an API key first in the institution dashboard.');
         return;
       }
       
-      // Use the first active API key
       const apiKey = apiKeys[0].key;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
 
       console.log('🚀 Starting credential issuance process...');
-      console.log('🔑 Using API Key:', apiKey);
-      console.log('🎫 Access Token:', localStorage.getItem('access_token'));
 
-      // STEP 1: Create Credential in Database
-      console.log('📝 Step 1: Creating credential in database...');
-      
-      // Get learner data from verification results
       const learnerData = verificationData?.learnerData?.user_info;
-      const learnerAddress = learnerData?.wallet_address || "0x3AF15A0035a717ddb5b4B4D727B7EE94A52Cc4e3"; // Fallback if no wallet address
+      const learnerAddress = learnerData?.wallet_address || "0x3AF15A0035a717ddb5b4B4D727B7EE94A52Cc4e3";
+
+      // Step 1: Create Credential in Database
+      console.log('📝 Step 1: Creating credential...');
+      console.log('📋 Learner Data:', learnerData);
+      console.log('📋 OCR Data:', ocrData);
+      console.log('📋 Form Data:', formData);
 
       const createPayload = {
-        credential_id: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         vc_payload: {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
-          "type": ["VerifiableCredential"],
-          "credentialSubject": {
-            "learner_address": learnerAddress,
-            "name": learnerData?.full_name || "Learner Name",
-            "course": formData.certificateTitle,
-            "grade": "A+",
-            "completion_date": formData.issueDate,
-            "skills": formData.skills,
-            "duration": formData.duration,
-            "mode": formData.mode
-          },
+          "type": ["VerifiableCredential", "EducationalCredential"],
           "issuer": {
-            "name": formData.issuerOrganization,
-            "did": "did:example:tech-university" // This should come from issuer profile
+            "id": "did:example:issuer",
+            "name": ocrData?.issuer_name || formData.issuerOrganization
           },
-          "issuanceDate": new Date().toISOString()
+          "credentialSubject": {
+            "id": formData.learnerId,
+            "name": learnerData?.full_name || "Learner Name",
+            "achievement": ocrData?.credential_name || formData.certificateTitle,
+            "learner_address": learnerAddress,
+            "course": ocrData?.credential_name || formData.certificateTitle,
+            "grade": "A+",
+            "completion_date": ocrData?.issued_date || formData.issueDate,
+            "skills": ocrData?.skill_tags || [],
+            "duration": formData.duration,
+            "mode": formData.mode,
+            "nsqf_level": parseInt(formData.nsqfLevel),
+            "description": formData.description,
+            "tags": formData.tags
+          },
+          "issuanceDate": new Date().toISOString(),
+          "expirationDate": ocrData?.expiry_date || null
         },
         artifact_url: pdfFile ? URL.createObjectURL(pdfFile) : "",
         idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        credential_type: "digital-certificate"
+        credential_type: "digital-certificate",
+        metadata: {
+          learner_address: learnerAddress,
+          completion_date: ocrData?.issued_date || formData.issueDate,
+          course_name: ocrData?.credential_name || formData.certificateTitle,
+          issuer_name: ocrData?.issuer_name || formData.issuerOrganization,
+          issue_date: ocrData?.issued_date || formData.issueDate,
+          expiry_date: ocrData?.expiry_date || null,
+          skill_tags: ocrData?.skill_tags || [],
+          nsqf_level: parseInt(formData.nsqfLevel),
+          description: formData.description,
+          tags: formData.tags
+        }
       };
-
-      console.log('📤 Sending create credential request:', createPayload);
+      
+      console.log('📤 Credential Creation Payload:', JSON.stringify(createPayload, null, 2));
 
       const createResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-API-Key': apiKey,
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(createPayload)
       });
@@ -498,31 +449,49 @@ export default function CertificateForm(): React.JSX.Element {
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json();
-        console.error('❌ Failed to create credential:', errorData);
-        alert(`Failed to create credential: ${errorData.detail || errorData.message || 'Unknown error'}`);
+        console.error('❌ Failed to create credential - Full Error:', errorData);
+        console.error('❌ Error Details:', JSON.stringify(errorData, null, 2));
+        
+        let errorMessage = 'Failed to create credential: ';
+        if (errorData.detail) {
+          errorMessage += errorData.detail;
+        } else if (errorData.message) {
+          errorMessage += errorData.message;
+        } else {
+          errorMessage += 'Unknown error';
+        }
+        
+        if (errorData.details) {
+          console.error('❌ Validation Errors:', errorData.details);
+          errorMessage += '\n\nValidation Errors:\n' + JSON.stringify(errorData.details, null, 2);
+        }
+        
+        alert(errorMessage);
         return;
       }
 
       const createResult = await createResponse.json();
-      console.log('✅ Credential created successfully:', createResult);
+      console.log('✅ Credential created successfully!');
+      console.log('📋 Create Result:', JSON.stringify(createResult, null, 2));
+      const credentialId = createResult.credential_id;
+      console.log('🆔 Credential ID:', credentialId);
 
-      // STEP 2: Issue on Blockchain
-      console.log('⛓️ Step 2: Issuing credential on blockchain...');
-
+      // Step 2: Issue on Blockchain (generates QR code)
+      console.log('⛓️ Step 2: Issuing on blockchain...');
       const issuePayload = {
-        credential_id: createResult.credential_id,
+        credential_id: credentialId,
         learner_address: learnerAddress,
         generate_qr: true,
         wait_for_confirmation: false
       };
 
-      console.log('📤 Sending blockchain issue request:', issuePayload);
+      console.log('📤 Blockchain Issue Payload:', JSON.stringify(issuePayload, null, 2));
 
       const issueResponse = await fetch('http://localhost:8000/api/v1/blockchain/credentials/issue', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(issuePayload)
       });
@@ -531,16 +500,95 @@ export default function CertificateForm(): React.JSX.Element {
 
       if (!issueResponse.ok) {
         const errorData = await issueResponse.json();
-        console.error('❌ Failed to issue credential on blockchain:', errorData);
-        alert(`Failed to issue credential on blockchain: ${errorData.detail || errorData.message || 'Unknown error'}`);
+        console.error('❌ Failed to issue on blockchain - Full Error:', errorData);
+        console.error('❌ Error Details:', JSON.stringify(errorData, null, 2));
+        alert(`Failed to issue on blockchain: ${errorData.detail || errorData.message || 'Unknown error'}`);
         return;
       }
 
       const issueResult = await issueResponse.json();
-      console.log('✅ Credential issued on blockchain successfully:', issueResult);
+      console.log('✅ Blockchain issuance successful!');
+      console.log('📋 Issue Result:', JSON.stringify(issueResult, null, 2));
+      console.log('🔑 QR Code Data:', issueResult.qr_code_data);
 
-      // Store the final result and move to step 3
-      setIssuedCertificate(issueResult);
+      // Step 3: Overlay QR code on certificate and upload to blob storage
+      console.log('📄 Step 3: Generating certificate with QR overlay...');
+      
+      if (!pdfFile) {
+        console.error('❌ Original certificate file not found');
+        alert('Original certificate file not found');
+        return;
+      }
+
+      // Read the file as ArrayBuffer to ensure it's properly sent
+      const fileArrayBuffer = await pdfFile.arrayBuffer();
+      const fileBlob = new Blob([fileArrayBuffer], { type: pdfFile.type });
+      
+      console.log('📄 Certificate File Info:');
+      console.log('  - Name:', pdfFile.name);
+      console.log('  - Size:', pdfFile.size, 'bytes');
+      console.log('  - Type:', pdfFile.type);
+      console.log('  - ArrayBuffer size:', fileArrayBuffer.byteLength, 'bytes');
+      console.log('  - Is PDF:', pdfFile.type === 'application/pdf');
+      console.log('  - Is Image:', pdfFile.type.startsWith('image/'));
+
+      // Prepare FormData with the original certificate file and QR code data
+      const overlayFormData = new FormData();
+      overlayFormData.append('certificate_file', fileBlob, pdfFile.name);
+      overlayFormData.append('credential_id', credentialId);
+      overlayFormData.append('qr_data', JSON.stringify(issueResult.qr_code_data || {}));
+      
+      console.log('📤 QR Overlay Request Data:');
+      console.log('  - Credential ID:', credentialId);
+      console.log('  - File Blob size:', fileBlob.size, 'bytes');
+      console.log('  - File Type:', fileBlob.type);
+      console.log('  - QR Data:', issueResult.qr_code_data);
+
+      const overlayResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials/overlay-qr', {
+        method: 'POST',
+        headers: {
+          'X-API-Key': apiKey,
+          'Authorization': `Bearer ${token}`
+        },
+        body: overlayFormData
+      });
+
+      console.log('📡 QR overlay response status:', overlayResponse.status);
+
+      if (!overlayResponse.ok) {
+        const errorText = await overlayResponse.text();
+        console.error('❌ Failed to overlay QR and upload - Raw Response:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error('❌ Error Data:', JSON.stringify(errorData, null, 2));
+          alert(`Failed to generate final certificate: ${errorData.detail || errorData.message || 'Unknown error'}`);
+        } catch {
+          console.error('❌ Non-JSON Error Response:', errorText);
+          alert(`Failed to generate final certificate: ${errorText}`);
+        }
+        return;
+      }
+      
+      const overlayResult = await overlayResponse.json();
+      console.log('✅ Certificate with QR uploaded successfully!');
+      console.log('📋 Overlay Result:', JSON.stringify(overlayResult, null, 2));
+      console.log('🔗 Certificate URL:', overlayResult.certificate_url);
+
+      // Combine all results for display in Step 3
+      const finalResult = {
+        ...issueResult,
+        credential_id: credentialId,
+        certificate_url: overlayResult.certificate_url,
+        certificate_with_qr: overlayResult.certificate_url,
+        vc_payload: createPayload.vc_payload,
+        learner_data: learnerData
+      };
+      
+      console.log('✅ All steps completed successfully!');
+      console.log('📋 Final Result:', JSON.stringify(finalResult, null, 2));
+
+      setIssuedCertificate(finalResult);
       setCurrentStep(3);
 
     } catch (error) {
@@ -551,109 +599,43 @@ export default function CertificateForm(): React.JSX.Element {
     }
   };
 
-  const handleVerificationComplete = (): void => {
-    if (verificationStatus.allVerified) {
-      setCurrentStep(3);
-    }
+  const handleCancel = (): void => {
+    setFormData({
+      certificateTitle: '',
+      issuerOrganization: user?.full_name || 'Institution',
+      mode: 'Online',
+      duration: '4 Weeks',
+      issueDate: new Date().toISOString().split('T')[0],
+      learnerId: '',
+      skills: [],
+      nsqfLevel: '',
+      description: '',
+      tags: [],
+      tagInput: '',
+    });
+    setPdfFile(null);
+    setErrors({});
+    setCurrentStep(1);
+    setShowExtractedData(false);
+    setOcrData(null);
+    setLearnerIdMatch(false);
   };
 
-  // Trigger verification when step 2 is reached
   useEffect(() => {
     if (currentStep === 2) {
       performVerification();
     }
   }, [currentStep]);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    
-    // Validate form before submitting
-    if (!validateForm()) {
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      // Get API key from the institution's API keys
-      const apiKeys = await fetchApiKeys();
-      if (!apiKeys || apiKeys.length === 0) {
-        alert('No API keys found. Please generate an API key first in the institution dashboard.');
-        return;
-      }
-      
-      // Use the first active API key
-      const apiKey = apiKeys[0].key;
-
-      // Prepare the API payload using form data
-      const payload = {
-        artifact_url: pdfFile ? URL.createObjectURL(pdfFile) : "", // Use uploaded PDF file or empty
-        credential_type: "json-ld",
-        idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        metadata: {
-          completion_date: formData.issueDate,
-          course_name: formData.certificateTitle,
-          grade: "A+" // Default grade - you can add this as a form field later
-        },
-        vc_payload: {
-          "@context": [
-            "https://www.w3.org/2018/credentials/v1"
-          ],
-          "credentialSubject": {
-            "achievement": formData.certificateTitle,
-            "id": formData.learnerId || "did:example:learner",
-            "name": "John Doe" // You can add a learner name field later if needed
-          },
-          "issuer": "did:example:issuer", // This should come from issuer profile
-          "type": [
-            "VerifiableCredential",
-            "EducationalCredential"
-          ]
-        }
-      };
-
-      console.log('Submitting credential with payload:', payload);
-
-      // Send API request
-      const response = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Credential issued successfully:', result);
-        alert('Credential issued successfully!');
-        
-        // Reset form after successful submission
-        handleCancel();
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to issue credential:', errorData);
-        alert(`Failed to issue credential: ${errorData.message || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error issuing credential:', error);
-      alert('An error occurred while issuing the credential. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <RoleGuard allowedPath="/dashboard/institution/credentials" requiredRole="issuer">
       <DashboardLayout title="Institution Credentials">
         <div className="w-full p-4 sm:p-8">
-          <form onSubmit={handleSubmit} className="bg-white rounded-lg p-8">
+          <div className="bg-white rounded-lg p-8">
           
           {/* Step Progress Indicator */}
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-8">
-              {/* Step 1 */}
               <div className="flex items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                   currentStep >= 1 
@@ -671,7 +653,6 @@ export default function CertificateForm(): React.JSX.Element {
                 </span>
               </div>
 
-              {/* Step 2 */}
               <div className="flex items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                   currentStep >= 2 
@@ -689,7 +670,6 @@ export default function CertificateForm(): React.JSX.Element {
                 </span>
               </div>
 
-              {/* Step 3 */}
               <div className="flex items-center">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                   currentStep >= 3 
@@ -709,118 +689,71 @@ export default function CertificateForm(): React.JSX.Element {
             </div>
           </div>
 
-          {/* Step 1: Fill Details */}
+          {/* Step 1: Fill Details with OCR Extraction */}
           {currentStep === 1 && (
             <>
-              {/* Credentials Info Section */}
               <h2 className="text-2xl font-semibold text-gray-900 mb-6">Credentials Info</h2>
 
-              {/* Certificate Title */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Certificate Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="certificateTitle"
-              placeholder="Certificate title"
-              value={formData.certificateTitle}
-              onChange={handleInputChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-                errors.certificateTitle ? 'border-red-500' : 'border-gray-300'
-              }`}
-            />
-            {errors.certificateTitle && (
-              <p className="text-red-500 text-sm mt-1">{errors.certificateTitle}</p>
-            )}
-          </div>
-
-          {/* Issuer Organization and Mode */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Issuer Organization Name
-              </label>
-              <div className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
-                {formData.issuerOrganization}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                This is automatically set to your organization name
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mode
-              </label>
-              <select
-                value={formData.mode}
-                onChange={(e) => handleSelectChange('mode', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option>Online</option>
-                <option>Offline</option>
-                <option>Hybrid</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Learner ID */}
+              {/* Learner ID and Certificate Upload - Initial Fields */}
+              {!showExtractedData && (
+                <>
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Learner ID <span className="text-red-500">*</span>
             </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Enter the learner ID. This will be verified against the certificate during extraction.
+                    </p>
             <input
               type="text"
               name="learnerId"
               placeholder="Enter Learner ID (e.g., did:example:learner123)"
               value={formData.learnerId}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-                errors.learnerId ? 'border-red-500' : 'border-gray-300'
-              }`}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
             {errors.learnerId && (
               <p className="text-red-500 text-sm mt-1">{errors.learnerId}</p>
             )}
           </div>
 
-          {/* PDF Certificate Template and Duration */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
+                  <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Certificate PDF Template *
+                      Certificate File <span className="text-red-500">*</span>
               </label>
               <p className="text-xs text-gray-500 mb-2">
-                Upload the PDF template for the certificate. QR code will be overlaid on top right.
+                      Upload certificate as PDF or image (JPG, JPEG, PNG). Data will be extracted automatically.
               </p>
               <label className="relative cursor-pointer">
                 <input
                   type="file"
-                  accept=".pdf"
+                        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/jpg,image/png"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                            // Validate file type
+                            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+                            const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+                            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+                            
+                            if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+                              alert('Invalid file type. Please upload PDF, JPG, JPEG, or PNG files only.');
+                              e.target.value = '';
+                              return;
+                            }
+                            
                       setPdfFile(file);
+                            console.log('✅ Certificate file selected:', file.name, file.type);
                     }
                   }}
                   className="hidden"
                 />
                 <div className="flex items-center justify-between px-4 py-2 border border-gray-300 rounded-lg hover:border-gray-400 transition">
                   <span className="text-gray-600">
-                    {pdfFile ? pdfFile.name : 'Choose PDF file'}
+                          {pdfFile ? pdfFile.name : 'Choose certificate file'}
                   </span>
-                  <svg
-                    className="w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
               </label>
@@ -831,7 +764,7 @@ export default function CertificateForm(): React.JSX.Element {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <p className="text-sm text-blue-700 font-medium">
-                      PDF template ready: {pdfFile.name}
+                            File ready: {pdfFile.name}
                     </p>
                   </div>
                 </div>
@@ -840,104 +773,307 @@ export default function CertificateForm(): React.JSX.Element {
                 <p className="text-red-500 text-sm mt-1">{errors.pdfFile}</p>
               )}
             </div>
+
+                  {/* Extract Button */}
+                  <div className="mb-8">
+                    <button
+                      type="button"
+                      onClick={handleExtractData}
+                      disabled={!pdfFile || !formData.learnerId.trim() || isExtracting}
+                      className={`px-6 py-2 rounded-lg transition font-medium ${
+                        pdfFile && formData.learnerId.trim() && !isExtracting
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {isExtracting ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Extracting Data...
+                        </span>
+                      ) : (
+                        'Extract Data from Certificate'
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Extracted Data and Full Form - Shown after extraction */}
+              {showExtractedData && (
+                <>
+                  {/* OCR Extracted Data - Read Only */}
+                  <div className="mb-6">
+                    <div className="mb-4 pb-2 border-b border-gray-200">
+                      <p className="text-sm text-gray-600">Auto-extracted from certificate (read-only)</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration
+                          Credential Name
               </label>
-              <select
-                value={formData.duration}
-                onChange={(e) => handleSelectChange('duration', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              >
-                <option>1 Week</option>
-                <option>2 Weeks</option>
-                <option>3 Weeks</option>
-                <option>4 Weeks</option>
-                <option>6 Weeks</option>
-                <option>8 Weeks</option>
-                <option>12 Weeks</option>
-              </select>
+                        <input
+                          type="text"
+                          value={ocrData?.credential_name || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
             </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Issuer Name
+                        </label>
+                        <input
+                          type="text"
+                          value={ocrData?.issuer_name || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
           </div>
 
-          {/* Issue Date Section */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Issue Date</h3>
-
-          <div className="mb-8">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Issued Date
+                        </label>
+                        <input
+                          type="text"
+                          value={ocrData?.issued_date || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+                      
+                      <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Issue Date
+                          Expiry Date
             </label>
             <input
-              type="date"
-              value={formData.issueDate}
-              readOnly
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Issue date is automatically set to today's date
-            </p>
+                          type="text"
+                          value={ocrData?.expiry_date || 'N/A'}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
           </div>
 
-          {/* Learnings & Skills Section */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Learnings & Skills</h3>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Skill Tags
+                        </label>
+                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-300 rounded-lg min-h-[44px]">
+                          {ocrData?.skill_tags && ocrData.skill_tags.length > 0 ? (
+                            ocrData.skill_tags.map((skill, index) => (
+                              <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">No skills extracted</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
+                  {/* Learner ID Verification Section */}
           <div className="mb-6">
-            <div className="relative mb-4">
+                    <div className="mb-4 pb-2 border-b border-gray-200">
+                      <p className="text-sm font-medium text-gray-900">Learner ID Verification</p>
+                      <p className="text-xs text-gray-500 mt-1">Comparison of entered and extracted learner IDs</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {/* User Entered Learner ID */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Entered Learner ID
+                        </label>
               <input
                 type="text"
-                placeholder="Search"
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddSkill(e as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-              <svg
-                className="absolute right-3 top-2.5 w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+                          value={formData.learnerId}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Provided by issuer</p>
+                      </div>
+
+                      {/* OCR Extracted Learner ID */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Certificate Learner ID
+                        </label>
+                        <input
+                          type="text"
+                          value={ocrData?.learner_id || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Extracted from certificate</p>
+                      </div>
+                    </div>
+                      
+                    {/* Verification Status */}
+                    <div className={`p-4 rounded-lg border-2 ${
+                      learnerIdMatch 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-start">
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${
+                          learnerIdMatch ? 'bg-green-500' : 'bg-red-500'
+                        }`}>
+                          {learnerIdMatch ? (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <h4 className={`text-sm font-semibold ${
+                            learnerIdMatch ? 'text-green-900' : 'text-red-900'
+                          }`}>
+                            {learnerIdMatch ? 'Learner ID Verified Successfully' : 'Learner ID Verification Failed'}
+                          </h4>
+                          <p className={`text-sm mt-1 ${
+                            learnerIdMatch ? 'text-green-700' : 'text-red-700'
+                          }`}>
+                            {learnerIdMatch 
+                              ? 'The entered Learner ID matches the certificate. This credential can be safely issued to the learner.'
+                              : 'The entered Learner ID does not match the certificate. Please review the learner information before proceeding. Issuing a credential with mismatched IDs may result in incorrect credential assignment.'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
             </div>
 
-            {/* Skills Tags */}
-            <div className="flex flex-wrap gap-2">
-              {formData.skills.map((skill) => (
-                <div
-                  key={skill}
-                  className="flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full"
-                >
-                  <span className="text-sm">{skill}</span>
+                  {/* Manual Input Fields - Editable */}
+                  <div className="mb-6">
+                    <div className="mb-4 pb-2 border-b border-gray-200">
+                      <p className="text-sm text-gray-600">Additional information</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* NSQF Level */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          NSQF Level <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="nsqfLevel"
+                          value={formData.nsqfLevel}
+                          onChange={(e) => handleSelectChange('nsqfLevel', e.target.value)}
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+                            errors.nsqfLevel ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        >
+                          <option value="">Select NSQF Level</option>
+                          <option value="1">Level 1</option>
+                          <option value="2">Level 2</option>
+                          <option value="3">Level 3</option>
+                          <option value="4">Level 4</option>
+                          <option value="5">Level 5</option>
+                          <option value="6">Level 6</option>
+                          <option value="7">Level 7</option>
+                          <option value="8">Level 8</option>
+                        </select>
+                        {errors.nsqfLevel && (
+                          <p className="text-red-500 text-sm mt-1">{errors.nsqfLevel}</p>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Description 
+                        </label>
+                        <textarea
+                          name="description"
+                          placeholder="Enter a detailed description of the credential"
+                          value={formData.description}
+                          onChange={(e) => {
+                            const { name, value } = e.target;
+                            setFormData(prev => ({ ...prev, [name]: value }));
+                            if (errors[name]) {
+                              setErrors(prev => ({ ...prev, [name]: '' }));
+                            }
+                          }}
+                          rows={4}
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none ${
+                            errors.description ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                        {errors.description && (
+                          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                        )}
+                      </div>
+
+                      {/* Tags (Optional) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tags <span className="text-gray-500">(Optional)</span>
+                        </label>
+                        <div className="relative mb-3">
+                          <input
+                            type="text"
+                            placeholder="Type a tag and press Enter"
+                            value={formData.tagInput}
+                            onChange={(e) => setFormData(prev => ({ ...prev, tagInput: e.target.value }))}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const tag = formData.tagInput.trim();
+                                if (tag && !formData.tags.includes(tag)) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    tags: [...prev.tags, tag],
+                                    tagInput: ''
+                                  }));
+                                }
+                              }
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2 p-3 bg-white border border-gray-300 rounded-lg min-h-[44px]">
+                          {formData.tags.length > 0 ? (
+                            formData.tags.map((tag, index) => (
+                              <div key={index} className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
+                                <span className="text-sm">{tag}</span>
                   <button
                     type="button"
-                    onClick={() => handleRemoveSkill(skill)}
-                    className="ml-1 text-blue-700 hover:text-blue-900"
-                  >
-                    <X size={16} />
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      tags: prev.tags.filter((_, i) => i !== index)
+                                    }));
+                                  }}
+                                  className="ml-1 text-gray-500 hover:text-gray-700"
+                                >
+                                  <X size={14} />
                   </button>
                 </div>
-              ))}
-            </div>
-            {errors.skills && (
-              <p className="text-red-500 text-sm mt-2">{errors.skills}</p>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-400">No tags added</span>
             )}
           </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Step 1 Buttons */}
               <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition font-medium"
-                >
-                  Save
-                </button>
                 <button
                   type="button"
                   onClick={handleCancel}
@@ -945,13 +1081,20 @@ export default function CertificateForm(): React.JSX.Element {
                 >
                   Cancel
                 </button>
+                {showExtractedData && (
                 <button
                   type="button"
                   onClick={handleVerify}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
-                >
-                  Verify
+                    disabled={!learnerIdMatch}
+                    className={`px-6 py-2 rounded-lg transition font-medium ${
+                      learnerIdMatch
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {learnerIdMatch ? 'Verify & Continue' : 'Learner ID Verification Required'}
                 </button>
+                )}
               </div>
             </>
           )}
@@ -960,7 +1103,6 @@ export default function CertificateForm(): React.JSX.Element {
           {currentStep === 2 && (
             <>
               <div className="text-center py-12">
-                {/* Animated Header */}
                 <div className="relative mb-8">
                   <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-500 ${
                     verificationStatus.allVerified 
@@ -991,7 +1133,6 @@ export default function CertificateForm(): React.JSX.Element {
                   </p>
                 </div>
                 
-                {/* Verification Steps with Cool Animations */}
                 <div className="space-y-6 mb-8 max-w-md mx-auto">
                   {/* Learner Check */}
                   <div className="flex items-center justify-between p-4 bg-white rounded-lg border-2 transition-all duration-500 hover:shadow-md">
@@ -1022,7 +1163,6 @@ export default function CertificateForm(): React.JSX.Element {
                            verificationStatus.learnerCheck === 'error' ? 'Learner verification failed' :
                            'Checking learner status...'}
                         </p>
-                        {/* Learner Info Box */}
                         {verificationStatus.learnerCheck === 'success' && verificationData?.learnerData?.user_info && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="text-xs text-green-700">
@@ -1104,7 +1244,6 @@ export default function CertificateForm(): React.JSX.Element {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-4 justify-center">
                   <button
                     type="button"
@@ -1135,7 +1274,6 @@ export default function CertificateForm(): React.JSX.Element {
           {currentStep === 3 && (
             <>
               <div className="py-8 w-full">
-                {/* Success Header */}
                 <div className="text-center mb-8">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1149,7 +1287,6 @@ export default function CertificateForm(): React.JSX.Element {
                   </p>
                 </div>
 
-                {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full px-6">
                   
                   {/* Blockchain Information Block */}
@@ -1311,22 +1448,36 @@ export default function CertificateForm(): React.JSX.Element {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-4 justify-center mt-12">
-                  <button
-                    type="button"
-                    onClick={() => setShowCertificateModal(true)}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-lg shadow-md hover:shadow-lg"
-                  >
-                    View Full Certificate
-                  </button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12">
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCertificateModal(true)}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-lg shadow-md hover:shadow-lg"
+                    >
+                      View Full Certificate
+                    </button>
+
+                    {issuedCertificate?.certificate_url && (
+                      <a
+                        href={issuedCertificate.certificate_url}
+                        download={`certificate_${issuedCertificate.credential_id}.pdf`}
+                        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-lg shadow-md hover:shadow-lg flex items-center"
+                      >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l4-4m-4 4l-4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Download PDF
+                      </a>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
-                      // Navigate back to dashboard overview
                       window.location.href = '/dashboard/institution';
                     }}
-                    className="px-8 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium text-lg shadow-md hover:shadow-lg"
+                    className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium text-lg shadow-md hover:shadow-lg"
                   >
                     Return to Dashboard
                   </button>
@@ -1334,7 +1485,7 @@ export default function CertificateForm(): React.JSX.Element {
               </div>
             </>
           )}
-        </form>
+        </div>
         </div>
 
         {/* Certificate Modal */}
@@ -1343,20 +1494,44 @@ export default function CertificateForm(): React.JSX.Element {
             <div className="bg-white rounded-lg max-w-6xl w-full max-h-[95vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900">Digital Certificate</h3>
-                <button
-                  onClick={() => setShowCertificateModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center space-x-3">
+                  {/* Download Certificate Button */}
+                  {issuedCertificate?.certificate_url && (
+                    <a
+                      href={issuedCertificate.certificate_url}
+                      download={`certificate_${issuedCertificate.credential_id}.pdf`}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l4-4m-4 4l-4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Download PDF
+                    </a>
+                  )}
+
+                  {/* Open Certificate Button */}
+                  {issuedCertificate?.certificate_url && (
+                    <button
+                      onClick={() => window.open(issuedCertificate.certificate_url, '_blank')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                    >
+                      Open Certificate
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setShowCertificateModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <div className="p-6">
-                {/* PDF Certificate Display with QR Overlay */}
                 <div className="relative bg-white border border-gray-200 rounded-lg shadow-lg mb-6">
-                  {/* QR Code Overlay - Top Right */}
                   {issuedCertificate?.qr_code_data?.qr_code_image && (
                     <div className="absolute top-4 right-4 z-10">
                       <div className="bg-white p-2 rounded-lg border border-gray-300 shadow-lg">
@@ -1369,27 +1544,50 @@ export default function CertificateForm(): React.JSX.Element {
                     </div>
                   )}
 
-                  {/* PDF Display */}
                   <div className="w-full h-auto">
-                    {pdfFile ? (
-                      <iframe
-                        src={URL.createObjectURL(pdfFile)}
-                        className="w-full h-[800px] border-0 rounded-lg"
-                        title="Certificate PDF"
-                      />
+                    {issuedCertificate?.certificate_url ? (
+                      <div className="p-12 text-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">
+                        <svg className="w-20 h-20 mx-auto mb-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h4 className="text-xl font-semibold text-gray-900 mb-2">Certificate Ready</h4>
+                        <p className="text-gray-600 mb-6">
+                          Your blockchain-verified certificate with embedded QR code is ready for viewing and download.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                          <button
+                            onClick={() => window.open(issuedCertificate.certificate_url, '_blank')}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center"
+                          >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            View Certificate
+                          </button>
+                          <a
+                            href={issuedCertificate.certificate_url}
+                            download={`certificate_${issuedCertificate.credential_id}.pdf`}
+                            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center"
+                          >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l4-4m-4 4l-4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Download PDF
+                          </a>
+                        </div>
+                      </div>
                     ) : (
                       <div className="p-12 text-center text-gray-500">
                         <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <p className="text-lg">PDF template not available</p>
-                        <p className="text-sm">Please upload a PDF template in the form</p>
+                        <p className="text-lg">Certificate not available</p>
+                        <p className="text-sm">Please complete the credential issuance process</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Blockchain Verification Details */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4">Blockchain Verification Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
