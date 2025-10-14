@@ -105,7 +105,7 @@ export default function DashboardSidebar({
           </button>
         </div>
         
-        {sidebarExpanded && userRole !== 'institution' && (
+        {sidebarExpanded && userRole == 'learner' && (
           <>
             <button 
               onClick={handleDownloadPortfolio}
@@ -146,19 +146,6 @@ export default function DashboardSidebar({
               {sidebarExpanded && <span>{t('overview')}</span>}
             </button>
 
-            {userRole === 'learner' && (
-              <button
-                onClick={() => handleNavigation(`/dashboard/learner/recommendations`)}
-                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-                  pathname === `/dashboard/learner/recommendations`
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <TrendingUp size={16} className={pathname === `/dashboard/learner/recommendations` ? 'text-blue-600' : 'text-gray-600'} />
-                {sidebarExpanded && <span>{t('recommendations')}</span>}
-              </button>
-            )}
           </div>
 
           {/* CREDENTIALS Section - Only for Institution */}
@@ -228,6 +215,7 @@ export default function DashboardSidebar({
           <div className="mt-8" />
           {sidebarExpanded && <p className="text-sm text-gray-500 mb-4 ml-2 font-medium">PAGES</p>}
           
+          
           <button
             onClick={() => setOpenPages(!openPages)}
             className="w-full flex items-center gap-2 px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
@@ -294,15 +282,63 @@ export default function DashboardSidebar({
             <>
               <div className="mt-6" />
               <button
-                onClick={() => handleNavigation('/dashboard/candidates')}
+                onClick={() => handleNavigation('/dashboard/employer')}
                 className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-                  pathname === '/dashboard/candidates' 
+                  pathname === '/dashboard/employer' 
                     ? 'bg-blue-50 text-blue-700 font-medium' 
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <Users size={16} className={pathname === '/dashboard/candidates' ? 'text-blue-600' : 'text-gray-600'} />
-                {sidebarExpanded && <span>Candidates</span>}
+                <PieChart size={16} className={pathname === '/dashboard/employer' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Overview</span>}
+              </button>
+              
+              <button
+                onClick={() => handleNavigation('/dashboard/employer/verify-credentials')}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/employer/verify-credentials' 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Badge size={16} className={pathname === '/dashboard/employer/verify-credentials' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Verify Credentials</span>}
+              </button>
+              
+              <button
+                onClick={() => handleNavigation('/dashboard/employer/verified-credentials')}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/employer/verified-credentials' 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <FileText size={16} className={pathname === '/dashboard/employer/verified-credentials' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Verified Credentials</span>}
+              </button>
+              
+              <button
+                onClick={() => handleNavigation('/dashboard/employer/candidate-directory')}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/employer/candidate-directory' 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Users size={16} className={pathname === '/dashboard/employer/candidate-directory' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Candidate Directory</span>}
+              </button>
+              
+              <button
+                onClick={() => handleNavigation('/dashboard/employer/search-learners')}
+                className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
+                  pathname === '/dashboard/employer/search-learners' 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <TrendingUp size={16} className={pathname === '/dashboard/employer/search-learners' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Search Learners</span>}
               </button>
             </>
           )}
