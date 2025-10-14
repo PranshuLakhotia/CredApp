@@ -796,7 +796,7 @@ export default function InstitutionDashboard() {
             startIcon={<Description />}
             onClick={() => {
               console.log('🎯 CLICKING ISSUE SINGLE CREDENTIAL BUTTON');
-              window.location.href = '/dashboard/institution/issue-credential';
+              window.location.href = '/dashboard/institution/credentials';
             }}
             sx={{
               bgcolor: '#10b981',
