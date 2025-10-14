@@ -38,7 +38,12 @@ export interface RegisterRequest {
     country?: string;
     postal_code?: string;
   };
-  kyc_verification?: any;
+  kyc_verification?: {
+    status?: string;
+    documents?: string[];
+    verified_at?: string;
+    verification_level?: string;
+  };
 }
 
 export interface Role {
@@ -121,5 +126,5 @@ export interface AuthState {
 export interface ApiError {
   error: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
