@@ -21,13 +21,30 @@ interface FormData {
 }
 
 interface OcrData {
-  credential_name: string;
-  issuer_name: string;
-  issued_date: string;
-  expiry_date: string;
-  skill_tags: string[];
-  description: string;
-  learner_id: string;
+  success: boolean;
+  provider: string;
+  confidence: number;
+  extracted_data: {
+    credential_name: string;
+    issuer_name: string;
+    issued_date: string;
+    expiry_date: string;
+    skill_tags: string[];
+    description: string;
+    learner_id: string;
+    learner_name: string;
+    nsqf_level: number;
+    credential_type: string;
+    tags: string[];
+    raw_text: string;
+  };
+  metadata: {
+    processing_time: number;
+    file_size: number;
+    filename: string;
+    file_type: string;
+    model: string;
+  };
 }
 
 export const fetchApiKeys = async () => {
@@ -81,6 +98,9 @@ export default function CertificateForm(): React.JSX.Element {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [currentStep, setCurrentStep] = useState<number>(1);
   
+  // Drag and drop states
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+  
   // OCR extraction states
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [ocrData, setOcrData] = useState<OcrData | null>(null);
@@ -103,6 +123,11 @@ export default function CertificateForm(): React.JSX.Element {
   
   // Certificate issuance states
   const [isIssuingCertificate, setIsIssuingCertificate] = useState<boolean>(false);
+  
+  // Verification file upload states
+  const [verificationFile, setVerificationFile] = useState<File | null>(null);
+  const [isVerificationDragOver, setIsVerificationDragOver] = useState<boolean>(false);
+  const [isVerifyingFile, setIsVerifyingFile] = useState<boolean>(false);
   const [issuedCertificate, setIssuedCertificate] = useState<any>(null);
   const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
 
@@ -162,6 +187,100 @@ export default function CertificateForm(): React.JSX.Element {
     }));
   };
 
+  // File validation function
+  const validateFile = (file: File): boolean => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    return allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension);
+  };
+
+  // Handle file selection (for both drag/drop and file input)
+  const handleFileSelection = (file: File): void => {
+    if (!validateFile(file)) {
+      alert('Invalid file type. Please upload PDF, JPG, JPEG, or PNG files only.');
+      return;
+    }
+    
+    setPdfFile(file);
+    console.log('✅ Certificate file selected:', file.name, file.type);
+    
+    // Clear any existing errors
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.pdfFile;
+      return newErrors;
+    });
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      handleFileSelection(file);
+    }
+  };
+
+  // Verification file handlers
+  const handleVerificationFileSelection = (file: File): void => {
+    if (validateFile(file)) {
+      setVerificationFile(file);
+      console.log('📄 Verification file selected:', file.name);
+    }
+  };
+
+  const handleVerificationDragEnter = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsVerificationDragOver(true);
+  };
+
+  const handleVerificationDragLeave = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsVerificationDragOver(false);
+  };
+
+  const handleVerificationDragOver = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleVerificationDrop = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsVerificationDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      handleVerificationFileSelection(file);
+    }
+  };
+
   const handleExtractData = async (): Promise<void> => {
     if (!pdfFile) {
       alert('Please upload a PDF certificate first');
@@ -209,7 +328,7 @@ export default function CertificateForm(): React.JSX.Element {
         setOcrData(extractedData);
         
         // Compare user-entered Learner ID with OCR-extracted Learner ID
-        const ocrLearnerId = (extractedData.learner_id || '').trim();
+        const ocrLearnerId = (extractedData.extracted_data?.learner_id || '').trim();
         const matches = userEnteredLearnerId === ocrLearnerId;
         
         console.log('🔍 Learner ID Verification:');
@@ -219,15 +338,28 @@ export default function CertificateForm(): React.JSX.Element {
         
         setLearnerIdMatch(matches);
         
-        // Auto-fill form data with OCR results (but keep user-entered learner ID)
+        // Show notification if there's a mismatch
+        if (!matches && ocrLearnerId) {
+          console.warn('⚠️ Learner ID mismatch detected!');
+          console.warn(`  User entered: "${userEnteredLearnerId}"`);
+          console.warn(`  Certificate shows: "${ocrLearnerId}"`);
+          console.warn('  Using certificate learner ID for consistency.');
+        }
+        
+        // Auto-fill form data with OCR results
+        // Use OCR-extracted learner ID if there's a mismatch to ensure consistency
+        const finalLearnerId = matches ? userEnteredLearnerId : ocrLearnerId;
+        
         setFormData(prev => ({
           ...prev,
-          certificateTitle: extractedData.credential_name || prev.certificateTitle,
-          // Keep the user-entered learner ID
-          learnerId: userEnteredLearnerId,
-          issueDate: extractedData.issued_date || prev.issueDate,
-          skills: extractedData.skill_tags && extractedData.skill_tags.length > 0 
-            ? extractedData.skill_tags 
+          certificateTitle: extractedData.extracted_data?.credential_name || prev.certificateTitle,
+          issuerOrganization: extractedData.extracted_data?.issuer_name || prev.issuerOrganization,
+          // Use OCR-extracted learner ID to ensure consistency with certificate
+          learnerId: finalLearnerId,
+          issueDate: extractedData.extracted_data?.issued_date || prev.issueDate,
+          nsqfLevel: extractedData.extracted_data?.nsqf_level ? extractedData.extracted_data.nsqf_level.toString() : prev.nsqfLevel,
+          skills: extractedData.extracted_data?.skill_tags && extractedData.extracted_data.skill_tags.length > 0 
+            ? extractedData.extracted_data.skill_tags 
             : prev.skills
         }));
         
@@ -248,6 +380,58 @@ export default function CertificateForm(): React.JSX.Element {
   const handleVerify = (): void => {
     if (validateForm()) {
       setCurrentStep(2);
+    }
+  };
+
+  const handleVerifyFile = async (): Promise<void> => {
+    if (!verificationFile) {
+      alert('Please upload a certificate file first');
+      return;
+    }
+
+    setIsVerifyingFile(true);
+    
+    try {
+      const apiKeys = await fetchApiKeys();
+      if (!apiKeys || apiKeys.length === 0) {
+        alert('No API keys found. Please generate an API key first.');
+        setIsVerifyingFile(false);
+        return;
+      }
+      
+      const apiKey = apiKeys[0].key;
+      
+      const formDataToSend = new FormData();
+      formDataToSend.append('file', verificationFile);
+
+      console.log('🔍 Sending verification request...');
+      
+      const response = await fetch('http://localhost:8000/api/v1/issuer/credentials/extract-ocr', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+        },
+        body: formDataToSend
+      });
+
+      if (response.ok) {
+        const extractedData = await response.json();
+        console.log('✅ Verification extraction successful:', extractedData);
+        
+        // Here you can add logic to verify the extracted data
+        // against the original credential data
+        alert('Certificate verification completed! Check console for details.');
+        
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Verification failed:', errorData);
+        alert(`Verification failed: ${errorData.detail || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('💥 Error during verification:', error);
+      alert('An error occurred during verification. Please try again.');
+    } finally {
+      setIsVerifyingFile(false);
     }
   };
 
@@ -396,17 +580,17 @@ export default function CertificateForm(): React.JSX.Element {
           "type": ["VerifiableCredential", "EducationalCredential"],
           "issuer": {
             "id": "did:example:issuer",
-            "name": ocrData?.issuer_name || formData.issuerOrganization
+            "name": ocrData?.extracted_data?.issuer_name || formData.issuerOrganization
           },
           "credentialSubject": {
             "id": formData.learnerId,
             "name": learnerData?.full_name || "Learner Name",
-            "achievement": ocrData?.credential_name || formData.certificateTitle,
+            "achievement": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
             "learner_address": learnerAddress,
-            "course": ocrData?.credential_name || formData.certificateTitle,
+            "course": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
             "grade": "A+",
-            "completion_date": ocrData?.issued_date || formData.issueDate,
-            "skills": ocrData?.skill_tags || [],
+            "completion_date": ocrData?.extracted_data?.issued_date || formData.issueDate,
+            "skills": ocrData?.extracted_data?.skill_tags || [],
             "duration": formData.duration,
             "mode": formData.mode,
             "nsqf_level": parseInt(formData.nsqfLevel),
@@ -414,19 +598,19 @@ export default function CertificateForm(): React.JSX.Element {
             "tags": formData.tags
           },
           "issuanceDate": new Date().toISOString(),
-          "expirationDate": ocrData?.expiry_date || null
+          "expirationDate": ocrData?.extracted_data?.expiry_date || null
         },
         artifact_url: pdfFile ? URL.createObjectURL(pdfFile) : "",
         idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         credential_type: "digital-certificate",
         metadata: {
           learner_address: learnerAddress,
-          completion_date: ocrData?.issued_date || formData.issueDate,
-          course_name: ocrData?.credential_name || formData.certificateTitle,
-          issuer_name: ocrData?.issuer_name || formData.issuerOrganization,
-          issue_date: ocrData?.issued_date || formData.issueDate,
-          expiry_date: ocrData?.expiry_date || null,
-          skill_tags: ocrData?.skill_tags || [],
+          completion_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
+          course_name: ocrData?.extracted_data?.credential_name || formData.certificateTitle,
+          issuer_name: ocrData?.extracted_data?.issuer_name || formData.issuerOrganization,
+          issue_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
+          expiry_date: ocrData?.extracted_data?.expiry_date || null,
+          skill_tags: ocrData?.extracted_data?.skill_tags || [],
           nsqf_level: parseInt(formData.nsqfLevel),
           description: formData.description,
           tags: formData.tags
@@ -724,51 +908,96 @@ export default function CertificateForm(): React.JSX.Element {
               <p className="text-xs text-gray-500 mb-2">
                       Upload certificate as PDF or image (JPG, JPEG, PNG). Data will be extracted automatically.
               </p>
-              <label className="relative cursor-pointer">
+              
+              {/* Drag and Drop Area */}
+              <div
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+                  isDragOver
+                    ? 'border-blue-500 bg-blue-50 scale-105'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
                 <input
                   type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/jpg,image/png"
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/jpg,image/png"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                            // Validate file type
-                            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-                            const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
-                            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-                            
-                            if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-                              alert('Invalid file type. Please upload PDF, JPG, JPEG, or PNG files only.');
-                              e.target.value = '';
-                              return;
-                            }
-                            
-                      setPdfFile(file);
-                            console.log('✅ Certificate file selected:', file.name, file.type);
+                      handleFileSelection(file);
                     }
                   }}
                   className="hidden"
+                  id="file-upload"
                 />
-                <div className="flex items-center justify-between px-4 py-2 border border-gray-300 rounded-lg hover:border-gray-400 transition">
-                  <span className="text-gray-600">
-                          {pdfFile ? pdfFile.name : 'Choose certificate file'}
-                  </span>
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                
+                {pdfFile ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center">
+                      <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-gray-900">File Uploaded Successfully!</p>
+                      <p className="text-sm text-gray-600 mt-1">{pdfFile.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Size: {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPdfFile(null);
+                        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                        if (fileInput) fileInput.value = '';
+                      }}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Remove File
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center">
+                      <svg 
+                        className={`w-12 h-12 transition-colors duration-200 ${
+                          isDragOver ? 'text-blue-500' : 'text-gray-400'
+                        }`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className={`text-lg font-medium transition-colors duration-200 ${
+                        isDragOver ? 'text-blue-700' : 'text-gray-900'
+                      }`}>
+                        {isDragOver ? 'Drop your file here' : 'Drag & drop your certificate here'}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">or</p>
+                      <label 
+                        htmlFor="file-upload"
+                        className="inline-flex items-center px-4 py-2 mt-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-              </label>
-              {pdfFile && (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-sm text-blue-700 font-medium">
-                            File ready: {pdfFile.name}
+                        </svg>
+                        Choose File
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Supports PDF, JPG, JPEG, PNG files
                     </p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+              
               {errors.pdfFile && (
                 <p className="text-red-500 text-sm mt-1">{errors.pdfFile}</p>
               )}
@@ -805,79 +1034,6 @@ export default function CertificateForm(): React.JSX.Element {
               {/* Extracted Data and Full Form - Shown after extraction */}
               {showExtractedData && (
                 <>
-                  {/* OCR Extracted Data - Read Only */}
-                  <div className="mb-6">
-                    <div className="mb-4 pb-2 border-b border-gray-200">
-                      <p className="text-sm text-gray-600">Auto-extracted from certificate (read-only)</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Credential Name
-              </label>
-                        <input
-                          type="text"
-                          value={ocrData?.credential_name || ''}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-            </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Issuer Name
-                        </label>
-                        <input
-                          type="text"
-                          value={ocrData?.issuer_name || ''}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-          </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Issued Date
-                        </label>
-                        <input
-                          type="text"
-                          value={ocrData?.issued_date || ''}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-                      </div>
-                      
-                      <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Expiry Date
-            </label>
-            <input
-                          type="text"
-                          value={ocrData?.expiry_date || 'N/A'}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-          </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Skill Tags
-                        </label>
-                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-300 rounded-lg min-h-[44px]">
-                          {ocrData?.skill_tags && ocrData.skill_tags.length > 0 ? (
-                            ocrData.skill_tags.map((skill, index) => (
-                              <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                {skill}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-500">No skills extracted</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Learner ID Verification Section */}
           <div className="mb-6">
@@ -908,7 +1064,7 @@ export default function CertificateForm(): React.JSX.Element {
                         </label>
                         <input
                           type="text"
-                          value={ocrData?.learner_id || ''}
+                          value={ocrData?.extracted_data?.learner_id || ''}
                           disabled
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         />
@@ -947,7 +1103,7 @@ export default function CertificateForm(): React.JSX.Element {
                           }`}>
                             {learnerIdMatch 
                               ? 'The entered Learner ID matches the certificate. This credential can be safely issued to the learner.'
-                              : 'The entered Learner ID does not match the certificate. Please review the learner information before proceeding. Issuing a credential with mismatched IDs may result in incorrect credential assignment.'
+                              : 'The entered Learner ID does not match the certificate. The system will automatically use the learner ID from the certificate to ensure consistency. Please verify this is correct before proceeding.'
                             }
                           </p>
                         </div>
@@ -955,13 +1111,48 @@ export default function CertificateForm(): React.JSX.Element {
                     </div>
             </div>
 
-                  {/* Manual Input Fields - Editable */}
+                  {/* Credential Details - Auto-populated from Certificate */}
                   <div className="mb-6">
                     <div className="mb-4 pb-2 border-b border-gray-200">
-                      <p className="text-sm text-gray-600">Additional information</p>
+                      <p className="text-sm font-medium text-gray-900">Credential Details</p>
+                      <p className="text-xs text-gray-500 mt-1">Auto-extracted from certificate (immutable)</p>
                     </div>
 
                     <div className="space-y-6">
+                      {/* Certificate Title */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Certificate Title <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="certificateTitle"
+                          value={formData.certificateTitle}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                        {errors.certificateTitle && (
+                          <p className="text-red-500 text-sm mt-1">{errors.certificateTitle}</p>
+                        )}
+                      </div>
+                      
+                      {/* Issuing Organization */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Issuing Organization <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="issuerOrganization"
+                          value={formData.issuerOrganization}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                        {errors.issuerOrganization && (
+                          <p className="text-red-500 text-sm mt-1">{errors.issuerOrganization}</p>
+                        )}
+                      </div>
+                      
                       {/* NSQF Level */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -970,10 +1161,8 @@ export default function CertificateForm(): React.JSX.Element {
                         <select
                           name="nsqfLevel"
                           value={formData.nsqfLevel}
-                          onChange={(e) => handleSelectChange('nsqfLevel', e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-                            errors.nsqfLevel ? 'border-red-500' : 'border-gray-300'
-                          }`}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         >
                           <option value="">Select NSQF Level</option>
                           <option value="1">Level 1</option>
@@ -990,6 +1179,69 @@ export default function CertificateForm(): React.JSX.Element {
                         )}
                       </div>
 
+                      {/* Mode */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Mode
+                        </label>
+                        <select
+                          name="mode"
+                          value={formData.mode}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        >
+                          <option value="Online">Online</option>
+                          <option value="Offline">Offline</option>
+                          <option value="Hybrid">Hybrid</option>
+                        </select>
+                      </div>
+                      
+                      {/* Duration */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Duration
+                        </label>
+                        <input
+                          type="text"
+                          name="duration"
+                          value={formData.duration}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+                      
+                      {/* Issue Date */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Issue Date
+                        </label>
+                        <input
+                          type="date"
+                          name="issueDate"
+                          value={formData.issueDate}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+                      
+                      {/* Skills */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Skills
+                        </label>
+                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-300 rounded-lg min-h-[44px]">
+                          {formData.skills && formData.skills.length > 0 ? (
+                            formData.skills.map((skill, index) => (
+                              <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">No skills extracted</span>
+                          )}
+                        </div>
+                      </div>
+                      
                       {/* Description */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -997,19 +1249,10 @@ export default function CertificateForm(): React.JSX.Element {
                         </label>
                         <textarea
                           name="description"
-                          placeholder="Enter a detailed description of the credential"
                           value={formData.description}
-                          onChange={(e) => {
-                            const { name, value } = e.target;
-                            setFormData(prev => ({ ...prev, [name]: value }));
-                            if (errors[name]) {
-                              setErrors(prev => ({ ...prev, [name]: '' }));
-                            }
-                          }}
+                          disabled
                           rows={4}
-                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none ${
-                            errors.description ? 'border-red-500' : 'border-gray-300'
-                          }`}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed resize-none"
                         />
                         {errors.description && (
                           <p className="text-red-500 text-sm mt-1">{errors.description}</p>
@@ -1085,14 +1328,13 @@ export default function CertificateForm(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={handleVerify}
-                    disabled={!learnerIdMatch}
                     className={`px-6 py-2 rounded-lg transition font-medium ${
                       learnerIdMatch
                         ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-orange-600 text-white hover:bg-orange-700'
                     }`}
                   >
-                    {learnerIdMatch ? 'Verify & Continue' : 'Learner ID Verification Required'}
+                    {learnerIdMatch ? 'Verify & Continue' : 'Continue with Certificate Learner ID'}
                 </button>
                 )}
               </div>
@@ -1102,6 +1344,118 @@ export default function CertificateForm(): React.JSX.Element {
           {/* Step 2: Verification */}
           {currentStep === 2 && (
             <>
+              {/* Certificate Verification Upload */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Verify Certificate</h2>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload Certificate for Verification <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Upload the certificate file to verify its authenticity and extract data for comparison.
+                  </p>
+                  
+                  {/* Drag and Drop Area */}
+                  <div
+                    className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isVerificationDragOver
+                        ? 'border-blue-500 bg-blue-50'
+                        : verificationFile
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    onDragEnter={handleVerificationDragEnter}
+                    onDragLeave={handleVerificationDragLeave}
+                    onDragOver={handleVerificationDragOver}
+                    onDrop={handleVerificationDrop}
+                  >
+                    {verificationFile ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center">
+                          <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-green-700">File uploaded successfully</p>
+                          <p className="text-sm text-gray-600">{verificationFile.name}</p>
+                          <p className="text-xs text-gray-500">{(verificationFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVerificationFile(null)}
+                          className="text-sm text-red-600 hover:text-red-800 underline"
+                        >
+                          Remove file
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-center">
+                          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">
+                            {isVerificationDragOver ? 'Drop the file here' : 'Drag and drop your certificate here'}
+                          </p>
+                          <p className="text-sm text-gray-500">or</p>
+                          <label className="cursor-pointer">
+                            <span className="text-sm text-blue-600 hover:text-blue-800 underline">
+                              browse files
+                            </span>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleVerificationFileSelection(e.target.files[0]);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Supports PDF, JPG, JPEG, PNG files up to 20MB
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Verify Button */}
+                  {verificationFile && (
+                    <div className="mt-4 text-center">
+                      <button
+                        type="button"
+                        onClick={handleVerifyFile}
+                        disabled={isVerifyingFile}
+                        className={`px-6 py-2 rounded-lg font-medium transition ${
+                          isVerifyingFile
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        {isVerifyingFile ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Verifying...
+                          </span>
+                        ) : (
+                          'Verify Certificate'
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* System Verification Status */}
               <div className="text-center py-12">
                 <div className="relative mb-8">
                   <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-500 ${

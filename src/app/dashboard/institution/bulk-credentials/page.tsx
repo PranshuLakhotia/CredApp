@@ -328,6 +328,106 @@ export default function BulkCredentialsPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [processingComplete, setProcessingComplete] = useState(false);
+  
+  // Drag and drop states
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+  const [dragOverEntryId, setDragOverEntryId] = useState<string | null>(null);
+
+  // File validation function
+  const validateFile = (file: File): boolean => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    return allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension);
+  };
+
+  // Handle file selection (for both drag/drop and file input)
+  const handleFileSelection = (file: File, entryId: string): void => {
+    if (!validateFile(file)) {
+      alert('Invalid file type. Please upload PDF, JPG, JPEG, or PNG files only.');
+      return;
+    }
+    
+    updateCertificateFile(entryId, file);
+    console.log('✅ Certificate file selected for entry:', entryId, file.name, file.type);
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent, entryId?: string): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+    if (entryId) {
+      setDragOverEntryId(entryId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, entryId?: string): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (entryId) {
+      setDragOverEntryId(null);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent): void => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent, entryId?: string): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setDragOverEntryId(null);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      if (entryId) {
+        // Single file drop on specific entry
+        const file = files[0];
+        handleFileSelection(file, entryId);
+      } else {
+        // Multiple files dropped on main area
+        const fileArray = Array.from(files);
+        const validFiles = fileArray.filter(file => validateFile(file));
+        
+        if (validFiles.length !== fileArray.length) {
+          alert(`Some files were skipped. Only PDF, JPG, JPEG, and PNG files are supported.`);
+        }
+        
+        // Process each valid file
+        validFiles.forEach((file, index) => {
+          // Find empty entry or create new one
+          const emptyEntry = entries.find(entry => !entry.certificateFile);
+          
+          if (emptyEntry) {
+            handleFileSelection(file, emptyEntry.id);
+          } else {
+            // Create new entry
+            const newId = (entries.length + index + 1).toString();
+            const newEntry: CredentialEntry = { 
+              id: newId, 
+              learnerId: '', 
+              certificateFile: null, 
+              status: 'pending' as const
+            };
+            
+            setEntries(prev => {
+              const updatedEntries = [...prev, newEntry];
+              // Use setTimeout to ensure the new entry is added before assigning the file
+              setTimeout(() => {
+                handleFileSelection(file, newId);
+              }, 100);
+              return updatedEntries;
+            });
+          }
+        });
+      }
+    }
+  };
 
   // Add new entry
   const addEntry = () => {
@@ -337,7 +437,7 @@ export default function BulkCredentialsPage() {
         id: newId, 
         learnerId: '', 
         certificateFile: null, 
-        status: 'pending' 
+        status: 'pending' as const
       }];
     });
   };
@@ -564,7 +664,7 @@ export default function BulkCredentialsPage() {
 
   // Reset form
   const resetForm = () => {
-    setEntries([{ id: '1', learnerId: '', certificateFile: null, status: 'pending' }]);
+    setEntries([{ id: '1', learnerId: '', certificateFile: null, status: 'pending' as const }]);
     setIsProcessing(false);
     setShowResults(false);
     setProcessingComplete(false);
@@ -680,6 +780,52 @@ export default function BulkCredentialsPage() {
             {/* Form Section */}
             {!showResults && (
               <div className="space-y-6">
+                {/* Main Drag and Drop Area */}
+                <div
+                  onDragEnter={(e) => handleDragEnter(e)}
+                  onDragLeave={(e) => handleDragLeave(e)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e)}
+                  className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+                    isDragOver && !dragOverEntryId
+                      ? 'border-blue-500 bg-blue-50 scale-105'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {isDragOver && !dragOverEntryId ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center">
+                        <svg className="w-16 h-16 text-blue-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xl font-medium text-blue-700">Drop your certificate files here!</p>
+                        <p className="text-sm text-blue-600 mt-1">
+                          Files will be automatically assigned to entries
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center">
+                        <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-lg font-medium text-gray-900">Bulk File Upload</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Drag multiple certificate files here to quickly populate entries
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Supports PDF, JPG, JPEG, PNG files
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Entries */}
                 {entries.map((entry, index) => (
                   <div key={entry.id} className="border border-gray-200 rounded-lg p-6">
@@ -718,20 +864,87 @@ export default function BulkCredentialsPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Certificate File *
                   </label>
-                        <div className="relative">
-                  <input
+                        
+                        {/* Drag and Drop Area */}
+                        <div
+                          onDragEnter={(e) => handleDragEnter(e, entry.id)}
+                          onDragLeave={(e) => handleDragLeave(e, entry.id)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, entry.id)}
+                          className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-all duration-200 ${
+                            dragOverEntryId === entry.id
+                              ? 'border-blue-500 bg-blue-50 scale-105'
+                              : entry.certificateFile
+                              ? 'border-green-300 bg-green-50'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) => updateCertificateFile(entry.id, e.target.files?.[0] || null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                          {entry.certificateFile && (
-                            <div className="mt-2 flex items-center text-sm text-green-600">
-                              <FileText className="w-4 h-4 mr-1" />
-                              {entry.certificateFile.name}
-                  </div>
-                )}
-              </div>
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleFileSelection(file, entry.id);
+                              }
+                            }}
+                            className="hidden"
+                            id={`file-upload-${entry.id}`}
+                          />
+                          
+                          {entry.certificateFile ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-center">
+                                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-green-700">File Uploaded!</p>
+                                <p className="text-xs text-gray-600 truncate">{entry.certificateFile.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {(entry.certificateFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => updateCertificateFile(entry.id, null)}
+                                className="text-red-600 hover:text-red-800 text-xs font-medium"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-center">
+                                <svg 
+                                  className={`w-8 h-8 transition-colors duration-200 ${
+                                    dragOverEntryId === entry.id ? 'text-blue-500' : 'text-gray-400'
+                                  }`} 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium transition-colors duration-200 ${
+                                  dragOverEntryId === entry.id ? 'text-blue-700' : 'text-gray-900'
+                                }`}>
+                                  {dragOverEntryId === entry.id ? 'Drop here' : 'Drag & drop'}
+                                </p>
+                                <p className="text-xs text-gray-600">or</p>
+                                <label 
+                                  htmlFor={`file-upload-${entry.id}`}
+                                  className="inline-flex items-center px-2 py-1 mt-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                                >
+                                  Choose
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
             </div>
               </div>
               </div>

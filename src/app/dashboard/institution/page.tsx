@@ -5,6 +5,117 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from '@/hooks/useTranslations';
+import InlineKYCSteps from '@/components/auth/InlineKYCSteps';
+import KYCVerificationCarousel from '@/components/auth/KYCVerificationCarousel';
+import RoleGuard from '@/components/auth/RoleGuard';
+import { useAuth } from '@/hooks/useAuth';
+import { useTranslations } from '@/hooks/useTranslations';
+
+interface IssuedCredential {
+  credential_id: string;
+  learner_id: string;
+  credential_details: {
+    title: string;
+    credential_type: string;
+    issuer_name: string;
+    learner_name: string;
+    learner_address: string;
+    learner_id: string;
+    issued_at: string;
+    grade: string;
+    completion_date: string;
+    status: string;
+  };
+  original_credential_data: {
+    artifact_url: string;
+    credential_type: string;
+    idempotency_key: string;
+    metadata: any;
+    vc_payload: any;
+  };
+  blockchain_data: {
+    credential_hash: string;
+    status: string;
+  };
+  blockchain_verification: {
+    credential_hash: string;
+    is_valid: boolean;
+    error?: string;
+    verified_at: number;
+  };
+  qr_code_data: {
+    certificate_qr_data: any;
+    qr_code_image: string;
+    qr_code_json: string;
+    verification_url: string;
+    image_size: string;
+    template: string;
+  };
+  qr_code_available: boolean;
+  last_updated: string;
+  created_at: string;
+}
+
+interface CompleteCredentialInfo {
+  credential_id: string;
+  learner_id: string;
+  credential_details: {
+    title: string;
+    credential_type: string;
+    issuer_name: string;
+    learner_name: string;
+    learner_address: string;
+    issued_at: string;
+    grade: string;
+    completion_date: string;
+    status: string;
+  };
+  original_credential_data: {
+    artifact_url: string;
+    credential_type: string;
+    idempotency_key: string;
+    metadata: any;
+    vc_payload: any;
+  };
+  blockchain_data: {
+    credential_hash: string;
+    status: string;
+  };
+  blockchain_verification: {
+    credential_hash: string;
+    is_valid: boolean;
+    error?: string;
+    verified_at: number;
+  };
+  qr_code_data: {
+    certificate_qr_data: any;
+    qr_code_image: string;
+    qr_code_json: string;
+    verification_url: string;
+    image_size: string;
+    template: string;
+  };
+  qr_code_available: boolean;
+  last_updated: string;
+  created_at: string;
+}
+
+interface DashboardStats {
+  total_credentials: number;
+  active_learners: number;
+  completion_rate: number;
+  monthly_issued: number;
+  weekly_issued: number;
+  daily_issued: number;
+  avg_certificates_per_week: number;
+  most_popular_course: string;
+  completion_rate_percentage: number;
+  blockchain_confirmed_rate: number;
+}
+import InlineKYCSteps from '@/components/auth/InlineKYCSteps';
+import KYCVerificationCarousel from '@/components/auth/KYCVerificationCarousel';
+import InstitutionDashboard from '@/components/dashboard/InstitutionDashboard';
+
 
 interface IssuedCredential {
   credential_id: string;
