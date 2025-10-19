@@ -20,7 +20,7 @@ interface FormData {
   tagInput: string;
 }
 
-interface OcrData {
+interface ExtractedData {
   credential_name: string;
   issuer_name: string;
   issued_date: string;
@@ -28,6 +28,13 @@ interface OcrData {
   skill_tags: string[];
   description: string;
   learner_id: string;
+}
+
+interface OcrResponse {
+  success: boolean;
+  extracted_data: ExtractedData;
+  provider: string;
+  confidence: number;
 }
 
 export const fetchApiKeys = async () => {
@@ -83,7 +90,7 @@ export default function CertificateForm(): React.JSX.Element {
   
   // OCR extraction states
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
-  const [ocrData, setOcrData] = useState<OcrData | null>(null);
+  const [ocrData, setOcrData] = useState<OcrResponse | null>(null);
   const [showExtractedData, setShowExtractedData] = useState<boolean>(false);
   const [learnerIdMatch, setLearnerIdMatch] = useState<boolean>(false);
   
@@ -203,10 +210,14 @@ export default function CertificateForm(): React.JSX.Element {
       });
 
       if (response.ok) {
-        const extractedData = await response.json();
-        console.log('✅ OCR extraction successful:', extractedData);
+        const ocrResponse = await response.json();
+        console.log('✅ OCR extraction successful - Full Response:', ocrResponse);
         
-        setOcrData(extractedData);
+        // Extract the nested extracted_data object
+        const extractedData = ocrResponse.extracted_data || ocrResponse;
+        console.log('📋 Extracted Data Object:', extractedData);
+        
+        setOcrData(ocrResponse);
         
         // Compare user-entered Learner ID with OCR-extracted Learner ID
         const ocrLearnerId = (extractedData.learner_id || '').trim();
@@ -219,17 +230,35 @@ export default function CertificateForm(): React.JSX.Element {
         
         setLearnerIdMatch(matches);
         
-        // Auto-fill form data with OCR results (but keep user-entered learner ID)
-        setFormData(prev => ({
-          ...prev,
-          certificateTitle: extractedData.credential_name || prev.certificateTitle,
-          // Keep the user-entered learner ID
-          learnerId: userEnteredLearnerId,
-          issueDate: extractedData.issued_date || prev.issueDate,
+        // Prepare form data update
+        const updatedFormData = {
+          ...formData,
+          certificateTitle: extractedData.credential_name || formData.certificateTitle,
+          issuerOrganization: extractedData.issuer_name || formData.issuerOrganization,
+          learnerId: userEnteredLearnerId, // Keep the user-entered learner ID
+          issueDate: extractedData.issued_date || formData.issueDate,
           skills: extractedData.skill_tags && extractedData.skill_tags.length > 0 
             ? extractedData.skill_tags 
-            : prev.skills
-        }));
+            : formData.skills,
+          nsqfLevel: extractedData.nsqf_level ? String(extractedData.nsqf_level) : formData.nsqfLevel,
+          description: extractedData.description || formData.description,
+          tags: extractedData.tags && extractedData.tags.length > 0 
+            ? extractedData.tags 
+            : formData.tags
+        };
+        
+        console.log('📝 Form Data Update:');
+        console.log('  certificateTitle:', extractedData.credential_name);
+        console.log('  issuerOrganization:', extractedData.issuer_name);
+        console.log('  issueDate:', extractedData.issued_date);
+        console.log('  skills:', extractedData.skill_tags);
+        console.log('  nsqfLevel:', extractedData.nsqf_level);
+        console.log('  description:', extractedData.description);
+        console.log('  tags:', extractedData.tags);
+        console.log('🎯 Updated Form Data:', updatedFormData);
+        
+        // Auto-fill form data with OCR results
+        setFormData(updatedFormData);
         
         setShowExtractedData(true);
       } else {
@@ -390,23 +419,26 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('📋 OCR Data:', ocrData);
       console.log('📋 Form Data:', formData);
 
+      // Extract OCR data (handle nested structure)
+      const extractedOcrData = ocrData?.extracted_data || {} as ExtractedData;
+      
       const createPayload = {
         vc_payload: {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
           "type": ["VerifiableCredential", "EducationalCredential"],
           "issuer": {
             "id": "did:example:issuer",
-            "name": ocrData?.issuer_name || formData.issuerOrganization
+            "name": extractedOcrData?.issuer_name || formData.issuerOrganization
           },
           "credentialSubject": {
             "id": formData.learnerId,
             "name": learnerData?.full_name || "Learner Name",
-            "achievement": ocrData?.credential_name || formData.certificateTitle,
+            "achievement": extractedOcrData?.credential_name || formData.certificateTitle,
             "learner_address": learnerAddress,
-            "course": ocrData?.credential_name || formData.certificateTitle,
+            "course": extractedOcrData?.credential_name || formData.certificateTitle,
             "grade": "A+",
-            "completion_date": ocrData?.issued_date || formData.issueDate,
-            "skills": ocrData?.skill_tags || [],
+            "completion_date": extractedOcrData?.issued_date || formData.issueDate,
+            "skills": extractedOcrData?.skill_tags || [],
             "duration": formData.duration,
             "mode": formData.mode,
             "nsqf_level": parseInt(formData.nsqfLevel),
@@ -414,19 +446,19 @@ export default function CertificateForm(): React.JSX.Element {
             "tags": formData.tags
           },
           "issuanceDate": new Date().toISOString(),
-          "expirationDate": ocrData?.expiry_date || null
+          "expirationDate": extractedOcrData?.expiry_date || null
         },
         artifact_url: pdfFile ? URL.createObjectURL(pdfFile) : "",
         idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         credential_type: "digital-certificate",
         metadata: {
           learner_address: learnerAddress,
-          completion_date: ocrData?.issued_date || formData.issueDate,
-          course_name: ocrData?.credential_name || formData.certificateTitle,
-          issuer_name: ocrData?.issuer_name || formData.issuerOrganization,
-          issue_date: ocrData?.issued_date || formData.issueDate,
-          expiry_date: ocrData?.expiry_date || null,
-          skill_tags: ocrData?.skill_tags || [],
+          completion_date: extractedOcrData?.issued_date || formData.issueDate,
+          course_name: extractedOcrData?.credential_name || formData.certificateTitle,
+          issuer_name: extractedOcrData?.issuer_name || formData.issuerOrganization,
+          issue_date: extractedOcrData?.issued_date || formData.issueDate,
+          expiry_date: extractedOcrData?.expiry_date || null,
+          skill_tags: extractedOcrData?.skill_tags || [],
           nsqf_level: parseInt(formData.nsqfLevel),
           description: formData.description,
           tags: formData.tags
@@ -818,7 +850,7 @@ export default function CertificateForm(): React.JSX.Element {
               </label>
                         <input
                           type="text"
-                          value={ocrData?.credential_name || ''}
+                          value={ocrData?.extracted_data?.credential_name || ''}
                           disabled
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         />
@@ -830,7 +862,7 @@ export default function CertificateForm(): React.JSX.Element {
                         </label>
                         <input
                           type="text"
-                          value={ocrData?.issuer_name || ''}
+                          value={ocrData?.extracted_data?.issuer_name || ''}
                           disabled
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         />
@@ -842,7 +874,7 @@ export default function CertificateForm(): React.JSX.Element {
                         </label>
                         <input
                           type="text"
-                          value={ocrData?.issued_date || ''}
+                          value={ocrData?.extracted_data?.issued_date || ''}
                           disabled
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         />
@@ -854,7 +886,7 @@ export default function CertificateForm(): React.JSX.Element {
             </label>
             <input
                           type="text"
-                          value={ocrData?.expiry_date || 'N/A'}
+                          value={ocrData?.extracted_data?.expiry_date || 'N/A'}
                           disabled
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         />
@@ -865,8 +897,8 @@ export default function CertificateForm(): React.JSX.Element {
                           Skill Tags
                         </label>
                         <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-300 rounded-lg min-h-[44px]">
-                          {ocrData?.skill_tags && ocrData.skill_tags.length > 0 ? (
-                            ocrData.skill_tags.map((skill, index) => (
+                          {ocrData?.extracted_data?.skill_tags && ocrData.extracted_data.skill_tags.length > 0 ? (
+                            ocrData.extracted_data.skill_tags.map((skill: string, index: number) => (
                               <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                 {skill}
                               </span>
@@ -908,7 +940,7 @@ export default function CertificateForm(): React.JSX.Element {
                         </label>
                         <input
                           type="text"
-                          value={ocrData?.learner_id || ''}
+                          value={ocrData?.extracted_data?.learner_id || ''}
                           disabled
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
                         />
