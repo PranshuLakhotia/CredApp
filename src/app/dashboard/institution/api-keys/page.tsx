@@ -28,7 +28,7 @@ export default function ApiKeysPage() {
       const token = localStorage.getItem('access_token');
       console.log('🔍 Fetching verification status with token:', !!token);
       
-      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/verification-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -69,7 +69,7 @@ export default function ApiKeysPage() {
   const fetchApiKeys = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -127,7 +127,7 @@ export default function ApiKeysPage() {
     console.log('🔑 Token exists:', !!token);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ export default function ApiKeysPage() {
       const token = localStorage.getItem('access_token');
       console.log('🗑️ Delete request with token:', !!token);
       
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/api-keys/${keyId}`, {
+      const response = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/api-keys/${keyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -307,7 +307,7 @@ export default function ApiKeysPage() {
                 // Also try to trigger auto-verification
                 try {
                   const token = localStorage.getItem('access_token');
-                  const response = await fetch('http://localhost:8000/api/v1/issuer/trigger-auto-verification', {
+                  const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/trigger-auto-verification', {
                     method: 'POST',
                     headers: {
                       'Authorization': `Bearer ${token}`,
