@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from 'axios';
 
 // Axios instance with base URL and auth header
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://credhub.twilightparadox.com',
   headers: { 'Content-Type': 'application/json' },
 });
 

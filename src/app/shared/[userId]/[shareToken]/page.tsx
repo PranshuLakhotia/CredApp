@@ -67,7 +67,7 @@ export default function SharedProfilePage() {
     const fetchSharedProfile = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8000/api/v1/learner/share/${userId}/${shareToken}`
+          `https://credhub.twilightparadox.com/api/v1/learner/share/${userId}/${shareToken}`
         );
 
         if (!response.ok) {

@@ -82,7 +82,7 @@ const VerifiedCredentialsPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/v1/employer/verified-credentials', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/employer/verified-credentials', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

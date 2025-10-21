@@ -13,7 +13,7 @@ import {
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://credhub.twilightparadox.com',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -46,7 +46,7 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken) {
           const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/refresh`,
+            `${process.env.NEXT_PUBLIC_API_URL || 'https://credhub.twilightparadox.com'}/api/v1/auth/refresh`,
             { refresh_token: refreshToken }
           );
 
@@ -271,7 +271,7 @@ export class AuthService {
     try {
       // Create a separate axios instance without auth headers for public endpoints
       const publicApi = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+        baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://credhub.twilightparadox.com',
         headers: {
           'Content-Type': 'application/json',
         },

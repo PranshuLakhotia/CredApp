@@ -68,7 +68,7 @@ export default function EmployerDashboard() {
         return;
       }
       
-      const response = await fetch('http://localhost:8000/api/v1/employer/analytics', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/employer/analytics', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

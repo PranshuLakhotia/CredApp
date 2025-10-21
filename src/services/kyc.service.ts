@@ -1,7 +1,7 @@
 // KYC API Service
 // This service handles all KYC verification calls via our backend proxy
 
-const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://credhub.twilightparadox.com';
 
 export interface SandboxAuthResponse {
   code: number;

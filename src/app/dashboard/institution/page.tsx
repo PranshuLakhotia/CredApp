@@ -232,7 +232,7 @@ export default function InstitutionDashboardPage() {
     if (verificationStatus === 'pending' && user?.id) {
       const timer = setTimeout(async () => {
         try {
-          const response = await fetch(`http://localhost:8000/api/v1/issuer/verification/${user.id}/approve`, {
+          const response = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/verification/${user.id}/approve`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -254,7 +254,7 @@ export default function InstitutionDashboardPage() {
 
   const fetchVerificationStatus = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/verification-status', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -287,7 +287,7 @@ export default function InstitutionDashboardPage() {
   const handleSubmitVerification = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/submit-verification', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/submit-verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -356,7 +356,7 @@ export default function InstitutionDashboardPage() {
   // Fetch Issued Credentials
   const fetchCredentials = async (pageNum: number = 1, append: boolean = false) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials?page=${pageNum}&limit=10&sort_by=issued_at&sort_order=desc`, {
+      const response = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/credentials?page=${pageNum}&limit=10&sort_by=issued_at&sort_order=desc`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -456,7 +456,7 @@ export default function InstitutionDashboardPage() {
   const fetchCompleteCredentialInfo = async (credentialId: string): Promise<CompleteCredentialInfo | null> => {
     try {
       setLoadingCredentialDetails(true);
-      const response = await fetch(`http://localhost:8000/api/v1/blockchain/credentials/${credentialId}/complete`, {
+      const response = await fetch(`https://credhub.twilightparadox.com/api/v1/blockchain/credentials/${credentialId}/complete`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },

@@ -29,7 +29,7 @@ const extractDataFromCertificate = async (certificateFile: File, apiKey: string)
     const formData = new FormData();
     formData.append('file', certificateFile);
 
-    const response = await fetch('http://localhost:8000/api/v1/issuer/credentials/extract-ocr', {
+    const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials/extract-ocr', {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
@@ -57,7 +57,7 @@ const validateLearner = async (learnerId: string, apiKey: string) => {
   try {
     console.log('🔍 Checking learner:', learnerId);
     
-    const learnerResponse = await fetch(`http://localhost:8000/api/v1/issuer/users/${learnerId}/is-learner`, {
+    const learnerResponse = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/users/${learnerId}/is-learner`, {
       headers: {
         'x-api-key': apiKey,
         'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -84,7 +84,7 @@ const createCredential = async (payload: any, apiKey: string) => {
   try {
     console.log('📝 Creating credential in database...');
     
-    const createResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
+    const createResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials', {
       method: 'POST',
           headers: {
         'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ const issueCredentialOnBlockchain = async (credentialId: string, learnerAddress:
 
     console.log('📤 Sending blockchain issue request:', issuePayload);
 
-    const issueResponse = await fetch('http://localhost:8000/api/v1/blockchain/credentials/issue', {
+    const issueResponse = await fetch('https://credhub.twilightparadox.com/api/v1/blockchain/credentials/issue', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ const overlayQrOnCertificate = async (certificateFile: File, credentialId: strin
     console.log('  - File Type:', fileBlob.type);
     console.log('  - QR Data:', qrData);
 
-    const overlayResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials/overlay-qr', {
+    const overlayResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials/overlay-qr', {
       method: 'POST',
       headers: {
         'X-API-Key': apiKey,

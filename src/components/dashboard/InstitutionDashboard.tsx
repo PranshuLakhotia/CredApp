@@ -137,7 +137,7 @@ export default function InstitutionDashboard() {
   const fetchVerificationStatus = async () => {
     console.log('fetchVerificationStatus');
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/verification-status', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -157,7 +157,7 @@ export default function InstitutionDashboard() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -190,7 +190,7 @@ export default function InstitutionDashboard() {
   const handleSubmitVerification = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/submit-verification', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/submit-verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -224,7 +224,7 @@ export default function InstitutionDashboard() {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export default function InstitutionDashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/api-keys/${keyId}`, {
+      const response = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/api-keys/${keyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,

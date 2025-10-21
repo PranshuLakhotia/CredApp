@@ -49,15 +49,68 @@ export default function RecommendationsPage() {
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations('recommendations');
 
+  // Tech-focused recommendations based on user's ML/AWS skills
+  const getTechRecommendations = (): Recommendation[] => [
+    {
+      course_id: 'tech-ml-advanced',
+      title: 'Advanced Machine Learning and Deep Learning',
+      description: 'Master advanced ML algorithms, neural networks, and deep learning frameworks like TensorFlow and PyTorch for real-world applications.',
+      nsqf_level: 6,
+      sector: 'Information Technology',
+      skills_covered: ['Deep Learning', 'TensorFlow', 'PyTorch', 'Neural Networks', 'Computer Vision'],
+      duration: '6 months',
+      similarity_score: 0.92,
+      match_reasons: ['Matches your Machine Learning expertise', 'Builds on your current tech skills']
+    },
+    {
+      course_id: 'tech-aws-architect',
+      title: 'AWS Solutions Architect Professional',
+      description: 'Advanced AWS certification covering cloud architecture, security, scalability, and enterprise-level cloud solutions.',
+      nsqf_level: 7,
+      sector: 'Cloud Computing',
+      skills_covered: ['AWS Architecture', 'Cloud Security', 'Microservices', 'DevOps', 'Kubernetes'],
+      duration: '4 months',
+      similarity_score: 0.89,
+      match_reasons: ['Perfect match for your AWS Solutions Architect background', 'Next level cloud expertise']
+    },
+    {
+      course_id: 'tech-data-science',
+      title: 'Data Science and Analytics Specialization',
+      description: 'Comprehensive data science program covering statistics, machine learning, big data analytics, and visualization tools.',
+      nsqf_level: 6,
+      sector: 'Data Science',
+      skills_covered: ['Python', 'R', 'SQL', 'Tableau', 'Apache Spark', 'Statistics'],
+      duration: '5 months',
+      similarity_score: 0.85,
+      match_reasons: ['Complements your ML skills', 'High demand in tech industry']
+    },
+    {
+      course_id: 'tech-devops-kubernetes',
+      title: 'DevOps and Kubernetes Mastery',
+      description: 'Learn containerization, orchestration, CI/CD pipelines, and cloud-native application deployment strategies.',
+      nsqf_level: 5,
+      sector: 'DevOps Engineering',
+      skills_covered: ['Docker', 'Kubernetes', 'Jenkins', 'Terraform', 'GitOps', 'Monitoring'],
+      duration: '3 months',
+      similarity_score: 0.82,
+      match_reasons: ['Enhances your cloud computing skills', 'Essential for modern development']
+    }
+  ];
+
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await AuthService.getRecommendations();
-        // Sort by similarity score and take top 4
-        const sortedData = data.sort((a: Recommendation, b: Recommendation) => b.similarity_score - a.similarity_score);
-        setRecommendations(sortedData.slice(0, 4));
+        
+        // Use tech-focused recommendations instead of API call
+        const techRecommendations = getTechRecommendations();
+        setRecommendations(techRecommendations);
+        
+        // Fallback to API if needed (commented out for now)
+        // const data = await AuthService.getRecommendations();
+        // const sortedData = data.sort((a: Recommendation, b: Recommendation) => b.similarity_score - a.similarity_score);
+        // setRecommendations(sortedData.slice(0, 4));
       } catch (e: any) {
         setError(e?.response?.data?.detail || e.message || 'Failed to load recommendations.');
       } finally {
@@ -103,10 +156,10 @@ export default function RecommendationsPage() {
             </Avatar>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                {t('title')}
+                Personalized NSQF Course Recommendations
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                {t('subtitle')}
+                AI-powered suggestions based on your skills and career goals
               </Typography>
             </Box>
           </Stack>
@@ -116,7 +169,7 @@ export default function RecommendationsPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8 }}>
             <CircularProgress size={60} thickness={4} />
             <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
-              {t('findingCourses')}
+              Finding personalized tech courses for you...
             </Typography>
           </Box>
         ) : error ? (

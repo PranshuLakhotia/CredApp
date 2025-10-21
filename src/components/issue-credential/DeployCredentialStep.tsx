@@ -57,7 +57,7 @@ export function DeployCredentialStep({
     setDeploymentStatus('pending');
 
     try {
-      const apiKeyResponse = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const apiKeyResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -75,7 +75,7 @@ export function DeployCredentialStep({
         learner_wallet: deployOptions.learner_wallet || undefined
       };
 
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials/${credentialId}/deploy`, {
+      const response = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/credentials/${credentialId}/deploy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ export function DeployCredentialStep({
 
     const poll = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials/${credentialId}`, {
+        const response = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/credentials/${credentialId}`, {
           headers: {
             'X-API-Key': apiKey
           }

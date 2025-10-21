@@ -111,7 +111,7 @@ export default function SearchLearnersPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:8000/api/v1/employer/candidates?skip=0&limit=50', {
+      const response = await fetch('https://credhub.twilightparadox.com/api/v1/employer/candidates?skip=0&limit=50', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },

@@ -227,7 +227,7 @@ export default function VerifyCredentialsPage() {
           const ocrFormData = new FormData();
           ocrFormData.append('file', file);
 
-          const ocrResponse = await fetch('http://localhost:8000/api/v1/employer/credentials/extract-ocr', {
+          const ocrResponse = await fetch('https://credhub.twilightparadox.com/api/v1/employer/credentials/extract-ocr', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -248,7 +248,7 @@ export default function VerifyCredentialsPage() {
 
           // Step 2: QR Code Scanning
           result.processing_steps.qr_scanning = 'processing';
-          const qrResponse = await fetch('http://localhost:8000/api/v1/verify/qr/pdf', {
+          const qrResponse = await fetch('https://credhub.twilightparadox.com/api/v1/verify/qr/pdf', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -271,7 +271,7 @@ export default function VerifyCredentialsPage() {
               result.processing_steps.credential_fetch = 'processing';
               
               try {
-                const credentialResponse = await fetch(`http://localhost:8000/api/v1/employer/credentials/${credentialId}`, {
+                const credentialResponse = await fetch(`https://credhub.twilightparadox.com/api/v1/employer/credentials/${credentialId}`, {
                   method: 'GET',
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -366,7 +366,7 @@ export default function VerifyCredentialsPage() {
                   credential_hash: result.qr_data.credential_hash
                 };
                 
-                const addVerifiedResponse = await fetch('http://localhost:8000/api/v1/employer/verified-credentials', {
+                const addVerifiedResponse = await fetch('https://credhub.twilightparadox.com/api/v1/employer/verified-credentials', {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${token}`,

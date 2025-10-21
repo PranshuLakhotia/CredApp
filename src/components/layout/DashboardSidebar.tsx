@@ -261,22 +261,22 @@ export default function DashboardSidebar({
           )}
 
           {/* Additional sections based on user role */}
-          {/* {userRole === 'learner' && (
+          {userRole === 'learner' && (
             <>
               <div className="mt-6" />
               <button
-                onClick={() => handleNavigation('/dashboard/skills')}
+                onClick={() => handleNavigation('/dashboard/learner/recommendations')}
                 className={`w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md transition-colors ${
-                  pathname === '/dashboard/skills' 
+                  pathname === '/dashboard/learner/recommendations' 
                     ? 'bg-blue-50 text-blue-700 font-medium' 
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <Key size={16} className={pathname === '/dashboard/skills' ? 'text-blue-600' : 'text-gray-600'} />
-                {sidebarExpanded && <span>Skills</span>}
+                <TrendingUp size={16} className={pathname === '/dashboard/learner/recommendations' ? 'text-blue-600' : 'text-gray-600'} />
+                {sidebarExpanded && <span>Recommendations</span>}
               </button>
             </>
-          )} */}
+          )}
 
           {userRole === 'employer' && (
             <>
