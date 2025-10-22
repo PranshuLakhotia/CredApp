@@ -55,6 +55,7 @@ import { UserRole } from '@/types/auth';
 import DashboardSidebar from './DashboardSidebar';
 import { usePathname, useRouter } from 'next/navigation';
 import LanguageSelector from '@/components/LanguageSelector';
+import AIChatbot from '@/components/chatbot/AIChatbot';
 
 const drawerWidth = 280;
 
@@ -600,6 +601,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
           </Box>
         </MenuItem>
       </Menu>
+
+      {/* AI Chatbot */}
+      <AIChatbot />
     </div>
   );
 }
