@@ -30,12 +30,14 @@ interface DashboardSidebarProps {
   sidebarExpanded: boolean;
   setSidebarExpanded: (expanded: boolean) => void;
   userRole: UserRole;
+  onMobileClose?: () => void;
 }
 
 export default function DashboardSidebar({ 
   sidebarExpanded, 
   setSidebarExpanded, 
-  userRole 
+  userRole,
+  onMobileClose
 }: DashboardSidebarProps) {
   const [openDashboards, setOpenDashboards] = useState(true);
   const [openPages, setOpenPages] = useState(false);
@@ -47,6 +49,10 @@ export default function DashboardSidebar({
 
   const handleNavigation = (path: string) => {
     router.push(path);
+    // Close mobile sidebar if it's open
+    if (onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const handleDownloadPortfolio = async () => {
@@ -71,7 +77,7 @@ export default function DashboardSidebar({
   };
 
   return (
-    <div className={`${sidebarExpanded ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}>
+    <div className={`${sidebarExpanded ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 transition-all duration-300 flex flex-col h-full`}>
       {/* Logo & User */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">

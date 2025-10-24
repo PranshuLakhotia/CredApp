@@ -23,6 +23,7 @@ import {
   Tooltip,
   ButtonGroup,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -143,10 +144,12 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   const { user, logout, isLoading } = useAuth();
   const theme = useTheme();
@@ -184,7 +187,15 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   const userRole = currentUser.role || getRoleFromPath(pathname);
 
   const handleDrawerToggle = () => {
-    setSidebarExpanded(!sidebarExpanded);
+    if (isMobile) {
+      setMobileSidebarOpen(!mobileSidebarOpen);
+    } else {
+      setSidebarExpanded(!sidebarExpanded);
+    }
+  };
+
+  const handleMobileSidebarClose = () => {
+    setMobileSidebarOpen(false);
   };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -204,8 +215,16 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   };
 
   const handleLogout = async () => {
-    await logout();
-    handleProfileMenuClose();
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      handleProfileMenuClose();
+      // Redirect to login page after successful logout
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setIsLoggingOut(false);
+    }
   };
 
   const handleThemeToggle = () => {
@@ -223,28 +242,48 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   };
 
   const handleFontSizeIncrease = () => {
-    if (fontSize === 'small') setFontSize('medium');
-    else if (fontSize === 'medium') setFontSize('large');
+    if (fontSize === 'small') {
+      setFontSize('medium');
+    } else if (fontSize === 'medium') {
+      setFontSize('large');
+    }
+    // Don't allow increasing beyond large
   };
 
   const handleFontSizeDecrease = () => {
-    if (fontSize === 'large') setFontSize('medium');
-    else if (fontSize === 'medium') setFontSize('small');
+    if (fontSize === 'large') {
+      setFontSize('medium');
+    } else if (fontSize === 'medium') {
+      setFontSize('small');
+    }
+    // Don't allow decreasing beyond small
   };
 
   const handleFontSizeReset = () => {
     setFontSize('medium');
   };
 
-  // Apply font size to main content
+  // Apply font size to the entire dashboard layout
   useEffect(() => {
-    const mainContent = document.getElementById('dashboard-main-content');
-    if (mainContent) {
-      mainContent.style.fontSize = 
-        fontSize === 'small' ? '0.875rem' : 
-        fontSize === 'large' ? '1.125rem' : 
-        '1rem';
+    const rootElement = document.documentElement;
+    if (rootElement) {
+      // Use more conservative font size scaling for better accessibility
+      const fontSizeMap = {
+        small: '0.9rem',    // Slightly smaller than default
+        medium: '1rem',     // Default size
+        large: '1.05rem'    // Slightly larger, not too overwhelming
+      };
+      
+      rootElement.style.fontSize = fontSizeMap[fontSize];
     }
+
+    // Cleanup function to reset font size when component unmounts
+    return () => {
+      const rootElement = document.documentElement;
+      if (rootElement) {
+        rootElement.style.fontSize = '1rem'; // Reset to default
+      }
+    };
   }, [fontSize]);
 
   // Generate breadcrumbs from pathname
@@ -266,8 +305,10 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
   const breadcrumbs = generateBreadcrumbs();
 
-  const getRoleDisplayName = (role: UserRole) => {
-    switch (role) {
+  const getRoleDisplayName = (role?: UserRole) => {
+    // Use the dynamically determined role from the current dashboard path
+    const currentRole = role || userRole;
+    switch (currentRole) {
       case 'learner': return 'Learner';
       case 'employer': return 'Employer';
       case 'institution': return 'Institution';
@@ -276,8 +317,10 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
     }
   };
 
-  const getRoleColor = (role: UserRole) => {
-    switch (role) {
+  const getRoleColor = (role?: UserRole) => {
+    // Use the dynamically determined role from the current dashboard path
+    const currentRole = role || userRole;
+    switch (currentRole) {
       case 'learner': return theme.palette.primary.main;
       case 'employer': return theme.palette.secondary.main;
       case 'institution': return theme.palette.warning.main;
@@ -288,78 +331,135 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar */}
-      <DashboardSidebar
-        sidebarExpanded={sidebarExpanded}
-        setSidebarExpanded={setSidebarExpanded}
-        userRole={userRole}
-      />  
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <DashboardSidebar
+          sidebarExpanded={sidebarExpanded}
+          setSidebarExpanded={setSidebarExpanded}
+          userRole={userRole}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      {isMobile && (
+        <Drawer
+          variant="temporary"
+          anchor="left"
+          open={mobileSidebarOpen}
+          onClose={handleMobileSidebarClose}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile
+          }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: 280,
+              boxSizing: 'border-box',
+            },
+          }}
+        >
+          <DashboardSidebar
+            sidebarExpanded={true}
+            setSidebarExpanded={() => {}}
+            userRole={userRole}
+            onMobileClose={handleMobileSidebarClose}
+          />
+        </Drawer>
+      )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-screen">
+      <div className={`flex-1 flex flex-col overflow-hidden min-w-0 h-screen ${isMobile ? '' : sidebarExpanded ? 'ml-0' : ''}`}>
         {/* Top Navigation Bar */}
-        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-2 min-w-0 flex-1">
-              {/* Page Title */}
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
-                {title || 'Dashboard Overview'}
-              </Typography>
-              
-              {/* Breadcrumb Navigation */}
-              {breadcrumbs.length > 0 && (
-                <Breadcrumbs
-                  separator={<NavigateNext fontSize="small" />}
-                  aria-label="breadcrumb"
-                  sx={{ fontSize: '0.875rem' }}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {/* Mobile Menu Button */}
+              {isMobile && (
+                <IconButton
+                  edge="start"
+                  color="inherit"
+                  aria-label="menu"
+                  onClick={handleDrawerToggle}
+                  sx={{ 
+                    mr: 1,
+                    color: '#6b7280',
+                    '&:hover': { 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      color: '#374151'
+                    }
+                  }}
                 >
-                  <Link
-                    underline="hover"
-                    sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      color: '#6b7280',
-                      cursor: 'pointer',
-                      '&:hover': { color: '#374151' }
-                    }}
-                    onClick={() => router.push('/dashboard')}
-                  >
-                    <Home sx={{ mr: 0.5, fontSize: '1rem' }} />
-                    Dashboard
-                  </Link>
-                  {breadcrumbs.map((crumb, index) => (
-                    crumb.isLast ? (
-                      <Typography
-                        key={index}
-                        sx={{ 
-                          color: '#1e293b',
-                          fontWeight: 600,
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {crumb.label}
-                      </Typography>
-                    ) : (
-                      <Link
-                        key={index}
-                        underline="hover"
-                        sx={{ 
-                          color: '#6b7280',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                          '&:hover': { color: '#374151' }
-                        }}
-                        onClick={() => router.push(crumb.href)}
-                      >
-                        {crumb.label}
-                      </Link>
-                    )
-                  ))}
-                </Breadcrumbs>
+                  <MenuIcon />
+                </IconButton>
               )}
+
+              <div className="flex flex-col gap-1 sm:gap-2 min-w-0 flex-1">
+                {/* Page Title */}
+                <Typography 
+                  variant={isMobile ? "h6" : "h5"} 
+                  sx={{ 
+                    fontWeight: 700, 
+                    color: '#1e293b',
+                    fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' }
+                  }}
+                >
+                  {title || 'Dashboard Overview'}
+                </Typography>
+                
+                {/* Breadcrumb Navigation - Hidden on mobile */}
+                {breadcrumbs.length > 0 && !isMobile && (
+                  <Breadcrumbs
+                    separator={<NavigateNext fontSize="small" />}
+                    aria-label="breadcrumb"
+                    sx={{ fontSize: '0.875rem' }}
+                  >
+                    <Link
+                      underline="hover"
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        '&:hover': { color: '#374151' }
+                      }}
+                      onClick={() => router.push('/dashboard')}
+                    >
+                      <Home sx={{ mr: 0.5, fontSize: '1rem' }} />
+                      Dashboard
+                    </Link>
+                    {breadcrumbs.map((crumb, index) => (
+                      crumb.isLast ? (
+                        <Typography
+                          key={index}
+                          sx={{ 
+                            color: '#1e293b',
+                            fontWeight: 600,
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          {crumb.label}
+                        </Typography>
+                      ) : (
+                        <Link
+                          key={index}
+                          underline="hover"
+                          sx={{ 
+                            color: '#6b7280',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            '&:hover': { color: '#374151' }
+                          }}
+                          onClick={() => router.push(crumb.href)}
+                        >
+                          {crumb.label}
+                        </Link>
+                      )
+                    ))}
+                  </Breadcrumbs>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 flex-shrink-0">
               {/* Search Bar */}
               {/* <Search className="hidden sm:flex">
                 <SearchIconWrapper>
@@ -371,61 +471,71 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 />
               </Search> */}
 
-              {/* Font Size Controls */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
-                <Tooltip title="Decrease font size">
-                  <IconButton
-                    size="small"
-                    onClick={handleFontSizeDecrease}
-                    disabled={fontSize === 'small'}
-                    sx={{ 
-                      color: fontSize === 'small' ? '#d1d5db' : '#6b7280',
-                      '&:hover': { 
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                        color: '#374151'
-                      },
-                      padding: '4px'
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 700 }}>A-</Typography>
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Reset font size">
-                  <IconButton
-                    size="small"
-                    onClick={handleFontSizeReset}
-                    sx={{ 
-                      color: fontSize === 'medium' ? '#3b82f6' : '#6b7280',
-                      '&:hover': { 
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                        color: '#374151'
-                      },
-                      padding: '4px'
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '0.875rem', fontWeight: 700 }}>A</Typography>
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Increase font size">
-                  <IconButton
-                    size="small"
-                    onClick={handleFontSizeIncrease}
-                    disabled={fontSize === 'large'}
-                    sx={{ 
-                      color: fontSize === 'large' ? '#d1d5db' : '#6b7280',
-                      '&:hover': { 
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                        color: '#374151'
-                      },
-                      padding: '4px'
-                    }}
-                  >
-                    <Typography sx={{ fontSize: '1rem', fontWeight: 700 }}>A+</Typography>
-                  </IconButton>
-                </Tooltip>
-              </Box>
+              {/* Font Size Controls - Hidden on mobile */}
+              {!isMobile && (
+                <>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
+                    <Tooltip title="Decrease font size">
+                      <IconButton
+                        size="small"
+                        onClick={handleFontSizeDecrease}
+                        disabled={fontSize === 'small'}
+                        sx={{ 
+                          color: fontSize === 'small' ? '#d1d5db' : '#6b7280',
+                          '&:hover': { 
+                            backgroundColor: fontSize === 'small' ? 'transparent' : 'rgba(0, 0, 0, 0.04)',
+                            color: fontSize === 'small' ? '#d1d5db' : '#374151'
+                          },
+                          padding: '6px',
+                          minWidth: '32px',
+                          minHeight: '32px'
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, lineHeight: 1 }}>A-</Typography>
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Reset font size">
+                      <IconButton
+                        size="small"
+                        onClick={handleFontSizeReset}
+                        sx={{ 
+                          color: fontSize === 'medium' ? '#3b82f6' : '#6b7280',
+                          '&:hover': { 
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            color: '#374151'
+                          },
+                          padding: '6px',
+                          minWidth: '32px',
+                          minHeight: '32px'
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, lineHeight: 1 }}>A</Typography>
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Increase font size">
+                      <IconButton
+                        size="small"
+                        onClick={handleFontSizeIncrease}
+                        disabled={fontSize === 'large'}
+                        sx={{ 
+                          color: fontSize === 'large' ? '#d1d5db' : '#6b7280',
+                          '&:hover': { 
+                            backgroundColor: fontSize === 'large' ? 'transparent' : 'rgba(0, 0, 0, 0.04)',
+                            color: fontSize === 'large' ? '#d1d5db' : '#374151'
+                          },
+                          padding: '6px',
+                          minWidth: '32px',
+                          minHeight: '32px'
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1 }}>A+</Typography>
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
 
-              <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                  <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                </>
+              )}
 
               {/* Theme Toggle */}
               {/* <IconButton
@@ -443,44 +553,30 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 {isDarkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
               </IconButton> */}
 
-              {/* Refresh */}
-              <IconButton
-                size="medium"
-                color="inherit"
-                onClick={handleRefresh}
-                sx={{ 
-                  color: '#6b7280',
-                  '&:hover': { 
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                    color: '#374151'
-                  }
-                }}
-              >
-                <Refresh fontSize="small" />
-              </IconButton>
+              {/* Refresh - Hidden on mobile */}
+              {!isMobile && (
+                <IconButton
+                  size="medium"
+                  color="inherit"
+                  onClick={handleRefresh}
+                  sx={{ 
+                    color: '#6b7280',
+                    '&:hover': { 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      color: '#374151'
+                    }
+                  }}
+                >
+                  <Refresh fontSize="small" />
+                </IconButton>
+              )}
 
               {/* Language Selector */}
               <LanguageSelector />
 
-              {/* Apps Menu */}
-              {/* <IconButton
-                size="medium"
-                color="inherit"
-                onClick={handleAppsMenu}
-                sx={{ 
-                  color: '#6b7280',
-                  '&:hover': { 
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                    color: '#374151'
-                  }
-                }}
-              >
-                <Apps fontSize="small" />
-              </IconButton> */}
-
               {/* Notifications */}
               <IconButton
-                size="medium"
+                size={isMobile ? "small" : "medium"}
                 color="inherit"
                 onClick={handleNotificationOpen}
                 sx={{ 
@@ -492,20 +588,24 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 }}
               >
                 <Badge badgeContent={3} color="error">
-                  <NotificationsIcon fontSize="small" />
+                  <NotificationsIcon fontSize={isMobile ? "small" : "small"} />
                 </Badge>
               </IconButton>
 
               {/* Profile Menu */}
               <IconButton
-                size="medium"
+                size={isMobile ? "small" : "medium"}
                 edge="end"
                 aria-label="account of current user"
                 onClick={handleProfileMenuOpen}
                 color="inherit"
-                sx={{ ml: 1 }}
+                sx={{ ml: isMobile ? 0.5 : 1 }}
               >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: getRoleColor(currentUser.role || 'learner') }}>
+                <Avatar sx={{ 
+                  width: isMobile ? 28 : 32, 
+                  height: isMobile ? 28 : 32, 
+                  bgcolor: getRoleColor() 
+                }}>
                   {currentUser.full_name?.charAt(0).toUpperCase()}
                 </Avatar>
               </IconButton>
@@ -548,22 +648,29 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem>
-          <Avatar sx={{ bgcolor: getRoleColor(currentUser.role || 'learner') }} />
+          <Avatar sx={{ bgcolor: getRoleColor() }} />
           <Box>
             <Typography variant="subtitle2">{currentUser.full_name}</Typography>
             <Typography variant="caption" color="text.secondary">
-              {getRoleDisplayName(currentUser.role || 'learner')}
+              {getRoleDisplayName()}
             </Typography>
           </Box>
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleProfileMenuClose}>
+        {/* <MenuItem onClick={handleProfileMenuClose}>
           <Settings fontSize="small" sx={{ mr: 1 }} />
           Settings
-        </MenuItem>
-        <MenuItem onClick={handleLogout}>
+        </MenuItem> */}
+        <MenuItem onClick={handleLogout} disabled={isLoggingOut}>
           <Logout fontSize="small" sx={{ mr: 1 }} />
-          Logout
+          {isLoggingOut ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={16} />
+              Logging out...
+            </Box>
+          ) : (
+            'Logout'
+          )}
         </MenuItem>
       </Menu>
 

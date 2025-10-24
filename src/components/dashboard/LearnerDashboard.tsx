@@ -293,44 +293,92 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
   const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
   
   return (
-    <Card sx={{ p: 3, borderRadius: 2, bgcolor: '#fafbfc', boxShadow: 'none', border: '1px solid #e5e7eb', transition: 'all 0.2s', '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: 'translateY(-2px)' } }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+    <Card sx={{ 
+      p: { xs: 2, sm: 3 }, 
+      borderRadius: 2, 
+      bgcolor: '#fafbfc', 
+      boxShadow: 'none', 
+      border: '1px solid #e5e7eb', 
+      transition: 'all 0.2s', 
+      '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: 'translateY(-2px)' },
+      height: 'fit-content'
+    }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'flex-start' }, 
+        mb: 2,
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5} sx={{ 
+            fontSize: { xs: '1rem', sm: '1.125rem' },
+            lineHeight: 1.3,
+            wordBreak: 'break-word'
+          }}>
             {credential.credential_title || '-'}
           </Typography>
-          <Typography variant="body2" color="text.secondary" mb={0.5}>
+          <Typography variant="body2" color="text.secondary" mb={0.5} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             Issuer: {credential.issuer_name || '-'}
           </Typography>
           {credential.nsqf_level !== undefined && (
-            <Typography variant="body2" color="text.secondary" mb={0.5}>
+            <Typography variant="body2" color="text.secondary" mb={0.5} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
               NSQF Level: {credential.nsqf_level}
             </Typography>
           )}
-          <Typography variant="body2" color="text.secondary" mb={2}>
+          <Typography variant="body2" color="text.secondary" mb={2} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             Issued Date: {issuedDate}
           </Typography>
           {/* Skill tags */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
             {(credential.skill_tags || []).slice(0, 3).map((t) => (
-              <Chip key={t} label={t} size="small" sx={{ bgcolor: '#eef2ff', color: '#4338ca' }} />
+              <Chip 
+                key={t} 
+                label={t} 
+                size="small" 
+                sx={{ 
+                  bgcolor: '#eef2ff', 
+                  color: '#4338ca',
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                  height: { xs: 20, sm: 24 }
+                }} 
+              />
             ))}
           </Box>
         </Box>
         
         {/* QR Code or Icon */}
-        <Box sx={{ flexShrink: 0, ml: 2 }}>
+        <Box sx={{ 
+          flexShrink: 0, 
+          ml: { xs: 0, sm: 2 },
+          alignSelf: { xs: 'center', sm: 'flex-start' }
+        }}>
           {credential.qr_code_image ? (
             <Box 
               component="img" 
               src={`data:image/png;base64,${credential.qr_code_image}`}
               alt="QR Code"
-              sx={{ width: 64, height: 64, borderRadius: 1, border: '1px solid #e5e7eb', cursor: 'pointer' }}
+              sx={{ 
+                width: { xs: 48, sm: 64 }, 
+                height: { xs: 48, sm: 64 }, 
+                borderRadius: 1, 
+                border: '1px solid #e5e7eb', 
+                cursor: 'pointer' 
+              }}
               onClick={() => onViewDetails(credential)}
             />
           ) : (
-            <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <EmojiEvents sx={{ fontSize: 36, color: '#7c4dff' }} />
+            <Box sx={{ 
+              width: { xs: 48, sm: 64 }, 
+              height: { xs: 48, sm: 64 }, 
+              borderRadius: '50%', 
+              bgcolor: '#ede9fe', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <EmojiEvents sx={{ fontSize: { xs: 28, sm: 36 }, color: '#7c4dff' }} />
             </Box>
           )}
         </Box>
@@ -338,19 +386,32 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
       
       {verified && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
-          <Verified sx={{ fontSize: 18, color: '#26c6da' }} />
-          <Typography variant="body2" color="#26c6da" fontWeight={600}>
+          <Verified sx={{ fontSize: { xs: 16, sm: 18 }, color: '#26c6da' }} />
+          <Typography variant="body2" color="#26c6da" fontWeight={600} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             Verified
           </Typography>
         </Box>
       )}
       
-      <Box sx={{ display: 'flex', gap: 2 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 1, sm: 2 },
+        alignItems: { xs: 'stretch', sm: 'center' }
+      }}>
         <Button 
           variant="text" 
           size="small" 
           onClick={() => onViewDetails(credential)}
-          sx={{ color: '#7c4dff', textTransform: 'none', fontWeight: 600, p: 0, minWidth: 'auto' }}
+          sx={{ 
+            color: '#7c4dff', 
+            textTransform: 'none', 
+            fontWeight: 600, 
+            p: 0, 
+            minWidth: 'auto',
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            justifyContent: { xs: 'center', sm: 'flex-start' }
+          }}
         >
           View Details
         </Button>
@@ -358,7 +419,14 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
           variant="text" 
           size="small"
           onClick={() => onDownload(credential)}
-          sx={{ color: '#64748b', textTransform: 'none', p: 0, minWidth: 'auto' }}
+          sx={{ 
+            color: '#64748b', 
+            textTransform: 'none', 
+            p: 0, 
+            minWidth: 'auto',
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            justifyContent: { xs: 'center', sm: 'flex-start' }
+          }}
         >
           Download
         </Button>
@@ -616,16 +684,45 @@ export default function LearnerDashboard() {
   };
 
   return (
-    <Box sx={{ px: { xs: 2, md: 4 }, py: 4, bgcolor: '#fafbfc', minHeight: '100vh' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+    <Box sx={{ px: { xs: 1, sm: 2, md: 4 }, py: { xs: 2, sm: 3, md: 4 }, bgcolor: '#fafbfc', minHeight: '100vh' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'center' }, 
+        mb: { xs: 3, sm: 4 },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant="h4" sx={{ 
+          fontWeight: 700, 
+          color: '#1e293b',
+          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+        }}>
           Dashboard Overview
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2,
+          flexDirection: { xs: 'row', sm: 'row' },
+          width: { xs: '100%', sm: 'auto' },
+          justifyContent: { xs: 'space-between', sm: 'flex-end' }
+        }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}>
             Today
           </Typography>
-          <Button variant="contained" sx={{ bgcolor: '#7c4dff', textTransform: 'none', borderRadius: 2, px: 3, '&:hover': { bgcolor: '#6a3de8' } }}>
+          <Button 
+            variant="contained" 
+            sx={{ 
+              bgcolor: '#7c4dff', 
+              textTransform: 'none', 
+              borderRadius: 2, 
+              px: { xs: 2, sm: 3 }, 
+              py: { xs: 1, sm: 1.5 },
+              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              '&:hover': { bgcolor: '#6a3de8' } 
+            }}
+          >
             Learner
           </Button>
         </Box>
@@ -638,116 +735,285 @@ export default function LearnerDashboard() {
       )}
 
       {/* Top Stats Cards Row (computed) */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mb: 3 }}>
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: { 
+          xs: '1fr', 
+          sm: 'repeat(2, 1fr)', 
+          md: 'repeat(3, 1fr)', 
+          lg: 'repeat(4, 1fr)' 
+        },
+        gap: { xs: 2, sm: 2.5 },
+        mb: { xs: 3, sm: 3 }
+      }}>
         {baseStats.map((stat) => {
           const value = stat.key === 'total' ? totalCredentials : stat.key === 'verified' ? verifiedCount : pendingCount;
           return (
-            <Card key={stat.label} sx={{ flex: '1 1 220px', p: 2.5, borderRadius: 3, bgcolor: stat.bgColor, boxShadow: 'none' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
+            <Card key={stat.label} sx={{ 
+              p: { xs: 2, sm: 2.5 }, 
+              borderRadius: 3, 
+              bgcolor: stat.bgColor, 
+              boxShadow: 'none',
+              minHeight: { xs: '120px', sm: '140px' }
+            }}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'flex-start',
+                height: '100%'
+              }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     {stat.label}
                   </Typography>
-                  <Typography variant="h3" fontWeight={700} color="#1e293b">
+                  <Typography variant="h3" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
                     {isLoading ? '...' : value}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                     {stat.note}
                   </Typography>
                 </Box>
-                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.iconColor }}>
-                  {stat.icon}
+                <Box sx={{ 
+                  width: { xs: 40, sm: 48 }, 
+                  height: { xs: 40, sm: 48 }, 
+                  borderRadius: 2, 
+                  bgcolor: 'rgba(255,255,255,0.7)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: stat.iconColor,
+                  flexShrink: 0
+                }}>
+                  {React.cloneElement(stat.icon, { sx: { fontSize: { xs: 24, sm: 28 } } })}
                 </Box>
               </Box>
             </Card>
           );
         })}
-        <Card sx={{ flex: '1 1 300px', p: 2.5, borderRadius: 3, bgcolor: '#e3f2fd', boxShadow: 'none' }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5 }}>
+        <Card sx={{ 
+          p: { xs: 2, sm: 2.5 }, 
+          borderRadius: 3, 
+          bgcolor: '#e3f2fd', 
+          boxShadow: 'none',
+          minHeight: { xs: '120px', sm: '140px' }
+        }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1.5, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             NSQF Progress
           </Typography>
-          <LinearProgress variant="determinate" value={57} sx={{ height: 10, borderRadius: 5, bgcolor: '#bbdefb', '& .MuiLinearProgress-bar': { bgcolor: '#1976d2', borderRadius: 5 } }} />
-          <Typography variant="h6" pt={1} sx={{ fontWeight: 700, color: '#1e293b', textAlign: 'right' }}>
+          <LinearProgress 
+            variant="determinate" 
+            value={57} 
+            sx={{ 
+              height: { xs: 8, sm: 10 }, 
+              borderRadius: 5, 
+              bgcolor: '#bbdefb', 
+              '& .MuiLinearProgress-bar': { bgcolor: '#1976d2', borderRadius: 5 } 
+            }} 
+          />
+          <Typography variant="h6" pt={1} sx={{ 
+            fontWeight: 700, 
+            color: '#1e293b', 
+            textAlign: 'right',
+            fontSize: { xs: '1rem', sm: '1.25rem' }
+          }}>
             Level 4/7
           </Typography>
         </Card>
       </Box>
 
       {/* Line Chart + Top Skills */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
-        <Card sx={{ flex: '1 1 60%', p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', lg: 'row' },
+        gap: { xs: 2, sm: 3 }, 
+        mb: { xs: 3, sm: 3 }
+      }}>
+        <Card sx={{ 
+          flex: { xs: '1 1 100%', lg: '1 1 60%' }, 
+          p: { xs: 2, sm: 3 }, 
+          borderRadius: 3, 
+          bgcolor: '#ffffff', 
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)' 
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', sm: 'center' }, 
+            mb: 2,
+            gap: { xs: 1, sm: 0 }
+          }}>
             <Box>
-              <Typography variant="body2" color="text.secondary" mb={0.5}>
+              <Typography variant="body2" color="text.secondary" mb={0.5} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Total number of profile impressions
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h3" fontWeight={700} color="#1e293b">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Typography variant="h3" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
                   1,235
                 </Typography>
-                <Chip label="+3.4%" size="small" sx={{ bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 600, height: 24, fontSize: '0.75rem' }} />
+                <Chip 
+                  label="+3.4%" 
+                  size="small" 
+                  sx={{ 
+                    bgcolor: '#dcfce7', 
+                    color: '#16a34a', 
+                    fontWeight: 600, 
+                    height: { xs: 20, sm: 24 }, 
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' } 
+                  }} 
+                />
               </Box>
             </Box>
           </Box>
-          <LineChart />
+          <Box sx={{ position: 'relative', height: { xs: 200, sm: 240 }, mt: 3 }}>
+            <LineChart />
+          </Box>
         </Card>
 
-        <Card sx={{ flex: '1 1 35%', p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" fontWeight={700} color="#1e293b">
+        <Card sx={{ 
+          flex: { xs: '1 1 100%', lg: '1 1 35%' }, 
+          p: { xs: 2, sm: 3 }, 
+          borderRadius: 3, 
+          bgcolor: '#ffffff', 
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)' 
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: 2 
+          }}>
+            <Typography variant="h6" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               Badges
             </Typography>
             <IconButton size="small">
               <ArrowForward fontSize="small" />
             </IconButton>
           </Box>
-          <Typography variant="h2" fontWeight={700} color="#1e293b" textAlign="center" mt={2}>
+          <Typography variant="h2" fontWeight={700} color="#1e293b" textAlign="center" mt={2} sx={{ fontSize: { xs: '2rem', sm: '2.5rem' } }}>
             3
           </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, my: 3 }}>
-            <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #c4b5fd' }}>
-              <EmojiEvents sx={{ fontSize: 32, color: '#8b5cf6' }} />
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: { xs: 2, sm: 3 }, 
+            my: 3,
+            flexWrap: 'wrap'
+          }}>
+            <Box sx={{ 
+              width: { xs: 48, sm: 56 }, 
+              height: { xs: 48, sm: 56 }, 
+              borderRadius: '50%', 
+              bgcolor: '#ede9fe', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              border: '3px solid #c4b5fd' 
+            }}>
+              <EmojiEvents sx={{ fontSize: { xs: 28, sm: 32 }, color: '#8b5cf6' }} />
             </Box>
-            <Box sx={{ width: 72, height: 72, borderRadius: '50%', bgcolor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fbbf24' }}>
-              <EmojiEvents sx={{ fontSize: 42, color: '#f59e0b' }} />
+            <Box sx={{ 
+              width: { xs: 64, sm: 72 }, 
+              height: { xs: 64, sm: 72 }, 
+              borderRadius: '50%', 
+              bgcolor: '#fef3c7', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              border: '4px solid #fbbf24' 
+            }}>
+              <EmojiEvents sx={{ fontSize: { xs: 36, sm: 42 }, color: '#f59e0b' }} />
             </Box>
-            <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #c4b5fd' }}>
-              <EmojiEvents sx={{ fontSize: 32, color: '#8b5cf6' }} />
+            <Box sx={{ 
+              width: { xs: 48, sm: 56 }, 
+              height: { xs: 48, sm: 56 }, 
+              borderRadius: '50%', 
+              bgcolor: '#ede9fe', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              border: '3px solid #c4b5fd' 
+            }}>
+              <EmojiEvents sx={{ fontSize: { xs: 28, sm: 32 }, color: '#8b5cf6' }} />
             </Box>
           </Box>
-          <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mb={0.5}>
+          <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mb={0.5} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
             Most Recent Badge
           </Typography>
-          <Typography variant="body1" fontWeight={600} sx={{ color: '#1e293b', textAlign: 'center' }}>
+          <Typography variant="body1" fontWeight={600} sx={{ color: '#1e293b', textAlign: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             Reinforcement Learning
           </Typography>
         </Card>
       </Box>
 
       {/* Certificate Distribution + Top Skills Row */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 4 }}>
-        <Card sx={{ flex: 1, p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Typography variant="h6" fontWeight={700} mb={1} color="#1e293b">
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', lg: 'row' },
+        gap: { xs: 2, sm: 3 }, 
+        mb: { xs: 3, sm: 4 }
+      }}>
+        <Card sx={{ 
+          flex: 1, 
+          p: { xs: 2, sm: 3 }, 
+          borderRadius: 3, 
+          bgcolor: '#ffffff', 
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)' 
+        }}>
+          <Typography variant="h6" fontWeight={700} mb={1} color="#1e293b" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Certificate Distribution
           </Typography>
-          <DonutChart />
+          <Box sx={{ 
+            position: 'relative', 
+            width: { xs: 150, sm: 200 }, 
+            height: { xs: 150, sm: 200 }, 
+            mx: 'auto', 
+            my: 2 
+          }}>
+            <DonutChart />
+          </Box>
         </Card>
 
-        <Card sx={{ flex: 1, p: 3, borderRadius: 3, bgcolor: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" fontWeight={700} color="#1e293b">
+        <Card sx={{ 
+          flex: 1, 
+          p: { xs: 2, sm: 3 }, 
+          borderRadius: 3, 
+          bgcolor: '#ffffff', 
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)' 
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center' 
+          }}>
+            <Typography variant="h6" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               Top Skills
             </Typography>
             <IconButton size="small">
               <ArrowForward fontSize="small" />
             </IconButton>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1, 
+            flexWrap: 'wrap',
+            mt: 2
+          }}>
             {topSkills.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">No skills found.</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}>
+                No skills found.
+              </Typography>
             ) : (
               topSkills.map(([skill, count]) => (
-                <Chip key={skill} label={`${skill} (${count})`} size="small" />
+                <Chip 
+                  key={skill} 
+                  label={`${skill} (${count})`} 
+                  size="small" 
+                  sx={{ 
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    height: { xs: 24, sm: 28 }
+                  }}
+                />
               ))
             )}
           </Box>
@@ -756,8 +1022,15 @@ export default function LearnerDashboard() {
 
       {/* My Credentials Section */}
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" fontWeight={700} color="#1e293b">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: { xs: 2, sm: 3 },
+          gap: { xs: 2, sm: 0 }
+        }}>
+          <Typography variant="h5" fontWeight={700} color="#1e293b" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             My Credentials
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -774,91 +1047,144 @@ export default function LearnerDashboard() {
         </Box>
 
         {/* Search, Filter, Sort Bar */}
-        <Box sx={{ bgcolor: '#fafbfc', p: 2.5, borderRadius: 2, mb: 3, border: '1px solid #e5e7eb' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ 
+          bgcolor: '#fafbfc', 
+          p: { xs: 2, sm: 2.5 }, 
+          borderRadius: 2, 
+          mb: { xs: 2, sm: 3 }, 
+          border: '1px solid #e5e7eb' 
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', lg: 'row' },
+            alignItems: { xs: 'stretch', lg: 'center' }, 
+            gap: { xs: 2, lg: 2 }, 
+            mb: { xs: 2, lg: 2 }
+          }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              justifyContent: { xs: 'center', sm: 'flex-start' }
+            }}>
               <PeopleOutline sx={{ color: '#64748b' }} />
-              <Typography variant="body2" color="text.secondary" fontWeight={600}>
+              <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 {isLoading ? 'Loading...' : `${totalCredentials} Certificate${totalCredentials === 1 ? '' : 's'} Found`}
               </Typography>
             </Box>
-            <Box sx={{ flex: 1 }} />
-            <TextField
-              size="small"
-              placeholder="Search Skills, Tags, Title, Issuer"
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); handleFilterChange(); }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search sx={{ color: '#94a3b8', fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ width: 280, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel id="status-label">Status</InputLabel>
-              <Select 
-                labelId="status-label" 
-                label="Status" 
-                value={status} 
-                onChange={(e) => { setStatus(e.target.value); handleFilterChange(); }}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="verified">Verified</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="blockchain_pending">Blockchain Pending</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField 
-              size="small" 
-              label="Issuer" 
-              value={issuer} 
-              onChange={(e) => { setIssuer(e.target.value); handleFilterChange(); }} 
-              sx={{ width: 180, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} 
-            />
-            <TextField 
-              size="small" 
-              label="NSQF" 
-              type="number" 
-              value={nsqfLevel} 
-              onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); handleFilterChange(); }} 
-              sx={{ width: 100, bgcolor: '#ffffff', '& .MuiOutlinedInput-root': { borderRadius: 2 } }} 
-            />
-            <FormControl size="small" sx={{ minWidth: 170 }}>
-              <InputLabel id="sort-label">Sort</InputLabel>
-              <Select 
-                labelId="sort-label" 
-                label="Sort" 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value as any)}
-              >
-                <MenuItem value="issued_date_desc">Newest First</MenuItem>
-                <MenuItem value="issued_date_asc">Oldest First</MenuItem>
-              </Select>
-            </FormControl>
+            
+            {/* Search and Filters Row */}
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 2, sm: 2 },
+              flex: 1,
+              alignItems: { xs: 'stretch', sm: 'center' }
+            }}>
+              <TextField
+                size="small"
+                placeholder="Search Skills, Tags, Title, Issuer"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); handleFilterChange(); }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: '#94a3b8', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ 
+                  flex: { xs: '1 1 100%', sm: '1 1 auto' },
+                  bgcolor: '#ffffff', 
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                  minWidth: { xs: '100%', sm: 280 }
+                }}
+              />
+              
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 2, sm: 2 },
+                flex: { xs: '1 1 100%', sm: '0 0 auto' }
+              }}>
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+                  <InputLabel id="status-label">Status</InputLabel>
+                  <Select 
+                    labelId="status-label" 
+                    label="Status" 
+                    value={status} 
+                    onChange={(e) => { setStatus(e.target.value); handleFilterChange(); }}
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    <MenuItem value="verified">Verified</MenuItem>
+                    <MenuItem value="pending">Pending</MenuItem>
+                    <MenuItem value="blockchain_pending">Blockchain Pending</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <TextField 
+                  size="small" 
+                  label="Issuer" 
+                  value={issuer} 
+                  onChange={(e) => { setIssuer(e.target.value); handleFilterChange(); }} 
+                  sx={{ 
+                    width: { xs: '100%', sm: 180 }, 
+                    bgcolor: '#ffffff', 
+                    '& .MuiOutlinedInput-root': { borderRadius: 2 } 
+                  }} 
+                />
+                
+                <TextField 
+                  size="small" 
+                  label="NSQF" 
+                  type="number" 
+                  value={nsqfLevel} 
+                  onChange={(e) => { const v = e.target.value; setNsqfLevel(v === '' ? '' : Number(v)); handleFilterChange(); }} 
+                  sx={{ 
+                    width: { xs: '100%', sm: 100 }, 
+                    bgcolor: '#ffffff', 
+                    '& .MuiOutlinedInput-root': { borderRadius: 2 } 
+                  }} 
+                />
+                
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 170 } }}>
+                  <InputLabel id="sort-label">Sort</InputLabel>
+                  <Select 
+                    labelId="sort-label" 
+                    label="Sort" 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                  >
+                    <MenuItem value="issued_date_desc">Newest First</MenuItem>
+                    <MenuItem value="issued_date_asc">Oldest First</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </Box>
           </Box>
         </Box>
 
-        {/* Credentials Grid - 3 COLUMNS */}
+        {/* Credentials Grid - Responsive */}
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 3,
-            '@media (max-width: 1200px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
-            '@media (max-width: 768px)': { gridTemplateColumns: '1fr' },
+            gridTemplateColumns: { 
+              xs: '1fr', 
+              sm: 'repeat(2, 1fr)', 
+              lg: 'repeat(3, 1fr)' 
+            },
+            gap: { xs: 2, sm: 3 },
+            mb: { xs: 3, sm: 4 }
           }}
         >
           {isLoading ? (
             <Card sx={{ p: 3, gridColumn: '1 / -1', textAlign: 'center' }}>
               <CircularProgress />
-              <Typography mt={2}>Loading credentials...</Typography>
+              <Typography mt={2} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Loading credentials...</Typography>
             </Card>
           ) : credentials.length === 0 ? (
             <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
-              <Typography>No credentials found.</Typography>
+              <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>No credentials found.</Typography>
             </Card>
           ) : (
             credentials.map((cred) => (
@@ -874,7 +1200,15 @@ export default function LearnerDashboard() {
 
         {/* Pagination */}
         {!isLoading && credentials.length > 0 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 4, gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            mt: 4, 
+            gap: { xs: 2, sm: 2 }, 
+            flexWrap: 'wrap' 
+          }}>
             <Pagination 
               count={totalPages} 
               page={page} 
@@ -882,9 +1216,11 @@ export default function LearnerDashboard() {
               color="primary"
               showFirstButton
               showLastButton
+              size={window.innerWidth < 600 ? "small" : "medium"}
               sx={{ 
                 '& .MuiPaginationItem-root': { 
-                  fontWeight: 600 
+                  fontWeight: 600,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
                 },
                 '& .Mui-selected': {
                   bgcolor: '#7c4dff !important',
@@ -892,7 +1228,7 @@ export default function LearnerDashboard() {
                 }
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 120 }, maxWidth: { xs: '200px', sm: 'none' } }}>
               <InputLabel>Per Page</InputLabel>
               <Select 
                 value={limit} 
