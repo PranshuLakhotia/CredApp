@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLoader from '@/components/common/DashboardLoader';
 import {
   Box,
   Typography,
   Paper,
-  Grid,
   Card,
   CardContent,
   TextField,
@@ -420,9 +420,10 @@ export default function CandidateDirectoryPage() {
   if (loading) {
     return (
       <DashboardLayout title="Candidate Directory">
-        <Box sx={{ p: 3 }}>
-          <LinearProgress />
-        </Box>
+        <DashboardLoader 
+          title="Loading Candidates" 
+          message="Fetching candidate profiles and verification data..." 
+        />
       </DashboardLayout>
     );
   }
@@ -457,9 +458,16 @@ export default function CandidateDirectoryPage() {
                   Filters & Search
                 </Typography>
 
-                <Grid container spacing={3}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { 
+                    xs: '1fr', 
+                    md: 'repeat(3, 1fr)' 
+                  }, 
+                  gap: 3 
+                }}>
                   {/* Search */}
-                  <Grid item xs={12} md={4}>
+                  <Box>
                     <TextField
                       fullWidth
                       label="Search candidates"
@@ -474,10 +482,10 @@ export default function CandidateDirectoryPage() {
                         ),
                       }}
                     />
-                  </Grid>
+                  </Box>
 
                   {/* Skills */}
-                  <Grid item xs={12} md={4}>
+                  <Box>
                     <FormControl fullWidth>
                       <InputLabel>Skills</InputLabel>
                       <Select
@@ -499,10 +507,10 @@ export default function CandidateDirectoryPage() {
                         ))}
                       </Select>
                     </FormControl>
-                  </Grid>
+                  </Box>
 
                   {/* NSQF Level Range */}
-                  <Grid item xs={12} md={4}>
+                  <Box>
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1 }}>
                         NSQF Level Range: {filters.nsqf_level_range[0]} - {filters.nsqf_level_range[1]}
@@ -516,10 +524,10 @@ export default function CandidateDirectoryPage() {
                         step={0.1}
                       />
                     </Box>
-                  </Grid>
+                  </Box>
 
                   {/* Issuer */}
-                  <Grid item xs={12} md={4}>
+                  <Box>
                     <FormControl fullWidth>
                       <InputLabel>Issuer</InputLabel>
                       <Select
@@ -534,10 +542,10 @@ export default function CandidateDirectoryPage() {
                         ))}
                       </Select>
                     </FormControl>
-                  </Grid>
+                  </Box>
 
                   {/* Verification Status */}
-                  <Grid item xs={12} md={4}>
+                  <Box>
                     <FormControl fullWidth>
                       <InputLabel>Verification Status</InputLabel>
                       <Select
@@ -557,10 +565,10 @@ export default function CandidateDirectoryPage() {
                         <MenuItem value="partial">Partial</MenuItem>
                       </Select>
                     </FormControl>
-                  </Grid>
+                  </Box>
 
                   {/* Sort */}
-                  <Grid item xs={12} md={4}>
+                  <Box>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <FormControl fullWidth>
                         <InputLabel>Sort By</InputLabel>
@@ -582,8 +590,8 @@ export default function CandidateDirectoryPage() {
                         <Sort sx={{ transform: filters.sort_order === 'desc' ? 'rotate(180deg)' : 'none' }} />
                       </IconButton>
                     </Box>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
 
@@ -765,8 +773,16 @@ export default function CandidateDirectoryPage() {
                 </Box>
 
                 {/* Stats */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={6} sm={3}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { 
+                    xs: 'repeat(2, 1fr)', 
+                    sm: 'repeat(4, 1fr)' 
+                  }, 
+                  gap: 2, 
+                  mb: 3 
+                }}>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#f0f9ff' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#3b82f6' }}>
@@ -777,8 +793,8 @@ export default function CandidateDirectoryPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
+                  </Box>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#f0fdf4' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
@@ -789,8 +805,8 @@ export default function CandidateDirectoryPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
+                  </Box>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#fef3c7' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
@@ -801,8 +817,8 @@ export default function CandidateDirectoryPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
+                  </Box>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#fdf2f8' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#ec4899' }}>
@@ -813,8 +829,8 @@ export default function CandidateDirectoryPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
 
                 <Divider sx={{ mb: 3 }} />
 

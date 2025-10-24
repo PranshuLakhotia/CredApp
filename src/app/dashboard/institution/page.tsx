@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLoader from '@/components/common/DashboardLoader';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslations } from '@/hooks/useTranslations';
@@ -1512,22 +1513,13 @@ export default function InstitutionDashboardPage() {
           )}
         </div>
         
-        {/* Cool Minimalist Wave Loading Animation */}
+        {/* Loading Animation */}
         {isLoadingCredential && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-20 dark:bg-gray-100 dark:bg-opacity-20 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-            {/* Wave Animation */}
-            <div className="flex items-center space-x-1 mb-8">
-              <div className="w-2 h-8 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-8 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '100ms' }}></div>
-              <div className="w-2 h-8 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '200ms' }}></div>
-              <div className="w-2 h-8 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-              <div className="w-2 h-8 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '400ms' }}></div>
-            </div>
-            
-            {/* Loading Text with Fade Effect */}
-            <div className="text-center">
-              <p className="text-lg font-medium text-gray-700 dark:text-gray-300 animate-pulse">{t('loadingCredential')}</p>
-            </div>
+            <DashboardLoader 
+              title="Loading Credential" 
+              message="Generating your credential details..." 
+            />
           </div>
         )}
       </DashboardLayout>

@@ -3,6 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import DashboardLoader from '@/components/common/DashboardLoader';
 import {
   Box,
   Typography,
@@ -1178,10 +1179,12 @@ export default function LearnerDashboard() {
           }}
         >
           {isLoading ? (
-            <Card sx={{ p: 3, gridColumn: '1 / -1', textAlign: 'center' }}>
-              <CircularProgress />
-              <Typography mt={2} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Loading credentials...</Typography>
-            </Card>
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <DashboardLoader 
+                title="Loading Credentials" 
+                message="Fetching your certificates and achievements..." 
+              />
+            </Box>
           ) : credentials.length === 0 ? (
             <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
               <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>No credentials found.</Typography>

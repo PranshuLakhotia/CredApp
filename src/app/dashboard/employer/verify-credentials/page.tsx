@@ -29,7 +29,6 @@ import {
   ListItemIcon,
   IconButton,
   Tooltip,
-  Grid,
 } from '@mui/material';
 import {
   QrCodeScanner,
@@ -50,6 +49,7 @@ import {
   Compare,
   FileUpload,
 } from '@mui/icons-material';
+import DashboardLoader from '@/components/common/DashboardLoader';
 
 // Types
 interface VerificationResult {
@@ -414,6 +414,17 @@ export default function VerifyCredentialsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout title="Credential Verification">
+        <DashboardLoader 
+          title="Verifying Credential" 
+          message="Checking credential authenticity and blockchain verification..." 
+        />
+      </DashboardLayout>
+    );
+  }
+
   // Helper function to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -514,9 +525,16 @@ export default function VerifyCredentialsPage() {
               </Alert>
             )}
 
-            <Grid container spacing={4}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { 
+                xs: '1fr', 
+                md: 'repeat(2, 1fr)' 
+              }, 
+              gap: 4 
+            }}>
               {/* PDF Verification */}
-              <Grid item xs={12} md={6}>
+              <Box>
                 <Zoom in={true} timeout={800}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
@@ -607,8 +625,8 @@ export default function VerifyCredentialsPage() {
                     </CardContent>
                   </Card>
                 </Zoom>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </Box>
         </Fade>
 
@@ -637,32 +655,40 @@ export default function VerifyCredentialsPage() {
                 </Box>
 
                 {/* Credential Details */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={6}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { 
+                    xs: '1fr', 
+                    sm: 'repeat(2, 1fr)' 
+                  }, 
+                  gap: 2, 
+                  mb: 3 
+                }}>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Learner Name</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {verificationResult.learner_name}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
+                  </Box>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Issuer</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {verificationResult.issuer_name}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
+                  </Box>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Issued Date</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {new Date(verificationResult.issued_date).toLocaleDateString()}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
+                  </Box>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Expiry Date</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {verificationResult.expiry_date ? new Date(verificationResult.expiry_date).toLocaleDateString() : 'No expiry'}
                     </Typography>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
 
                 {/* Blockchain Information */}
                 {verificationResult.blockchain_hash && (
@@ -745,8 +771,16 @@ export default function VerifyCredentialsPage() {
             {bulkResults && (
               <Box>
                 {/* Summary Cards */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={6} sm={3}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { 
+                    xs: 'repeat(2, 1fr)', 
+                    sm: 'repeat(4, 1fr)' 
+                  }, 
+                  gap: 2, 
+                  mb: 3 
+                }}>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#f0fdf4' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
@@ -757,8 +791,8 @@ export default function VerifyCredentialsPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
+                  </Box>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#fffbeb' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
@@ -769,8 +803,8 @@ export default function VerifyCredentialsPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
+                  </Box>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#fef2f2' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
@@ -781,8 +815,8 @@ export default function VerifyCredentialsPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
+                  </Box>
+                  <Box>
                     <Card sx={{ textAlign: 'center', bgcolor: '#f0f9ff' }}>
                       <CardContent sx={{ py: 2 }}>
                         <Typography variant="h4" sx={{ fontWeight: 700, color: '#3b82f6' }}>
@@ -793,8 +827,8 @@ export default function VerifyCredentialsPage() {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
 
                 <Divider sx={{ mb: 3 }} />
 
@@ -874,8 +908,12 @@ export default function VerifyCredentialsPage() {
                           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                             Verification Details:
                           </Typography>
-                          <Grid container spacing={1}>
-                            <Grid item xs={6}>
+                          <Box sx={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(2, 1fr)', 
+                            gap: 1 
+                          }}>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.learner_id_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -884,8 +922,8 @@ export default function VerifyCredentialsPage() {
                                 )}
                                 <Typography variant="body2">Learner ID</Typography>
                               </Box>
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.learner_name_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -894,8 +932,8 @@ export default function VerifyCredentialsPage() {
                                 )}
                                 <Typography variant="body2">Learner Name</Typography>
                               </Box>
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.credential_title_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -904,8 +942,8 @@ export default function VerifyCredentialsPage() {
                                 )}
                                 <Typography variant="body2">Credential Title</Typography>
                               </Box>
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.issuer_name_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -914,8 +952,8 @@ export default function VerifyCredentialsPage() {
                                 )}
                                 <Typography variant="body2">Issuer Name</Typography>
                               </Box>
-                            </Grid>
-                          </Grid>
+                            </Box>
+                          </Box>
                         </Box>
                       )}
 

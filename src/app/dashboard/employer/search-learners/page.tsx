@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLoader from '@/components/common/DashboardLoader';
 import {
   Box,
   Typography,
@@ -170,6 +171,16 @@ export default function SearchLearnersPage() {
       .slice(0, 5)
       .map(([skill]) => skill);
   };
+  if (loading) {
+    return (
+      <DashboardLayout title="Search Learners">
+        <DashboardLoader 
+          title="Loading Candidates" 
+          message="Fetching candidate profiles and verification data..." 
+        />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Search Learners">
@@ -335,9 +346,10 @@ export default function SearchLearnersPage() {
             >
               <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {loading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 8 }}>
-                    <CircularProgress />
-                  </Box>
+                  <DashboardLoader 
+                    title="Searching Learners" 
+                    message="Finding qualified candidates for your requirements..." 
+                  />
                 ) : error ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 8 }}>
                     <Typography color="error">{error}</Typography>
