@@ -7,6 +7,12 @@
 [![Blockchain](https://img.shields.io/badge/Blockchain-Polygon_Amoy-8247E5?logo=polygon)](https://polygon.technology)
 
 ---
+## Credentials for login in the prototype
+
+- as an issuer --  gmail: cr@gmail.com, password: Coursera@123
+- as an employer -- gmail: google@gmail.com, password: Employer @123
+- as a learner -- gmail: ishu@gmail.com, password: Ishu@123
+
 
 ## 🌟 Overview
 
