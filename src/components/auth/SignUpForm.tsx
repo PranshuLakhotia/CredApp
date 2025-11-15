@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Briefcase, GraduationCap, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, EyeOff, Briefcase, GraduationCap, Building2, CheckCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { RegisterRequest, Role } from '@/types/auth';
-import { AuthService } from '@/services/auth.service';
+import { kycService } from '@/services/kyc.service';
 import InlineKYCSteps from './InlineKYCSteps';
+
+type VerificationPhase = 'idle' | 'sending' | 'verifying' | 'success' | 'error';
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -37,8 +38,17 @@ export default function SignUpPage() {
     score: 0,
     feedback: []
   });
-  const [currentStep, setCurrentStep] = useState<'signup' | 'kyc-step1' | 'kyc-step2' | 'kyc-step3'>('signup');
+  const [currentStep, setCurrentStep] = useState<'signup' | 'kyc-step1' | 'kyc-step2'>('signup');
   const [kycVerificationData, setKycVerificationData] = useState<any>(null);
+  const [emailOTP, setEmailOTP] = useState('');
+  const [mobileOTP, setMobileOTP] = useState('');
+  const [emailVerificationPhase, setEmailVerificationPhase] = useState<VerificationPhase>('idle');
+  const [mobileVerificationPhase, setMobileVerificationPhase] = useState<VerificationPhase>('idle');
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [mobileCodeSent, setMobileCodeSent] = useState(false);
+  const [emailVerificationError, setEmailVerificationError] = useState('');
+  const [mobileVerificationError, setMobileVerificationError] = useState('');
+  const [contactVerification, setContactVerification] = useState<{ email?: any; phone?: any }>({});
   
   // Hardcoded roles for registration
   const availableRoles = [
@@ -103,6 +113,39 @@ export default function SignUpPage() {
     return { score, feedback };
   };
 
+  const formatPhoneNumberForVerification = (value: string) => {
+    if (!value) return '';
+    let cleaned = value.trim().replace(/[^0-9+]/g, '');
+    if (!cleaned.startsWith('+')) {
+      cleaned = '+' + cleaned.replace(/^\+/, '');
+    }
+    return cleaned;
+  };
+
+  const resetEmailVerificationState = () => {
+    setEmailCodeSent(false);
+    setEmailOTP('');
+    setEmailVerificationPhase('idle');
+    setEmailVerificationError('');
+    setContactVerification(prev => {
+      const updated = { ...prev };
+      delete updated.email;
+      return updated;
+    });
+  };
+
+  const resetMobileVerificationState = () => {
+    setMobileCodeSent(false);
+    setMobileOTP('');
+    setMobileVerificationPhase('idle');
+    setMobileVerificationError('');
+    setContactVerification(prev => {
+      const updated = { ...prev };
+      delete updated.phone;
+      return updated;
+    });
+  };
+
   const handleChange = (field: string, value: string) => {
     if (field.includes('address.')) {
       const addressField = field.split('.')[1];
@@ -116,6 +159,14 @@ export default function SignUpPage() {
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
+
+    if (field === 'email') {
+      resetEmailVerificationState();
+    }
+
+    if (field === 'phone') {
+      resetMobileVerificationState();
+    }
     
     // Check password strength in real-time
     if (field === 'password') {
@@ -126,6 +177,147 @@ export default function SignUpPage() {
     // Clear validation error when user starts typing
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: '' }));
+    }
+
+    if (field === 'email' && validationErrors.emailVerification) {
+      setValidationErrors(prev => ({ ...prev, emailVerification: '' }));
+    }
+
+    if (field === 'phone') {
+      if (validationErrors.phoneVerification) {
+        setValidationErrors(prev => ({ ...prev, phoneVerification: '' }));
+      }
+    }
+  };
+
+  const handleEmailSendOTP = async () => {
+    const email = formData.email.trim();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setValidationErrors(prev => ({ ...prev, email: 'Enter a valid email before requesting OTP' }));
+      return;
+    }
+
+    try {
+      setEmailVerificationPhase('sending');
+      setEmailVerificationError('');
+      const response = await kycService.sendEmailCode(email);
+      if (response.status === 'Success') {
+        setEmailCodeSent(true);
+        setEmailVerificationPhase('idle');
+      } else {
+        setEmailVerificationPhase('error');
+        setEmailVerificationError(response.message || 'Failed to send email OTP');
+      }
+    } catch (error: any) {
+      setEmailVerificationPhase('error');
+      setEmailVerificationError(error.message || 'Failed to send email OTP');
+    }
+  };
+
+  const handleEmailVerification = async () => {
+    const email = formData.email.trim();
+    if (!emailCodeSent) {
+      setEmailVerificationError('Please request an OTP before verifying');
+      return;
+    }
+
+    if (emailOTP.length !== 6) {
+      setEmailVerificationError('Enter the 6-digit OTP');
+      return;
+    }
+
+    try {
+      setEmailVerificationPhase('verifying');
+      setEmailVerificationError('');
+      const response = await kycService.verifyEmailCode(email, emailOTP);
+      if (response.status === 'Approved') {
+        setEmailVerificationPhase('success');
+        setContactVerification(prev => ({
+          ...prev,
+          email: {
+            status: 'verified',
+            email,
+            data: response.email,
+            timestamp: new Date().toISOString()
+          }
+        }));
+        setValidationErrors(prev => ({ ...prev, emailVerification: '' }));
+      } else {
+        setEmailVerificationPhase('error');
+        setEmailVerificationError(response.message || 'Failed to verify email');
+      }
+    } catch (error: any) {
+      setEmailVerificationPhase('error');
+      setEmailVerificationError(error.message || 'Failed to verify email');
+    }
+  };
+
+  const handleMobileSendOTP = async () => {
+    const phone = formData.phone.trim();
+    if (!phone) {
+      setValidationErrors(prev => ({ ...prev, phone: 'Phone number is required for verification' }));
+      return;
+    }
+
+    const formattedPhone = formatPhoneNumberForVerification(phone);
+    if (!/^\+\d{10,15}$/.test(formattedPhone)) {
+      setValidationErrors(prev => ({ ...prev, phone: 'Enter a valid phone number in international format' }));
+      return;
+    }
+
+    try {
+      setMobileVerificationPhase('sending');
+      setMobileVerificationError('');
+      const response = await kycService.sendPhoneCode(formattedPhone, 'sms');
+      if (response.status === 'Success') {
+        setMobileCodeSent(true);
+        setMobileVerificationPhase('idle');
+      } else {
+        setMobileVerificationPhase('error');
+        setMobileVerificationError(response.message || 'Failed to send phone OTP');
+      }
+    } catch (error: any) {
+      setMobileVerificationPhase('error');
+      setMobileVerificationError(error.message || 'Failed to send phone OTP');
+    }
+  };
+
+  const handleMobileVerification = async () => {
+    const phone = formData.phone.trim();
+    if (!mobileCodeSent) {
+      setMobileVerificationError('Please request an OTP before verifying');
+      return;
+    }
+
+    if (mobileOTP.length !== 6) {
+      setMobileVerificationError('Enter the 6-digit OTP');
+      return;
+    }
+
+    const formattedPhone = formatPhoneNumberForVerification(phone);
+    try {
+      setMobileVerificationPhase('verifying');
+      setMobileVerificationError('');
+      const response = await kycService.verifyPhoneCode(formattedPhone, mobileOTP);
+      if (response.status === 'Approved') {
+        setMobileVerificationPhase('success');
+        setContactVerification(prev => ({
+          ...prev,
+          phone: {
+            status: 'verified',
+            phone: formattedPhone,
+            data: response.phone,
+            timestamp: new Date().toISOString()
+          }
+        }));
+        setValidationErrors(prev => ({ ...prev, phoneVerification: '' }));
+      } else {
+        setMobileVerificationPhase('error');
+        setMobileVerificationError(response.message || 'Failed to verify phone number');
+      }
+    } catch (error: any) {
+      setMobileVerificationPhase('error');
+      setMobileVerificationError(error.message || 'Failed to verify phone number');
     }
   };
 
@@ -182,9 +374,14 @@ export default function SignUpPage() {
       errors.confirmPassword = 'Passwords do not match';
     }
 
-    // Validate phone number format if provided
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
-      errors.phone = 'Please enter a valid phone number';
+    const sanitizedPhone = formData.phone?.trim();
+    if (!sanitizedPhone) {
+      errors.phone = 'Phone number is required for verification';
+    } else {
+      const formattedPhone = formatPhoneNumberForVerification(sanitizedPhone);
+      if (!/^\+\d{10,15}$/.test(formattedPhone)) {
+        errors.phone = 'Please enter a valid phone number';
+      }
     }
 
     // Date of birth is required for KYC verification
@@ -200,6 +397,14 @@ export default function SignUpPage() {
       } else if (age > 120) {
         errors.dateOfBirth = 'Please enter a valid date of birth';
       }
+    }
+
+    if (emailVerificationPhase !== 'success') {
+      errors.emailVerification = 'Please verify your email before continuing';
+    }
+
+    if (mobileVerificationPhase !== 'success') {
+      errors.phoneVerification = 'Please verify your phone number before continuing';
     }
 
     if (!agreedToTerms) {
@@ -266,6 +471,10 @@ export default function SignUpPage() {
       // Add role type if selected
       if (formData.roleType) {
         registrationData.role_type = formData.roleType;
+      }
+
+      if (contactVerification.email || contactVerification.phone) {
+        registrationData.contact_verification = contactVerification;
       }
 
       // Add KYC verification data
@@ -450,6 +659,64 @@ export default function SignUpPage() {
                   {validationErrors.email && (
                     <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>
                   )}
+                  <div className="mt-3 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleEmailSendOTP}
+                        disabled={
+                          !formData.email ||
+                          emailVerificationPhase === 'sending' ||
+                          emailVerificationPhase === 'verifying' ||
+                          emailVerificationPhase === 'success'
+                        }
+                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {emailVerificationPhase === 'sending' && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {emailCodeSent && emailVerificationPhase !== 'success' ? 'Resend OTP' : 'Send OTP'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleEmailVerification}
+                        disabled={
+                          !emailCodeSent ||
+                          emailVerificationPhase === 'verifying' ||
+                          emailVerificationPhase === 'sending' ||
+                          emailVerificationPhase === 'success'
+                        }
+                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {emailVerificationPhase === 'verifying' && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Verify OTP
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={emailOTP}
+                      onChange={(e) => setEmailOTP(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      disabled={!emailCodeSent || emailVerificationPhase === 'success'}
+                      placeholder="Enter 6-digit OTP"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-center tracking-widest"
+                    />
+                    {emailCodeSent && emailVerificationPhase !== 'success' && (
+                      <p className="text-xs text-gray-500">
+                        Enter the OTP sent to {formData.email || 'your email address'}.
+                      </p>
+                    )}
+                    {emailVerificationPhase === 'success' && (
+                      <div className="flex items-center gap-1 text-green-600 text-xs font-semibold">
+                        <CheckCircle className="w-4 h-4" />
+                        Email verified successfully
+                      </div>
+                    )}
+                    {emailVerificationError && (
+                      <p className="text-red-500 text-xs">{emailVerificationError}</p>
+                    )}
+                    {validationErrors.emailVerification && (
+                      <p className="text-red-500 text-xs">{validationErrors.emailVerification}</p>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -467,6 +734,67 @@ export default function SignUpPage() {
                   {validationErrors.phone && (
                     <p className="text-red-500 text-xs mt-1">{validationErrors.phone}</p>
                   )}
+                  <div className="mt-3 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleMobileSendOTP}
+                        disabled={
+                          !formData.phone ||
+                          mobileVerificationPhase === 'sending' ||
+                          mobileVerificationPhase === 'verifying' ||
+                          mobileVerificationPhase === 'success'
+                        }
+                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {mobileVerificationPhase === 'sending' && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {mobileCodeSent && mobileVerificationPhase !== 'success' ? 'Resend OTP' : 'Send OTP'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMobileVerification}
+                        disabled={
+                          !mobileCodeSent ||
+                          mobileVerificationPhase === 'verifying' ||
+                          mobileVerificationPhase === 'sending' ||
+                          mobileVerificationPhase === 'success'
+                        }
+                        className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg font-semibold hover:bg-purple-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {mobileVerificationPhase === 'verifying' && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Verify OTP
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={mobileOTP}
+                      onChange={(e) => setMobileOTP(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      disabled={!mobileCodeSent || mobileVerificationPhase === 'success'}
+                      placeholder="Enter 6-digit OTP"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-center tracking-widest"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Use E.164 format (e.g., +14155552671 or +919876543210).
+                    </p>
+                    {mobileCodeSent && mobileVerificationPhase !== 'success' && (
+                      <p className="text-xs text-gray-500">
+                        Enter the OTP sent to {formData.phone || 'your phone number'}.
+                      </p>
+                    )}
+                    {mobileVerificationPhase === 'success' && (
+                      <div className="flex items-center gap-1 text-green-600 text-xs font-semibold">
+                        <CheckCircle className="w-4 h-4" />
+                        Phone verified successfully
+                      </div>
+                    )}
+                    {mobileVerificationError && (
+                      <p className="text-red-500 text-xs">{mobileVerificationError}</p>
+                    )}
+                    {validationErrors.phoneVerification && (
+                      <p className="text-red-500 text-xs">{validationErrors.phoneVerification}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -738,9 +1066,8 @@ export default function SignUpPage() {
         </div>
         ) : (
           <InlineKYCSteps
-            currentStep={currentStep as 'kyc-step1' | 'kyc-step2' | 'kyc-step3'}
+            currentStep={currentStep as 'kyc-step1' | 'kyc-step2'}
             userEmail={formData.email}
-            userPhone={formData.phone}
             userFullName={`${formData.firstName} ${formData.lastName}`}
             userDateOfBirth={formData.dateOfBirth}
             onStepChange={(step) => setCurrentStep(step)}

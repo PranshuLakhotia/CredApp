@@ -8,20 +8,17 @@ import {
   FolderOpen,
   Camera,
   MapPin,
-  Mail,
-  Phone,
   ArrowLeft,
   Zap
 } from 'lucide-react';
 import { kycService } from '@/services/kyc.service';
 
 interface InlineKYCStepsProps {
-  currentStep: 'kyc-step1' | 'kyc-step2' | 'kyc-step3';
+  currentStep: 'kyc-step1' | 'kyc-step2';
   userEmail: string;
-  userPhone: string;
   userFullName: string;
   userDateOfBirth: string;
-  onStepChange: (step: 'kyc-step1' | 'kyc-step2' | 'kyc-step3') => void;
+  onStepChange: (step: 'kyc-step1' | 'kyc-step2') => void;
   onComplete: (verificationData: any) => void;
   onBack: () => void;
 }
@@ -31,7 +28,6 @@ type DocumentVerificationType = 'pan' | 'aadhaar' | 'digilocker' | null;
 export default function InlineKYCSteps({
   currentStep,
   userEmail,
-  userPhone,
   userFullName,
   userDateOfBirth,
   onStepChange,
@@ -67,14 +63,6 @@ export default function InlineKYCSteps({
   const isDevelopmentMode = process.env.NODE_ENV === 'development';
   console.log('isDevelopmentMode', isDevelopmentMode);
   
-  // Step 3 - Mobile and Email Verification
-  const [verificationEmail, setVerificationEmail] = useState(userEmail);
-  const [verificationPhone, setVerificationPhone] = useState(userPhone);
-  const [emailOTP, setEmailOTP] = useState('');
-  const [mobileOTP, setMobileOTP] = useState('');
-  const [emailVerificationStatus, setEmailVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [mobileVerificationStatus, setMobileVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
   const [verificationData, setVerificationData] = useState<any>({});
 
   // Cleanup camera on unmount
@@ -353,155 +341,12 @@ export default function InlineKYCSteps({
     }
   };
 
-  // Email Send OTP
-  const handleEmailSendOTP = async () => {
-    if (!verificationEmail || !/\S+@\S+\.\S+/.test(verificationEmail)) {
-      alert('Please enter a valid email address');
-      return;
-    }
-
-    try {
-      setEmailVerificationStatus('loading');
-      
-      const response = await kycService.sendEmailCode(verificationEmail);
-      
-      if (response.status === 'Success') {
-        setEmailVerificationStatus('idle');
-        alert('OTP sent to your email address');
-      } else {
-        setEmailVerificationStatus('error');
-      }
-    } catch (error: any) {
-      setEmailVerificationStatus('error');
-      alert('Failed to send OTP: ' + (error.message || 'Unknown error'));
-    }
-  };
-
-  // Skip Email Verification (Development Mode)
-  const handleSkipEmailVerification = () => {
-    if (!isDevelopmentMode) return;
-    
-    setEmailVerificationStatus('success');
-    setVerificationData((prev: any) => ({
-      ...prev,
-      emailVerification: { 
-        status: 'skipped_dev_mode', 
-        email: verificationEmail, 
-        timestamp: new Date().toISOString() 
-      }
-    }));
-  };
-
-  // Email Verification
-  const handleEmailVerification = async () => {
-    if (!emailOTP || emailOTP.length !== 6) return;
-
-    try {
-      setEmailVerificationStatus('loading');
-      
-      const response = await kycService.verifyEmailCode(verificationEmail, emailOTP);
-      
-      if (response.status === 'Approved') {
-        setEmailVerificationStatus('success');
-        setVerificationData((prev: any) => ({
-          ...prev,
-          emailVerification: { 
-            status: 'verified', 
-            email: verificationEmail, 
-            data: response.email,
-            timestamp: new Date().toISOString() 
-          }
-        }));
-      } else {
-        setEmailVerificationStatus('error');
-      }
-    } catch (error: any) {
-      setEmailVerificationStatus('error');
-    }
-  };
-
-  // Mobile Send OTP
-  const handleMobileSendOTP = async () => {
-    if (!verificationPhone || verificationPhone.length < 10) {
-      alert('Please enter a valid phone number');
-      return;
-    }
-
-    try {
-      setMobileVerificationStatus('loading');
-      let formattedPhone = verificationPhone.trim();
-      if (!formattedPhone.startsWith('+')) {
-        formattedPhone = '+' + formattedPhone;
-      }
-      
-      const response = await kycService.sendPhoneCode(formattedPhone, 'sms');
-      
-      if (response.status === 'Success') {
-        setMobileVerificationStatus('idle');
-        alert('OTP sent to your mobile number');
-      } else {
-        setMobileVerificationStatus('error');
-      }
-    } catch (error: any) {
-      setMobileVerificationStatus('error');
-      alert('Failed to send OTP: ' + (error.message || 'Unknown error'));
-    }
-  };
-
-  // Skip Mobile Verification (Development Mode)
-  const handleSkipMobileVerification = () => {
-    if (!isDevelopmentMode) return;
-    
-    setMobileVerificationStatus('success');
-    setVerificationData((prev: any) => ({
-      ...prev,
-      mobileVerification: {
-        status: 'skipped_dev_mode',
-        phone: verificationPhone,
-        timestamp: new Date().toISOString()
-      }
-    }));
-  };
-
-  // Mobile Verification
-  const handleMobileVerification = async () => {
-    if (!mobileOTP || mobileOTP.length !== 6) return;
-
-    try {
-      setMobileVerificationStatus('loading');
-      let formattedPhone = verificationPhone.trim();
-      if (!formattedPhone.startsWith('+')) {
-        formattedPhone = '+' + formattedPhone;
-      }
-      
-      const response = await kycService.verifyPhoneCode(formattedPhone, mobileOTP);
-      
-      if (response.status === 'Approved') {
-        setMobileVerificationStatus('success');
-        setVerificationData((prev: any) => ({
-          ...prev,
-          mobileVerification: {
-            status: 'verified',
-            phone: formattedPhone,
-            data: response.phone,
-            timestamp: new Date().toISOString()
-          }
-        }));
-      } else {
-        setMobileVerificationStatus('error');
-      }
-    } catch (error: any) {
-      setMobileVerificationStatus('error');
-    }
-  };
-
   const canProceed = () => {
     if (currentStep === 'kyc-step1') {
       return panVerificationStatus === 'success' || aadhaarVerificationStatus === 'success';
-    } else if (currentStep === 'kyc-step2') {
+    } 
+    if (currentStep === 'kyc-step2') {
       return faceVerificationStatus === 'success' && addressVerificationStatus === 'success';
-    } else if (currentStep === 'kyc-step3') {
-      return emailVerificationStatus === 'success' && mobileVerificationStatus === 'success';
     }
     return false;
   };
@@ -510,20 +355,18 @@ export default function InlineKYCSteps({
     if (currentStep === 'kyc-step1' && canProceed()) {
       onStepChange('kyc-step2');
     } else if (currentStep === 'kyc-step2' && canProceed()) {
-      onStepChange('kyc-step3');
-    } else if (currentStep === 'kyc-step3' && canProceed()) {
       onComplete(verificationData);
     }
   };
 
-  const stepNumber = currentStep === 'kyc-step1' ? 1 : currentStep === 'kyc-step2' ? 2 : 3;
+  const stepNumber = currentStep === 'kyc-step1' ? 1 : 2;
 
   return (
     <div className="w-full max-w-xl">
       {/* Progress Indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          {[1, 2, 3].map((step) => (
+          {[1, 2].map((step) => (
             <div key={step} className="flex items-center flex-1">
               <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
                 stepNumber >= step 
@@ -532,7 +375,7 @@ export default function InlineKYCSteps({
               }`}>
                 {step}
               </div>
-              {step < 3 && (
+              {step < 2 && (
                 <div className={`flex-1 h-1 mx-2 ${
                   stepNumber > step ? 'bg-blue-600' : 'bg-gray-200'
                 }`} />
@@ -543,7 +386,6 @@ export default function InlineKYCSteps({
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span className="text-center">Documents</span>
           <span className="flex-1 ml-18 text-center">Identity</span>
-          <span className="flex-1 mr-24 text-center">Contact</span>
         </div>
       </div>
 
@@ -788,7 +630,7 @@ export default function InlineKYCSteps({
             </button>
             <button
               onClick={handleNext}
-            //   disabled={!canProceed()}
+              disabled={!canProceed()}
               className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next Step
@@ -1069,198 +911,16 @@ export default function InlineKYCSteps({
             </button>
             <button
               onClick={handleNext}
-            //   disabled={!canProceed()}
-              className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next Step
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Email & Phone */}
-      {currentStep === 'kyc-step3' && (
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Verify Your Contacts</h1>
-          <p className="text-gray-600 mb-6">Verify your email and phone number</p>
-
-          <div className="space-y-4">
-            {/* Email Verification */}
-            <div className="border-2 border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Mail className="w-5 h-5" />
-                  Email
-                </h3>
-                {emailVerificationStatus === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
-              </div>
-
-              <div className="space-y-3">
-                <input
-                  type="email"
-                  value={verificationEmail}
-                  onChange={(e) => setVerificationEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="your.email@example.com"
-                  disabled={emailVerificationStatus === 'success'}
-                />
-
-                <button
-                  onClick={handleEmailSendOTP}
-                  disabled={emailVerificationStatus === 'loading' || emailVerificationStatus === 'success'}
-                  className="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {emailVerificationStatus === 'loading' ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
-                  ) : (
-                    'Send OTP to Email'
-                  )}
-                </button>
-
-                <input
-                  type="text"
-                  value={emailOTP}
-                  onChange={(e) => setEmailOTP(e.target.value.replace(/\D/g, ''))}
-                  maxLength={6}
-                  placeholder="Enter OTP"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl tracking-widest"
-                  disabled={emailVerificationStatus === 'success'}
-                />
-
-                {emailVerificationStatus === 'success' ? (
-                  <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Email verified
-                    {verificationData.emailVerification?.status === 'skipped_dev_mode' && (
-                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button
-                      onClick={handleEmailVerification}
-                      disabled={emailVerificationStatus === 'loading'}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {emailVerificationStatus === 'loading' ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
-                      ) : (
-                        'Verify Email'
-                      )}
-                    </button>
-                    
-                    {isDevelopmentMode && (
-                      <button
-                        onClick={handleSkipEmailVerification}
-                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
-                      >
-                        <Zap className="w-4 h-4" />
-                        Skip Email (Dev Mode)
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Phone Verification */}
-            <div className="border-2 border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Phone className="w-5 h-5" />
-                  Phone
-                </h3>
-                {mobileVerificationStatus === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
-              </div>
-
-              <div className="space-y-3">
-                <input
-                  type="tel"
-                  value={verificationPhone}
-                  onChange={(e) => setVerificationPhone(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="+14155552671"
-                  disabled={mobileVerificationStatus === 'success'}
-                />
-                <p className="text-xs text-gray-500">E.164 format: +14155552671</p>
-
-                <button
-                  onClick={handleMobileSendOTP}
-                  disabled={mobileVerificationStatus === 'loading' || mobileVerificationStatus === 'success'}
-                  className="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {mobileVerificationStatus === 'loading' ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
-                  ) : (
-                    'Send OTP to Phone'
-                  )}
-                </button>
-
-                <input
-                  type="text"
-                  value={mobileOTP}
-                  onChange={(e) => setMobileOTP(e.target.value.replace(/\D/g, ''))}
-                  maxLength={6}
-                  placeholder="Enter OTP"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl tracking-widest"
-                  disabled={mobileVerificationStatus === 'success'}
-                />
-
-                {mobileVerificationStatus === 'success' ? (
-                  <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Phone verified
-                    {verificationData.mobileVerification?.status === 'skipped_dev_mode' && (
-                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button
-                      onClick={handleMobileVerification}
-                      disabled={mobileVerificationStatus === 'loading'}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {mobileVerificationStatus === 'loading' ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
-                      ) : (
-                        'Verify Phone'
-                      )}
-                    </button>
-                    
-                    {isDevelopmentMode && (
-                      <button
-                        onClick={handleSkipMobileVerification}
-                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
-                      >
-                        <Zap className="w-4 h-4" />
-                        Skip Phone (Dev Mode)
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => onStepChange('kyc-step2')}
-              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleNext}
               disabled={!canProceed()}
               className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <CheckCircle className="w-5 h-5" />
-              Complete
+              Complete Verification
             </button>
           </div>
         </div>
       )}
+
     </div>
   );
 }
