@@ -14,6 +14,7 @@ import {
   TextField,
   InputAdornment,
   Chip,
+  Menu,
   MenuItem,
   Select,
   FormControl,
@@ -436,6 +437,124 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
   );
 };
 
+// --- CREDENTIAL LIST CARD COMPONENT (for list view) ---
+interface CredentialListCardProps {
+  credential: LearnerCredential;
+  onViewDetails: (cred: LearnerCredential) => void;
+  onDownload: (cred: LearnerCredential) => void;
+}
+
+const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onViewDetails, onDownload }) => {
+  const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
+
+  return (
+    <Card
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderRadius: 2,
+        p: 1.5,
+        boxShadow: 1,
+        border: '1px solid #e5e7eb',
+        mb: 1,
+        transition: 'all 0.25s ease',
+        '&:hover': { boxShadow: 2, transform: 'translateY(-1px)' },
+      }}
+    >
+      {/* Left Content */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, flex: 1 }}>
+        <Typography variant="subtitle2" fontWeight={700} color="#1e293b" sx={{ fontSize: '0.95rem' }}>
+          {credential.credential_title || 'Certificate'}
+        </Typography>
+
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+          Issuer: <strong>{credential.issuer_name || '-'}</strong>
+        </Typography>
+
+        {credential.nsqf_level !== undefined && (
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+            NSQF Level: <strong>{credential.nsqf_level}</strong>
+          </Typography>
+        )}
+
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+          Issued Date: <strong>{issuedDate}</strong>
+        </Typography>
+
+        {/* Actions */}
+        <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+          <Button
+            size="small"
+            onClick={() => onViewDetails(credential)}
+            sx={{
+              color: '#7c4dff',
+              textTransform: 'none',
+              fontWeight: 600,
+              p: 0,
+              minWidth: 'auto',
+              fontSize: '0.75rem',
+              '&:hover': { textDecoration: 'underline' }
+            }}
+          >
+            View Details
+          </Button>
+
+          <Button
+            size="small"
+            onClick={() => onDownload(credential)}
+            sx={{
+              color: '#64748b',
+              textTransform: 'none',
+              fontWeight: 600,
+              p: 0,
+              minWidth: 'auto',
+              fontSize: '0.75rem',
+              '&:hover': { textDecoration: 'underline' }
+            }}
+          >
+            Download
+          </Button>
+        </Box>
+      </Box>
+
+      {/* QR Code / Thumbnail */}
+      <Box
+        sx={{
+          flexShrink: 0,
+          ml: 2,
+          width: 70,
+          height: 70,
+          borderRadius: 1.5,
+          overflow: 'hidden',
+          border: '1px solid #e5e7eb',
+          bgcolor: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+        }}
+        onClick={() => onViewDetails(credential)}
+      >
+        {credential.qr_code_image ? (
+          <Box
+            component="img"
+            src={`data:image/png;base64,${credential.qr_code_image}`}
+            alt="QR Code"
+            sx={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        ) : (
+          <EmojiEvents sx={{ fontSize: 28, color: '#7c4dff' }} />
+        )}
+      </Box>
+    </Card>
+  );
+};
+
 // --- VIEW DETAILS MODAL ---
 interface ViewDetailsModalProps {
   credential: LearnerCredential | null;
@@ -452,14 +571,24 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({ credential, open, o
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', pb: 2 }}>
-        <Typography variant="h5" fontWeight={700}>
-          Credential Details
-        </Typography>
-        <IconButton onClick={onClose} size="small">
-          <Close />
-        </IconButton>
-      </DialogTitle>
+  <DialogTitle
+    sx={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderBottom: '1px solid #e5e7eb',
+      pb: 2
+    }}
+  >
+    <Typography variant="h5" component="span" fontWeight={700}>
+      Credential Details
+    </Typography>
+
+    <IconButton onClick={onClose} size="small">
+      <Close />
+    </IconButton>
+  </DialogTitle>
+
       
       <DialogContent sx={{ pt: 3 }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '200px 1fr' }, gap: 3, mb: 4 }}>
@@ -604,6 +733,9 @@ export default function LearnerDashboard() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(9);
 
+  // view mode: 'grid' or 'list'
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
   const skip = (page - 1) * limit;
   const totalPages = Math.ceil(totalCredentials / limit);
 
@@ -617,6 +749,10 @@ export default function LearnerDashboard() {
     credentials.forEach((c) => (c.skill_tags || []).forEach((t) => { freq[t] = (freq[t] || 0) + 1; }));
     return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [credentials]);
+
+  const credentialsGridTemplate = viewMode === 'grid'
+    ? { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }
+    : '1fr';
 
   const load = useCallback(async () => {
     try {
@@ -682,6 +818,49 @@ export default function LearnerDashboard() {
 
   const handleFilterChange = () => {
     setPage(1); // Reset to first page when filters change
+  };
+
+  // Menu (three-dots) state & actions
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const isMenuOpen = Boolean(menuAnchorEl);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setMenuAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setMenuAnchorEl(null);
+
+  const exportCsv = () => {
+    if (!credentials || credentials.length === 0) {
+      alert('No credentials to export');
+      handleMenuClose();
+      return;
+    }
+
+    const headers = [
+      'Title', 'Issuer', 'Issue Date', 'Completion Date', 'NSQF Level', 'Status', 'Tags', 'Skill Tags'
+    ];
+    const rows = credentials.map(c => [
+      (c.credential_title || '').replace(/"/g, '""'),
+      (c.issuer_name || '').replace(/"/g, '""'),
+      c.issued_date || '',
+      c.completion_date || '',
+      c.nsqf_level ?? '',
+      c.status || '',
+      (c.tags || []).join(';'),
+      (c.skill_tags || []).join(';')
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(r => r.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'credentials_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    handleMenuClose();
   };
 
   return (
@@ -1035,15 +1214,30 @@ export default function LearnerDashboard() {
             My Credentials
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <IconButton size="small" sx={{ bgcolor: '#f1f5f9' }}>
+            <IconButton
+              size="small"
+              onClick={() => setViewMode('grid')}
+              aria-pressed={viewMode === 'grid'}
+              sx={{ bgcolor: viewMode === 'grid' ? '#eef2ff' : '#f1f5f9' }}
+            >
               <ViewModule fontSize="small" />
             </IconButton>
-            <IconButton size="small">
+            <IconButton
+              size="small"
+              onClick={() => setViewMode('list')}
+              aria-pressed={viewMode === 'list'}
+              sx={{ bgcolor: viewMode === 'list' ? '#eef2ff' : undefined }}
+            >
               <ViewList fontSize="small" />
             </IconButton>
-            <IconButton size="small">
+            <IconButton size="small" onClick={handleMenuOpen} aria-haspopup="true" aria-expanded={isMenuOpen ? 'true' : undefined}>
               <MoreVert fontSize="small" />
             </IconButton>
+            <Menu anchorEl={menuAnchorEl} open={isMenuOpen} onClose={handleMenuClose} keepMounted>
+              <MenuItem onClick={exportCsv}>Export CSV</MenuItem>
+              <MenuItem onClick={() => { load(); handleMenuClose(); }}>Refresh</MenuItem>
+              <MenuItem onClick={() => { alert('Download all not implemented yet'); handleMenuClose(); }}>Download All</MenuItem>
+            </Menu>
           </Box>
         </Box>
 
@@ -1165,30 +1359,35 @@ export default function LearnerDashboard() {
           </Box>
         </Box>
 
-        {/* Credentials Grid - Responsive */}
+        {/* Credentials Grid/List - Responsive */}
         <Box
           sx={{
-            display: 'grid',
-            gridTemplateColumns: { 
-              xs: '1fr', 
-              sm: 'repeat(2, 1fr)', 
-              lg: 'repeat(3, 1fr)' 
-            },
+            display: viewMode === 'list' ? 'block' : 'grid',
+            gridTemplateColumns: viewMode === 'list' ? undefined : credentialsGridTemplate,
             gap: { xs: 2, sm: 3 },
             mb: { xs: 3, sm: 4 }
           }}
         >
           {isLoading ? (
-            <Box sx={{ gridColumn: '1 / -1' }}>
+            <Box sx={{ gridColumn: viewMode === 'list' ? undefined : '1 / -1' }}>
               <DashboardLoader 
                 title="Loading Credentials" 
                 message="Fetching your certificates and achievements..." 
               />
             </Box>
           ) : credentials.length === 0 ? (
-            <Card sx={{ p: 3, gridColumn: '1 / -1' }}>
+            <Card sx={{ p: 3, gridColumn: viewMode === 'list' ? undefined : '1 / -1' }}>
               <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>No credentials found.</Typography>
             </Card>
+          ) : viewMode === 'list' ? (
+            credentials.map((cred) => (
+              <CredentialListCard 
+                key={cred._id} 
+                credential={cred}
+                onViewDetails={handleViewDetails}
+                onDownload={handleDownload}
+              />
+            ))
           ) : (
             credentials.map((cred) => (
               <CredentialCard 
