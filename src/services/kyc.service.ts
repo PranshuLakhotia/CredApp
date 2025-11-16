@@ -1,7 +1,6 @@
 // KYC API Service
 // This service handles all KYC verification calls via our backend proxy
-
-const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://credhub.twilightparadox.com';
+import { buildApiUrl } from '@/config/api';
 
 export interface SandboxAuthResponse {
   code: number;
@@ -108,7 +107,7 @@ class KYCService {
    */
   async testAuthentication(): Promise<any> {
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/test/authenticate`, {
+      const response = await fetch(buildApiUrl('/kyc/test/authenticate'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -136,7 +135,7 @@ class KYCService {
         aadhaar_number: aadhaarNumber
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/aadhaar/otp/generate`, {
+      const response = await fetch(buildApiUrl('/kyc/aadhaar/otp/generate'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -168,7 +167,7 @@ class KYCService {
         otp: otp
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/aadhaar/otp/verify`, {
+      const response = await fetch(buildApiUrl('/kyc/aadhaar/otp/verify'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -205,7 +204,7 @@ class KYCService {
         date_of_birth: dateOfBirth // Format: DD/MM/YYYY
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/pan/verify`, {
+      const response = await fetch(buildApiUrl('/kyc/pan/verify'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -238,7 +237,7 @@ class KYCService {
         preferred_channel: preferredChannel
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/phone/send`, {
+      const response = await fetch(buildApiUrl('/kyc/phone/send'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -269,7 +268,7 @@ class KYCService {
         code: code
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/phone/verify`, {
+      const response = await fetch(buildApiUrl('/kyc/phone/verify'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -300,7 +299,7 @@ class KYCService {
         code_size: 6
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/email/send`, {
+      const response = await fetch(buildApiUrl('/kyc/email/send'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -331,7 +330,7 @@ class KYCService {
         code: code
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/email/verify`, {
+      const response = await fetch(buildApiUrl('/kyc/email/verify'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -363,7 +362,7 @@ class KYCService {
         vendor_data: vendorData
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/face/verify`, {
+      const response = await fetch(buildApiUrl('/kyc/face/verify'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -393,7 +392,7 @@ class KYCService {
         gstin: gstin.toUpperCase()
       };
 
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/v1/kyc/gstin/search`, {
+      const response = await fetch(buildApiUrl('/kyc/gstin/search'), {
         method: 'POST',
         headers: {
           'accept': 'application/json',

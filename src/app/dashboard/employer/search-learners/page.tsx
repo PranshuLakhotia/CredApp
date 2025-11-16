@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DashboardLoader from '@/components/common/DashboardLoader';
+import { buildApiUrl } from '@/config/api';
 import {
   Box,
   Typography,
@@ -29,6 +30,7 @@ import {
   Card,
   CardContent,
   Stack,
+  LinearProgress,
 } from '@mui/material';
 import {
   Search,
@@ -101,6 +103,7 @@ export default function SearchLearnersPage() {
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [total, setTotal] = useState(0);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Fetch learners from API
   useEffect(() => {
@@ -112,7 +115,7 @@ export default function SearchLearnersPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('https://credhub.twilightparadox.com/api/v1/employer/candidates?skip=0&limit=50', {
+      const response = await fetch(buildApiUrl('/employer/candidates?skip=0&limit=50'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -145,9 +148,89 @@ export default function SearchLearnersPage() {
     );
   };
 
+  const mapCredentialStatus = (status: string | undefined): string => {
+    switch ((status || '').toLowerCase()) {
+      case 'verified':
+        return 'verified';
+      case 'revoked':
+        return 'revoked';
+      case 'expired':
+        return 'expired';
+      default:
+        return 'unverified';
+    }
+  };
+
+  const enrichLearnerDetails = async (learner: Learner) => {
+    try {
+      setProfileLoading(true);
+      const response = await fetch(
+        buildApiUrl(`/employer/candidates/${learner.learner_id}/credentials`),
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        console.warn('Unable to load learner credentials for notification dispatch.');
+        return;
+      }
+
+      const credentials = await response.json();
+      if (!Array.isArray(credentials)) {
+        return;
+      }
+
+      const normalizedCredentials: Credential[] = credentials.map((credential: any, index: number) => ({
+        _id: String(credential._id ?? credential.credential_id ?? `${learner.learner_id}-${index}`),
+        credential_title: credential.credential_title ?? credential.title ?? 'Credential',
+        issuer_name: credential.issuer_name ?? 'Unknown issuer',
+        nsqf_level: credential.nsqf_level ?? credential.nsqfLevel ?? null,
+        status: mapCredentialStatus(credential.status),
+        issued_date: credential.issued_date ?? new Date().toISOString(),
+        verified_date: credential.verified_date ?? credential.verifiedDate ?? null,
+        skill_tags: credential.skill_tags ?? credential.skills ?? [],
+      }));
+
+      const verifiedCount = normalizedCredentials.filter((cred) => cred.status === 'verified').length;
+      const avgNsqfLevel = normalizedCredentials.length
+        ? Number(
+            (
+              normalizedCredentials.reduce((sum, cred) => sum + (cred.nsqf_level || 0), 0) /
+              normalizedCredentials.length
+            ).toFixed(2),
+          )
+        : learner.highest_nsqf_level;
+      const updatedSkillSummary = { ...learner.skill_summary };
+      normalizedCredentials.forEach((cred) => {
+        (cred.skill_tags ?? []).forEach((tag: string) => {
+          updatedSkillSummary[tag] = (updatedSkillSummary[tag] || 0) + 1;
+        });
+      });
+
+      const updatedLearner: Learner = {
+        ...learner,
+        credentials: normalizedCredentials,
+        total_credentials: normalizedCredentials.length,
+        highest_nsqf_level: learner.highest_nsqf_level ?? (avgNsqfLevel || null),
+        skill_summary: updatedSkillSummary,
+      };
+
+      setSelectedLearner(updatedLearner);
+      setLearners((prev) => prev.map((item) => (item.learner_id === learner.learner_id ? updatedLearner : item)));
+    } catch (fetchError) {
+      console.error('Error fetching learner credentials:', fetchError);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const handleViewProfile = (learner: Learner) => {
     setSelectedLearner(learner);
     setProfileDialogOpen(true);
+    void enrichLearnerDetails(learner);
   };
 
   const handleCloseProfile = () => {
@@ -555,6 +638,7 @@ export default function SearchLearnersPage() {
         </DialogTitle>
 
         <DialogContent sx={{ pt: 3 }}>
+          {profileLoading && <LinearProgress sx={{ mb: 2 }} />}
           {selectedLearner && (
             <Box>
               {/* Basic Info */}

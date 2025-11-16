@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
+import { buildApiUrl } from '@/config/api';
 
 interface FormData {
   certificateTitle: string;
@@ -43,7 +44,7 @@ export const fetchApiKeys = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     console.log('🎫 Access token exists:', !!token);
     
-    const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
+    const response = await fetch(buildApiUrl('/issuer/api-keys'), {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -201,7 +202,7 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('📤 Sending OCR extraction request...');
       console.log('👤 User entered Learner ID:', userEnteredLearnerId);
       
-      const response = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials/extract-ocr', {
+      const response = await fetch(buildApiUrl('/issuer/credentials/extract-ocr'), {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
@@ -303,7 +304,7 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('🔍 Checking learner:', formData.learnerId);
         
-        const learnerResponse = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/users/${formData.learnerId}/is-learner`, {
+        const learnerResponse = await fetch(buildApiUrl(`/issuer/users/${formData.learnerId}/is-learner`), {
           headers: {
             'x-api-key': apiKey,
             'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -328,7 +329,7 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('🔑 Checking API key validity...');
         
-        const apiKeyResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
+        const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
           headers: {
             'x-api-key': apiKey,
             'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -353,7 +354,7 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('⛓️ Checking blockchain status...');
         
-        const blockchainResponse = await fetch('https://credhub.twilightparadox.com/api/v1/blockchain/network/status', {
+        const blockchainResponse = await fetch(buildApiUrl('/blockchain/network/status'), {
           headers: {
             'x-api-key': apiKey,
             'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -467,7 +468,7 @@ export default function CertificateForm(): React.JSX.Element {
       
       console.log('📤 Credential Creation Payload:', JSON.stringify(createPayload, null, 2));
 
-      const createResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials', {
+      const createResponse = await fetch(buildApiUrl('/issuer/credentials'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -519,7 +520,7 @@ export default function CertificateForm(): React.JSX.Element {
 
       console.log('📤 Blockchain Issue Payload:', JSON.stringify(issuePayload, null, 2));
 
-      const issueResponse = await fetch('https://credhub.twilightparadox.com/api/v1/blockchain/credentials/issue', {
+      const issueResponse = await fetch(buildApiUrl('/blockchain/credentials/issue'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -576,7 +577,7 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('  - File Type:', fileBlob.type);
       console.log('  - QR Data:', issueResult.qr_code_data);
 
-      const overlayResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials/overlay-qr', {
+      const overlayResponse = await fetch(buildApiUrl('/issuer/credentials/overlay-qr'), {
         method: 'POST',
         headers: {
           'X-API-Key': apiKey,

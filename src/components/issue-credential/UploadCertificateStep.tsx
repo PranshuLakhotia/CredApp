@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { UploadCloud, FileText, AlertTriangle, CheckCircle, Loader2, X } from 'lucide-react';
+import { buildApiUrl } from '@/config/api';
 
 interface CredentialData {
   credential_id: string;
@@ -108,7 +109,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
 
     try {
       // Get API key
-      const apiKeyResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/api-keys', {
+      const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -133,7 +134,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
 
       setUploadProgress(25);
 
-      const uploadResponse = await fetch('https://credhub.twilightparadox.com/api/v1/issuer/credentials/upload', {
+      const uploadResponse = await fetch(buildApiUrl('/issuer/credentials/upload'), {
         method: 'POST',
         headers: {
           'X-API-Key': apiKey
@@ -168,7 +169,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
 
     const poll = async () => {
       try {
-        const statusResponse = await fetch(`https://credhub.twilightparadox.com/api/v1/issuer/credentials/${credId}`, {
+        const statusResponse = await fetch(buildApiUrl(`/issuer/credentials/${credId}`), {
           headers: {
             'X-API-Key': apiKey
           }

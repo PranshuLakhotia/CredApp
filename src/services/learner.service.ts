@@ -1,8 +1,9 @@
 import axios, { AxiosResponse } from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 // Axios instance with base URL and auth header
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://credhub.twilightparadox.com',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -57,21 +58,21 @@ export class LearnerService {
     skip?: number;
     limit?: number;
   }): Promise<LearnerCredentialsResponse> {
-    const response: AxiosResponse<LearnerCredentialsResponse> = await api.get('/api/v1/learner/credentials', {
+    const response: AxiosResponse<LearnerCredentialsResponse> = await api.get('/learner/credentials', {
       params,
     });
     return response.data;
   }
 
   static async downloadPortfolio(): Promise<Blob> {
-    const response = await api.get('/api/v1/learner/download-portfolio', {
+    const response = await api.get('/learner/download-portfolio', {
       responseType: 'blob',
     });
     return response.data;
   }
 
   static async createShareLink(expiresInDays: number = 30): Promise<ShareResponse> {
-    const response: AxiosResponse<ShareResponse> = await api.post('/api/v1/learner/share', {
+    const response: AxiosResponse<ShareResponse> = await api.post('/learner/share', {
       expires_in_days: expiresInDays,
     });
     return response.data;

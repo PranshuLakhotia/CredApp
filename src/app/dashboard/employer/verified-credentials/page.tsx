@@ -27,6 +27,7 @@ import {
   Stack,
 } from '@mui/material';
 import { useAuth } from '@/hooks/useAuth';
+import { buildApiUrl } from '@/config/api';
 import {
   Verified as VerifiedIcon,
   Person as PersonIcon,
@@ -81,7 +82,7 @@ const VerifiedCredentialsPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch('https://credhub.twilightparadox.com/api/v1/employer/verified-credentials', {
+      const response = await fetch(buildApiUrl('/employer/verified-credentials'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

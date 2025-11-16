@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { buildApiUrl } from '@/config/api';
 
 interface Credential {
   _id: string;
@@ -66,9 +67,7 @@ export default function SharedProfilePage() {
   useEffect(() => {
     const fetchSharedProfile = async () => {
       try {
-        const response = await fetch(
-          `https://credhub.twilightparadox.com/api/v1/learner/share/${userId}/${shareToken}`
-        );
+        const response = await fetch(buildApiUrl(`/learner/share/${userId}/${shareToken}`));
 
         if (!response.ok) {
           throw new Error('Failed to load shared profile');

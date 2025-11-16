@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DashboardLoader from '@/components/common/DashboardLoader';
+import { buildApiUrl } from '@/config/api';
 import {
   Box,
   Typography,
@@ -68,7 +69,7 @@ export default function EmployerDashboard() {
         return;
       }
       
-      const response = await fetch('https://credhub.twilightparadox.com/api/v1/employer/analytics', {
+      const response = await fetch(buildApiUrl('/employer/analytics'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

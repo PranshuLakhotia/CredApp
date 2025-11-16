@@ -7,7 +7,13 @@
 // CORE API CONFIGURATION
 // =============================================================================
 // Get the API base URL from environment variables with fallback to deployed backend
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://credhub.twilightparadox.com';
+const rawApiBase =
+  process.env.NEXT_PUBLIC_BACKEND_ROUTE ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.BACKEND_ROUTE ||
+  'http://localhost:8000/api/v1';
+
+export const API_BASE_URL = rawApiBase.replace(/\/+$/, '');
 
 // Frontend URL for sharing and redirects
 export const FRONTEND_BASE_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://cred-app-pearl.vercel.app';
