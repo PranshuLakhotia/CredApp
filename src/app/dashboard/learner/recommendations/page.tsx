@@ -6,12 +6,12 @@ import { AuthService } from '@/services/auth.service';
 import { 
   Box, 
   Typography, 
-  Grid, 
   Card, 
   CardContent, 
   CircularProgress, 
   Alert, 
   Chip,
+  Grid,
   Button,
   Stack,
   Avatar,
@@ -47,6 +47,13 @@ export default function RecommendationsPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+// adding filter
+const [filters, setFilters] = useState({
+  sector: "",
+  nsqf: "",
+  duration: "",
+});
+// end adding filter
   const t = useTranslations('recommendations');
 
   // Tech-focused recommendations based on user's ML/AWS skills
@@ -144,6 +151,19 @@ export default function RecommendationsPage() {
     
     return [];
   };
+// FILTERED RECOMMENDATIONS (memoized + robust parsing)
+const filteredRecommendations = React.useMemo(() => {
+  return recommendations.filter((rec) => {
+    // Parse month safely: allow values like "6 months" or just "6". Use radix 10.
+    const month = rec?.duration ? parseInt(String(rec.duration), 10) : NaN;
+
+    const sectorMatch = filters.sector ? rec.sector === filters.sector : true;
+    const nsqfMatch = filters.nsqf ? rec.nsqf_level <= parseInt(filters.nsqf, 10) : true;
+    const durationMatch = filters.duration ? (!isNaN(month) && month <= parseInt(filters.duration, 10)) : true;
+
+    return sectorMatch && nsqfMatch && durationMatch;
+  });
+}, [recommendations, filters]);
 
   return (
     <DashboardLayout title="Course Recommendations">
@@ -208,7 +228,7 @@ export default function RecommendationsPage() {
               <Stack direction="row" spacing={4} alignItems="center">
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                    {recommendations.length}
+                    {filteredRecommendations.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Top Matches
@@ -217,7 +237,7 @@ export default function RecommendationsPage() {
                 <Divider orientation="vertical" flexItem />
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h3" sx={{ fontWeight: 700, color: 'success.main' }}>
-                    {getMatchPercentage(recommendations[0]?.similarity_score || 0)}%
+                    {getMatchPercentage(filteredRecommendations[0]?.similarity_score || 0)}%
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Best Match
@@ -226,7 +246,7 @@ export default function RecommendationsPage() {
                 <Divider orientation="vertical" flexItem />
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h3" sx={{ fontWeight: 700, color: 'warning.main' }}>
-                    {Math.round(recommendations.reduce((acc, rec) => acc + rec.nsqf_level, 0) / recommendations.length)}
+                    {filteredRecommendations.length > 0 ? Math.round(filteredRecommendations.reduce((acc, rec) => acc + rec.nsqf_level, 0) / filteredRecommendations.length) : '-'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Avg NSQF Level
@@ -234,25 +254,101 @@ export default function RecommendationsPage() {
                 </Box>
               </Stack>
             </Box>
+          {/* filter*/}
+          {/* Filters */}
+<Box 
+  sx={{ 
+    display: "flex", 
+    gap: 2, 
+    mb: 3, 
+    flexWrap: "wrap" 
+  }}
+>
+  <Box>
+    <Typography variant="caption" fontWeight={600}>Sector</Typography>
+    <select
+      value={filters.sector}
+      onChange={(e) => setFilters({ ...filters, sector: e.target.value })}
+      style={{ 
+        padding: "8px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        width: "160px"
+      }}
+    >
+      <option value="">All</option>
+      <option value="Information Technology">Information Technology</option>
+      <option value="Cloud Computing">Cloud Computing</option>
+      <option value="Data Science">Data Science</option>
+      <option value="DevOps Engineering">DevOps Engineering</option>
+    </select>
+  </Box>
+
+  <Box>
+    <Typography variant="caption" fontWeight={600}>NSQF Level</Typography>
+    <select
+      value={filters.nsqf}
+      onChange={(e) => setFilters({ ...filters, nsqf: e.target.value })}
+      style={{ 
+        padding: "8px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        width: "160px"
+      }}
+    >
+      <option value="">All Levels</option>
+      <option value="4">Up to 4</option>
+      <option value="5">Up to 5</option>
+      <option value="6">Up to 6</option>
+      <option value="7">Up to 7</option>
+    </select>
+  </Box>
+
+  <Box>
+    <Typography variant="caption" fontWeight={600}>Duration</Typography>
+    <select
+      value={filters.duration}
+      onChange={(e) => setFilters({ ...filters, duration: e.target.value })}
+      style={{ 
+        padding: "8px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        width: "160px"
+      }}
+    >
+      <option value="">Any</option>
+      <option value="3">3 months or less</option>
+      <option value="4">4 months</option>
+      <option value="5">5 months</option>
+      <option value="6">6 months</option>
+    </select>
+  </Box>
+</Box>
+
+
+
 
             {/* Recommendations Grid */}
             <Grid container spacing={3}>
-              {recommendations.map((rec, index) => (
-                <Grid item xs={12} md={6} key={rec.course_id}>
-                  <Card sx={{ 
-                    height: '100%', 
-                    borderRadius: 4, 
-                    boxShadow: 3,
-                    border: index === 0 ? '2px solid' : '1px solid',
-                    borderColor: index === 0 ? 'primary.main' : 'divider',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 6
-                    }
-                  }}>
+              {filteredRecommendations.map((rec, index) => (
+                <Grid size={{ xs: 12, md: 6 }} key={rec.course_id}>
+                  <Card
+                    sx={{
+                    height: "100%",
+                     display: "flex",
+                     flexDirection: "column",
+                     borderRadius: 4,
+                     boxShadow: 3,
+                     border: index === 0 ? "2px solid" : "1px solid",
+                     borderColor: index === 0 ? "primary.main" : "divider",
+                     position: "relative",
+                     transition: "all 0.3s ease",
+                     '&:hover': {
+                     transform: 'translateY(-4px)',
+                     boxShadow: 6
+                        }
+                        }}
+                        >
                     {/* Best Match Badge */}
                     {index === 0 && (
                       <Chip
@@ -269,7 +365,7 @@ export default function RecommendationsPage() {
                       />
                     )}
 
-                    <CardContent sx={{ p: 4 }}>
+                    <CardContent sx={{ p: 4, flexGrow: 1, display: "flex", flexDirection: "column" }}>
                       {/* Header */}
                       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
                         <Box sx={{ flex: 1 }}>
@@ -402,19 +498,21 @@ export default function RecommendationsPage() {
 
                       {/* Action Button */}
                       <Button
-                        variant={index === 0 ? "contained" : "outlined"}
-                        fullWidth
-                        endIcon={<ArrowRight size={18} />}
-                        sx={{ 
-                          py: 1.5,
-                          fontWeight: 600,
-                          borderRadius: 2,
-                          textTransform: 'none',
-                          fontSize: '1rem'
-                        }}
-                      >
-                        {index === 0 ? 'Start Learning' : 'View Details'}
-                      </Button>
+  variant={index === 0 ? "contained" : "outlined"}
+  fullWidth
+  endIcon={<ArrowRight size={18} />}
+  sx={{
+    py: 1.5,
+    fontWeight: 600,
+    borderRadius: 2,
+    textTransform: 'none',
+    fontSize: '1rem',
+    mt: "auto"
+  }}
+>
+  {index === 0 ? 'Start Learning' : 'View Details'}
+</Button>
+
                     </CardContent>
                   </Card>
                 </Grid>
