@@ -9,8 +9,8 @@ import { AuthService } from '@/services/auth.service';
 
 export default function LoginFormNew() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('john.doe@gmail.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -60,8 +60,9 @@ export default function LoginFormNew() {
       const dashboardPath = await getUserDashboardPath(currentUser, (currentUser as any).id || (currentUser as any)._id);
       
       router.push(dashboardPath);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      // Error is already set by useAuth hook
     } finally {
       setIsSubmitting(false);
     }

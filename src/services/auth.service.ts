@@ -39,6 +39,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    
+    // Skip interceptor handling for auth endpoints
+    if (originalRequest.url?.includes('/auth/')) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -70,6 +75,73 @@ api.interceptors.response.use(
 );
 
 export class AuthService {
+  private static readonly MAX_LOGIN_ATTEMPTS = 5;
+  private static readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+  // Get login attempts from localStorage
+  private static getLoginAttempts(email: string): { attempts: number; lastAttemptTime: number } {
+    const key = `login_attempts_${email}`;
+    const stored = localStorage.getItem(key);
+    
+    if (!stored) {
+      return { attempts: 0, lastAttemptTime: 0 };
+    }
+    
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return { attempts: 0, lastAttemptTime: 0 };
+    }
+  }
+
+  // Set login attempts in localStorage
+  private static setLoginAttempts(email: string, attempts: number, lastAttemptTime: number): void {
+    const key = `login_attempts_${email}`;
+    localStorage.setItem(key, JSON.stringify({ attempts, lastAttemptTime }));
+  }
+
+  // Clear login attempts
+  private static clearLoginAttempts(email: string): void {
+    const key = `login_attempts_${email}`;
+    localStorage.removeItem(key);
+  }
+
+  // Check if account is locked
+  private static isAccountLocked(email: string): boolean {
+    const { attempts, lastAttemptTime } = this.getLoginAttempts(email);
+    
+    if (attempts < this.MAX_LOGIN_ATTEMPTS) {
+      return false;
+    }
+    
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastAttemptTime;
+    
+    // Account is locked if lockout duration hasn't passed
+    return timeSinceLastAttempt < this.LOCKOUT_DURATION;
+  }
+
+  // Get remaining lockout time in minutes
+  static getRemainingLockoutTime(email: string): number {
+    const { attempts, lastAttemptTime } = this.getLoginAttempts(email);
+    
+    if (attempts < this.MAX_LOGIN_ATTEMPTS) {
+      return 0;
+    }
+    
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastAttemptTime;
+    const remainingTime = this.LOCKOUT_DURATION - timeSinceLastAttempt;
+    
+    return Math.ceil(remainingTime / 60000); // Return in minutes
+  }
+
+  // Record failed login attempt
+  private static recordFailedAttempt(email: string): void {
+    const { attempts } = this.getLoginAttempts(email);
+    this.setLoginAttempts(email, attempts + 1, Date.now());
+  }
+
   // User profile - GET / PUT /users/profile
   static async getUserProfile(): Promise<any> {
     const response = await api.get('/users/profile');
@@ -143,20 +215,61 @@ export class AuthService {
 
   // Login user
   static async login(data: LoginRequest): Promise<LoginResponse> {
-    const response: AxiosResponse<LoginResponse> = await api.post('/auth/login', data);
-    
-    // Handle remember me functionality
-    if (data.remember_me) {
-      // Store tokens in localStorage with longer expiration for remember me
-      localStorage.setItem('remember_me', 'true');
-      localStorage.setItem('remember_email', data.email);
-    } else {
-      // Clear remember me data if not checked
-      localStorage.removeItem('remember_me');
-      localStorage.removeItem('remember_email');
+    // Check if account is locked
+    if (this.isAccountLocked(data.email)) {
+      const remainingTime = this.getRemainingLockoutTime(data.email);
+      throw new Error(`Account locked due to too many failed login attempts. Try again in ${remainingTime} minute(s).`);
     }
-    
-    return response.data;
+
+    try {
+      const response: AxiosResponse<LoginResponse> = await api.post('/auth/login', data);
+      
+      // Clear login attempts on successful login
+      this.clearLoginAttempts(data.email);
+      
+      // Handle remember me functionality
+      if (data.remember_me) {
+        // Store tokens in localStorage with longer expiration for remember me
+        localStorage.setItem('remember_me', 'true');
+        localStorage.setItem('remember_email', data.email);
+      } else {
+        // Clear remember me data if not checked
+        localStorage.removeItem('remember_me');
+        localStorage.removeItem('remember_email');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Login error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        detail: error.response?.data?.detail,
+        errorMessage: error.message
+      });
+
+      // Record failed attempt on authentication error
+      if (error.response?.status === 401) {
+        this.recordFailedAttempt(data.email);
+        const { attempts } = this.getLoginAttempts(data.email);
+        const remainingAttempts = this.MAX_LOGIN_ATTEMPTS - attempts;
+        
+        if (remainingAttempts > 0) {
+          throw new Error(`Invalid email or password. ${remainingAttempts} attempt(s) remaining before account lock.`);
+        } else {
+          const remainingTime = this.getRemainingLockoutTime(data.email);
+          throw new Error(`Account locked due to too many failed login attempts. Try again in ${remainingTime} minute(s).`);
+        }
+      }
+
+      // Extract meaningful error message
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      if (error.response?.data?.detail) {
+        throw new Error(error.response.data.detail);
+      }
+      throw new Error(error.message || 'Login failed');
+    }
   }
 
   // Logout user
@@ -288,6 +401,24 @@ export class AuthService {
   static async getUserRoles(userId: string): Promise<any> {
     const response = await api.get(`/roles/user/${userId}`);
     return response.data;
+  }
+
+  // Admin function to unlock a user account (for removing account lock)
+  static unlockUserAccount(email: string): void {
+    this.clearLoginAttempts(email);
+  }
+
+  // Admin function to get account lock status
+  static getAccountLockStatus(email: string): { isLocked: boolean; remainingTimeMinutes: number; attempts: number } {
+    const isLocked = this.isAccountLocked(email);
+    const remainingTime = isLocked ? this.getRemainingLockoutTime(email) : 0;
+    const { attempts } = this.getLoginAttempts(email);
+    
+    return {
+      isLocked,
+      remainingTimeMinutes: remainingTime,
+      attempts
+    };
   }
 }
 
