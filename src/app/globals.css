@@ -139,3 +139,22 @@ body.accessibility-invert-colors .accessibility-sidebar-container {
   outline: 3px solid #4299e1 !important;
   outline-offset: 2px !important;
 }
+
+/* Hide native browser password reveal / clear icons so custom toggle shows only */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none; /* IE/Edge */
+}
+
+/* Chrome / WebKit - try common pseudo-elements used by browsers */
+input[type="password"]::-webkit-textfield-decoration-button,
+input[type="password"]::-webkit-merchant-edit-button,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
+/* Fallback: remove native appearance for password inputs */
+input[type="password"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
