@@ -31,6 +31,10 @@ import {
   CardContent,
   Stack,
   LinearProgress,
+  FormGroup,
+  FormControlLabel,
+  Checkbox as MuiCheckbox,
+  Slider,
 } from '@mui/material';
 import {
   Search,
@@ -77,26 +81,10 @@ interface ApiResponse {
   limit: number;
 }
 
-const filterCategories = [
-  { name: 'Intent Filters', color: '#3b82f6' },
-  { name: 'Resume Filters', color: '#10b981' },
-  { name: 'AI Filters', color: '#f59e0b' },
-  { name: 'Timeline Filters', color: '#ef4444' },
-  { name: 'Interview Process Filters', color: '#8b5cf6' },
-  { name: 'Must Have Filters', color: '#06b6d4' },
-  { name: 'Basic Details', color: '#84cc16' },
-  { name: 'Job & Compensation', color: '#f97316' },
-  { name: 'Status & Communication', color: '#ec4899' },
-  { name: 'Experience', color: '#6366f1' },
-  { name: 'Education', color: '#14b8a6' },
-  { name: 'Reason for Change', color: '#a855f7' },
-  { name: 'Company Context', color: '#22c55e' },
-  { name: 'Internal Notes', color: '#f43f5e' },
-];
+// placeholder filter categories removed — replaced by functional filters below
 
 export default function SearchLearnersPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [learners, setLearners] = useState<Learner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +92,17 @@ export default function SearchLearnersPage() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [total, setTotal] = useState(0);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    minCredentials: 0,
+    maxCredentials: 100,
+    minNSQF: 0,
+    maxNSQF: 10,
+    selectedSkills: [] as string[],
+    minExperience: 0,
+    maxExperience: 50,
+  });
 
   // Fetch learners from API
   useEffect(() => {
@@ -137,14 +136,54 @@ export default function SearchLearnersPage() {
   };
 
   const handleClearFilters = () => {
-    setSelectedFilters([]);
+    setFilters({
+      minCredentials: 0,
+      maxCredentials: 100,
+      minNSQF: 0,
+      maxNSQF: 10,
+      selectedSkills: [],
+      minExperience: 0,
+      maxExperience: 50,
+    });
   };
 
-  const handleFilterToggle = (filter: string) => {
-    setSelectedFilters(prev => 
-      prev.includes(filter) 
-        ? prev.filter(f => f !== filter)
-        : [...prev, filter]
+  const handleSkillToggle = (skill: string) => {
+    setFilters(prev => ({
+      ...prev,
+      selectedSkills: prev.selectedSkills.includes(skill)
+        ? prev.selectedSkills.filter(s => s !== skill)
+        : [...prev.selectedSkills, skill]
+    }));
+  };
+
+  const getAllSkills = (): string[] => {
+    const skillsSet = new Set<string>();
+    learners.forEach(learner => {
+      // include keys from skill_summary (aggregate counts)
+      Object.keys(learner.skill_summary || {}).forEach(skill => {
+        if (skill && typeof skill === 'string') skillsSet.add(skill);
+      });
+
+      // include any skill tags present on credentials as well
+      (learner.credentials || []).forEach(cred => {
+        (cred.skill_tags || []).forEach(tag => {
+          if (tag && typeof tag === 'string') skillsSet.add(tag);
+        });
+      });
+    });
+
+    return Array.from(skillsSet).sort((a, b) => a.localeCompare(b));
+  };
+
+  const isFilterActive = (): boolean => {
+    return (
+      filters.minCredentials > 0 ||
+      filters.maxCredentials < 100 ||
+      filters.minNSQF > 0 ||
+      filters.maxNSQF < 10 ||
+      filters.selectedSkills.length > 0 ||
+      filters.minExperience > 0 ||
+      filters.maxExperience < 50
     );
   };
 
@@ -238,14 +277,43 @@ export default function SearchLearnersPage() {
     setSelectedLearner(null);
   };
 
-  // Filter learners based on search query
-  const filteredLearners = learners.filter(learner => 
-    learner.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    learner.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    Object.keys(learner.skill_summary).some(skill => 
-      skill.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  // Filter learners based on search query and filter criteria
+  const filteredLearners = learners.filter(learner => {
+    // Search filter
+    const searchMatch = 
+      learner.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      learner.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      Object.keys(learner.skill_summary).some(skill => 
+        skill.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    if (!searchMatch) return false;
+
+    // Credentials filter
+    if (learner.total_credentials < filters.minCredentials || learner.total_credentials > filters.maxCredentials) {
+      return false;
+    }
+
+    // NSQF Level filter
+    const nsqfLevel = learner.highest_nsqf_level || 0;
+    if (nsqfLevel < filters.minNSQF || nsqfLevel > filters.maxNSQF) {
+      return false;
+    }
+
+    // Skills filter
+    if (filters.selectedSkills.length > 0) {
+      const hasSelectedSkills = filters.selectedSkills.some(skill => learner.skill_summary[skill]);
+      if (!hasSelectedSkills) return false;
+    }
+
+    // Experience filter
+    const experience = learner.experience_years || 0;
+    if (experience < filters.minExperience || experience > filters.maxExperience) {
+      return false;
+    }
+
+    return true;
+  });
 
   // Get top skills from skill_summary (limit to 5)
   const getTopSkills = (skillSummary: Record<string, number>) => {
@@ -315,56 +383,167 @@ export default function SearchLearnersPage() {
 
               {/* Filter Categories */}
               <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                {filterCategories.map((category, index) => (
-                  <Accordion 
-                    key={index}
-                    elevation={0}
-                    sx={{ 
-                      mb: 1,
-                      '&:before': { display: 'none' },
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px !important',
-                      '&.Mui-expanded': {
-                        margin: '0 0 8px 0',
-                      }
-                    }}
-                  >
-                    <AccordionSummary
-                      expandIcon={<ExpandMore />}
-                      sx={{ 
-                        minHeight: 48,
-                        '&.Mui-expanded': {
-                          minHeight: 48,
-                        },
-                        '& .MuiAccordionSummary-content': {
-                          margin: '8px 0',
-                          '&.Mui-expanded': {
-                            margin: '8px 0',
-                          }
-                        }
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box 
-                          sx={{ 
-                            width: 12, 
-                            height: 12, 
-                            borderRadius: '50%', 
-                            bgcolor: category.color 
-                          }} 
-                        />
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {category.name}
+                {/* Credentials Filter */}
+                <Accordion 
+                  defaultExpanded
+                  elevation={0}
+                  sx={{ 
+                    mb: 1,
+                    '&:before': { display: 'none' },
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px !important',
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Credentials
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Min: {filters.minCredentials} | Max: {filters.maxCredentials}
                         </Typography>
+                        <Slider
+                          value={[filters.minCredentials, filters.maxCredentials]}
+                          onChange={(_, value) => {
+                            if (Array.isArray(value)) {
+                              setFilters(prev => ({
+                                ...prev,
+                                minCredentials: value[0],
+                                maxCredentials: value[1]
+                              }));
+                            }
+                          }}
+                          min={0}
+                          max={100}
+                          size="small"
+                        />
                       </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ pt: 0 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        Filter options for {category.name}
-                      </Typography>
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* NSQF Level Filter */}
+                <Accordion 
+                  elevation={0}
+                  sx={{ 
+                    mb: 1,
+                    '&:before': { display: 'none' },
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px !important',
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      NSQF Level
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Min: {filters.minNSQF} | Max: {filters.maxNSQF}
+                        </Typography>
+                        <Slider
+                          value={[filters.minNSQF, filters.maxNSQF]}
+                          onChange={(_, value) => {
+                            if (Array.isArray(value)) {
+                              setFilters(prev => ({
+                                ...prev,
+                                minNSQF: value[0],
+                                maxNSQF: value[1]
+                              }));
+                            }
+                          }}
+                          min={0}
+                          max={10}
+                          size="small"
+                        />
+                      </Box>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Skills Filter */}
+                <Accordion 
+                  elevation={0}
+                  sx={{ 
+                    mb: 1,
+                    '&:before': { display: 'none' },
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px !important',
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Skills {filters.selectedSkills.length > 0 && `(${filters.selectedSkills.length})`}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <FormGroup sx={{ maxHeight: 250, overflow: 'auto' }}>
+                      {getAllSkills().map(skill => (
+                        <FormControlLabel
+                          key={skill}
+                          control={
+                            <MuiCheckbox
+                              checked={filters.selectedSkills.includes(skill)}
+                              onChange={() => handleSkillToggle(skill)}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Typography variant="body2">
+                              {skill}
+                            </Typography>
+                          }
+                        />
+                      ))}
+                    </FormGroup>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Experience Filter */}
+                <Accordion 
+                  elevation={0}
+                  sx={{ 
+                    mb: 1,
+                    '&:before': { display: 'none' },
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px !important',
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Experience
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Min: {filters.minExperience} | Max: {filters.maxExperience} years
+                        </Typography>
+                        <Slider
+                          value={[filters.minExperience, filters.maxExperience]}
+                          onChange={(_, value) => {
+                            if (Array.isArray(value)) {
+                              setFilters(prev => ({
+                                ...prev,
+                                minExperience: value[0],
+                                maxExperience: value[1]
+                              }));
+                            }
+                          }}
+                          min={0}
+                          max={50}
+                          size="small"
+                        />
+                      </Box>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
               </Box>
             </Paper>
           </Box>
