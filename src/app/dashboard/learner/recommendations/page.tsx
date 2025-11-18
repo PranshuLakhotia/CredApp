@@ -323,6 +323,22 @@ const filteredRecommendations = React.useMemo(() => {
       <option value="6">6 months</option>
     </select>
   </Box>
+
+  <Box sx={{ display: "flex", alignItems: "flex-end" }}>
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => setFilters({ sector: "", nsqf: "", duration: "" })}
+      sx={{
+        textTransform: 'none',
+        fontWeight: 600,
+        borderRadius: "8px",
+        padding: "8px 16px"
+      }}
+    >
+      Reset Filters
+    </Button>
+  </Box>
 </Box>
 
 
