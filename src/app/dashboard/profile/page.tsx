@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { 
-  Box, 
-  Typography, 
-  TextField, 
-  Button, 
-  Avatar, 
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Avatar,
   Paper,
   MenuItem,
   Select,
@@ -15,18 +15,24 @@ import {
   InputLabel,
   Chip,
   IconButton,
-  Modal
+  Modal,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
 import { Edit as EditIcon, Email as EmailIcon } from '@mui/icons-material';
 import ChangePasswordModal from '@/components/profile/ChangePasswordModal';
 import { AuthService } from '@/services/auth.service';
-  import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ProfileOverviewPage() {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
@@ -103,12 +109,12 @@ export default function ProfileOverviewPage() {
         phone_number: profileData.phoneNumber || undefined,
         address: profileData.address
           ? {
-              street: profileData.address.street || undefined,
-              city: profileData.address.city || undefined,
-              state: profileData.address.state || undefined,
-              country: profileData.address.country || undefined,
-              postal_code: profileData.address.postal_code || undefined,
-            }
+            street: profileData.address.street || undefined,
+            city: profileData.address.city || undefined,
+            state: profileData.address.state || undefined,
+            country: profileData.address.country || undefined,
+            postal_code: profileData.address.postal_code || undefined,
+          }
           : null,
         preferred_nsqf_level: profileData.preferred_nsqf_level || undefined,
         skills: profileData.skills || undefined,
@@ -171,7 +177,7 @@ export default function ProfileOverviewPage() {
   };
 
   return (
-    <DashboardLayout title="User Profile">
+    <DashboardLayout title="User Profile" role={user?.role}>
       <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -186,7 +192,7 @@ export default function ProfileOverviewPage() {
           <Button
             variant={isEditing ? 'contained' : 'outlined'}
             onClick={isEditing ? handleSave : handleEdit}
-            sx={{ 
+            sx={{
               textTransform: 'none',
               borderRadius: 3,
               px: 4,
@@ -216,11 +222,11 @@ export default function ProfileOverviewPage() {
         </Box>
 
         {/* Profile Card */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 5, 
-            borderRadius: 4, 
+        <Paper
+          elevation={0}
+          sx={{
+            p: 5,
+            borderRadius: 4,
             mb: 4,
             border: '1px solid #e2e8f0',
             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
@@ -231,8 +237,8 @@ export default function ProfileOverviewPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, mb: 5 }}>
             <Box sx={{ position: 'relative' }}>
               <Avatar
-                sx={{ 
-                  width: 140, 
+                sx={{
+                  width: 140,
                   height: 140,
                   fontSize: '2.5rem',
                   fontWeight: 600,
@@ -281,7 +287,7 @@ export default function ProfileOverviewPage() {
                 <Button
                   variant="outlined"
                   size="medium"
-                  sx={{ 
+                  sx={{
                     textTransform: 'none',
                     borderRadius: 3,
                     px: 3,
@@ -631,10 +637,10 @@ export default function ProfileOverviewPage() {
         </Paper>
 
         {/* Email Section */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 5, 
+        <Paper
+          elevation={0}
+          sx={{
+            p: 5,
             borderRadius: 4,
             border: '1px solid #e2e8f0',
             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
@@ -644,11 +650,11 @@ export default function ProfileOverviewPage() {
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 4, color: '#0f172a' }}>
             My email Address
           </Typography>
-          
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 3, 
+
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
             mb: 4,
             p: 3,
             borderRadius: 3,
@@ -656,13 +662,13 @@ export default function ProfileOverviewPage() {
             border: '1px solid #e2e8f0',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
           }}>
-            <Box sx={{ 
-              width: 48, 
-              height: 48, 
-              borderRadius: 3, 
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', 
-              display: 'flex', 
-              alignItems: 'center', 
+            <Box sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
             }}>
@@ -681,7 +687,7 @@ export default function ProfileOverviewPage() {
           <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             <Button
               variant="text"
-              sx={{ 
+              sx={{
                 textTransform: 'none',
                 color: '#3b82f6',
                 fontWeight: 600,
@@ -701,7 +707,7 @@ export default function ProfileOverviewPage() {
             <Button
               variant="contained"
               onClick={() => setShowPasswordModal(true)}
-              sx={{ 
+              sx={{
                 textTransform: 'none',
                 bgcolor: '#3b82f6',
                 color: 'white',
@@ -725,7 +731,7 @@ export default function ProfileOverviewPage() {
         </Paper>
 
         {/* Danger Zone */}
-        <Paper 
+        <Paper
           elevation={0}
           sx={{
             marginTop: 4,
@@ -786,7 +792,7 @@ export default function ProfileOverviewPage() {
         </Dialog>
 
         {/* Change Password Modal */}
-        <ChangePasswordModal 
+        <ChangePasswordModal
           open={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
         />

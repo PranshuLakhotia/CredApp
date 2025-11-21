@@ -54,7 +54,7 @@ import { styled } from '@mui/material/styles';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types/auth';
 import DashboardSidebar from './DashboardSidebar';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import LanguageSelector from '@/components/LanguageSelector';
 import AIChatbot from '@/components/chatbot/AIChatbot';
 
@@ -95,6 +95,7 @@ const AppBarStyled = styled(AppBar, {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
+    marginLeft: 0,
   }),
 }));
 
@@ -140,9 +141,10 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 interface DashboardLayoutProps {
   children: React.ReactNode;
   title?: string;
+  role?: UserRole;
 }
 
-export default function DashboardLayout({ children, title }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, title, role }: DashboardLayoutProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -150,12 +152,13 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+
   const { user, logout, isLoading } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Determine user role from current path if not available in user object
   const getRoleFromPath = (path: string): UserRole => {
@@ -172,19 +175,21 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
     }
   }, [isLoading, user, router]);
 
+  const roleFromUrl = searchParams?.get('role') as UserRole | null;
+
   // Provide default user data if not logged in (temporary fallback)
   const currentUser = user || {
     id: 'default-user',
     full_name: 'Demo User',
     email: 'demo@credify.com',
-    role: getRoleFromPath(pathname),
+    role: role || roleFromUrl || getRoleFromPath(pathname),
     is_verified: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
 
-  // Ensure user has a role (either from user object or derived from path)
-  const userRole = currentUser.role || getRoleFromPath(pathname);
+  // Ensure user has a role (either from props, user object or derived from path)
+  const userRole = role || roleFromUrl || currentUser.role || getRoleFromPath(pathname);
 
   const handleDrawerToggle = () => {
     if (isMobile) {
@@ -273,7 +278,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         medium: '1rem',     // Default size
         large: '1.05rem'    // Slightly larger, not too overwhelming
       };
-      
+
       rootElement.style.fontSize = fontSizeMap[fontSize];
     }
 
@@ -289,12 +294,12 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   // Generate breadcrumbs from pathname
   const generateBreadcrumbs = () => {
     const paths = pathname?.split('/').filter(Boolean) || [];
-    
+
     return paths.map((path, index) => {
       const href = '/' + paths.slice(0, index + 1).join('/');
       const label = path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ');
       const isLast = index === paths.length - 1;
-      
+
       return {
         href,
         label,
@@ -359,7 +364,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         >
           <DashboardSidebar
             sidebarExpanded={true}
-            setSidebarExpanded={() => {}}
+            setSidebarExpanded={() => { }}
             userRole={userRole}
             onMobileClose={handleMobileSidebarClose}
           />
@@ -379,10 +384,10 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   color="inherit"
                   aria-label="menu"
                   onClick={handleDrawerToggle}
-                  sx={{ 
+                  sx={{
                     mr: 1,
                     color: '#6b7280',
-                    '&:hover': { 
+                    '&:hover': {
                       backgroundColor: 'rgba(0, 0, 0, 0.04)',
                       color: '#374151'
                     }
@@ -394,17 +399,17 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
               <div className="flex flex-col gap-1 sm:gap-2 min-w-0 flex-1">
                 {/* Page Title */}
-                <Typography 
-                  variant={isMobile ? "h6" : "h5"} 
-                  sx={{ 
-                    fontWeight: 700, 
+                <Typography
+                  variant={isMobile ? "h6" : "h5"}
+                  sx={{
+                    fontWeight: 700,
                     color: '#1e293b',
                     fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' }
                   }}
                 >
                   {title || 'Dashboard Overview'}
                 </Typography>
-                
+
                 {/* Breadcrumb Navigation - Hidden on mobile */}
                 {breadcrumbs.length > 0 && !isMobile && (
                   <Breadcrumbs
@@ -414,8 +419,8 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   >
                     <Link
                       underline="hover"
-                      sx={{ 
-                        display: 'flex', 
+                      sx={{
+                        display: 'flex',
                         alignItems: 'center',
                         color: '#6b7280',
                         cursor: 'pointer',
@@ -430,7 +435,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                       crumb.isLast ? (
                         <Typography
                           key={index}
-                          sx={{ 
+                          sx={{
                             color: '#1e293b',
                             fontWeight: 600,
                             fontSize: '0.875rem'
@@ -442,7 +447,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                         <Link
                           key={index}
                           underline="hover"
-                          sx={{ 
+                          sx={{
                             color: '#6b7280',
                             cursor: 'pointer',
                             fontSize: '0.875rem',
@@ -480,9 +485,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                         size="small"
                         onClick={handleFontSizeDecrease}
                         disabled={fontSize === 'small'}
-                        sx={{ 
+                        sx={{
                           color: fontSize === 'small' ? '#d1d5db' : '#6b7280',
-                          '&:hover': { 
+                          '&:hover': {
                             backgroundColor: fontSize === 'small' ? 'transparent' : 'rgba(0, 0, 0, 0.04)',
                             color: fontSize === 'small' ? '#d1d5db' : '#374151'
                           },
@@ -498,9 +503,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                       <IconButton
                         size="small"
                         onClick={handleFontSizeReset}
-                        sx={{ 
+                        sx={{
                           color: fontSize === 'medium' ? '#3b82f6' : '#6b7280',
-                          '&:hover': { 
+                          '&:hover': {
                             backgroundColor: 'rgba(0, 0, 0, 0.04)',
                             color: '#374151'
                           },
@@ -517,9 +522,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                         size="small"
                         onClick={handleFontSizeIncrease}
                         disabled={fontSize === 'large'}
-                        sx={{ 
+                        sx={{
                           color: fontSize === 'large' ? '#d1d5db' : '#6b7280',
-                          '&:hover': { 
+                          '&:hover': {
                             backgroundColor: fontSize === 'large' ? 'transparent' : 'rgba(0, 0, 0, 0.04)',
                             color: fontSize === 'large' ? '#d1d5db' : '#374151'
                           },
@@ -559,9 +564,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   size="medium"
                   color="inherit"
                   onClick={handleRefresh}
-                  sx={{ 
+                  sx={{
                     color: '#6b7280',
-                    '&:hover': { 
+                    '&:hover': {
                       backgroundColor: 'rgba(0, 0, 0, 0.04)',
                       color: '#374151'
                     }
@@ -579,9 +584,9 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 size={isMobile ? "small" : "medium"}
                 color="inherit"
                 onClick={handleNotificationOpen}
-                sx={{ 
+                sx={{
                   color: '#6b7280',
-                  '&:hover': { 
+                  '&:hover': {
                     backgroundColor: 'rgba(0, 0, 0, 0.04)',
                     color: '#374151'
                   }
@@ -601,10 +606,10 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 color="inherit"
                 sx={{ ml: isMobile ? 0.5 : 1 }}
               >
-                <Avatar sx={{ 
-                  width: isMobile ? 28 : 32, 
-                  height: isMobile ? 28 : 32, 
-                  bgcolor: getRoleColor() 
+                <Avatar sx={{
+                  width: isMobile ? 28 : 32,
+                  height: isMobile ? 28 : 32,
+                  bgcolor: getRoleColor()
                 }}>
                   {currentUser.full_name?.charAt(0).toUpperCase()}
                 </Avatar>
@@ -614,8 +619,8 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         </div>
 
         {/* Main Content */}
-        <div 
-          id="dashboard-main-content" 
+        <div
+          id="dashboard-main-content"
           className="flex-1 overflow-auto min-h-0 max-h-full"
           style={{ transition: 'font-size 0.2s ease' }}
         >
