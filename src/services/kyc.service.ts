@@ -101,7 +101,7 @@ export interface PANVerifyResponse {
 
 class KYCService {
   // No need to manage token on frontend - backend handles it
-  
+
   /**
    * Test authentication with backend KYC proxy
    */
@@ -379,6 +379,46 @@ class KYCService {
       return await response.json();
     } catch (error) {
       console.error('Verify face error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Match two faces using DiDit's face matching API
+   * @param userImageBase64 - User's captured face image (base64)
+   * @param refImageBase64 - Reference image (e.g., from Aadhaar) (base64)
+   * @param vendorData - Optional vendor identifier
+   */
+  async faceMatch(
+    userImageBase64: string,
+    refImageBase64: string,
+    vendorData?: string
+  ): Promise<any> {
+    try {
+      const requestBody = {
+        user_image_base64: userImageBase64,
+        ref_image_base64: refImageBase64,
+        vendor_data: vendorData,
+        face_match_score_decline_threshold: 30
+      };
+
+      const response = await fetch(buildApiUrl('/kyc/face/match'), {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Failed to match faces: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Face match error:', error);
       throw error;
     }
   }

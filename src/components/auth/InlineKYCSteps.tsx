@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  CheckCircle, 
-  XCircle, 
-  Loader2, 
-  CreditCard, 
-  FileText, 
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  CreditCard,
+  FileText,
   FolderOpen,
   Camera,
   MapPin,
@@ -35,13 +35,13 @@ export default function InlineKYCSteps({
   onBack
 }: InlineKYCStepsProps) {
   const [selectedDocumentType, setSelectedDocumentType] = useState<DocumentVerificationType>(null);
-  
+
   // Step 1 - Document Verification
   const [panNumber, setPanNumber] = useState('');
   const [panVerificationStatus, setPanVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [panError, setPanError] = useState('');
   const [panData, setPanData] = useState<any>(null);
-  
+
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarOTP, setAadhaarOTP] = useState('');
   const [aadhaarReferenceId, setAadhaarReferenceId] = useState('');
@@ -49,7 +49,7 @@ export default function InlineKYCSteps({
   const [aadhaarVerificationStatus, setAadhaarVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [aadhaarError, setAadhaarError] = useState('');
   const [aadhaarData, setAadhaarData] = useState<any>(null);
-  
+
   // Step 2 - Face and Address Verification
   const [faceVerificationStatus, setFaceVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [faceVerificationError, setFaceVerificationError] = useState('');
@@ -58,11 +58,11 @@ export default function InlineKYCSteps({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
-  
+
   // Development mode flag
   const isDevelopmentMode = process.env.NODE_ENV === 'development';
   console.log('isDevelopmentMode', isDevelopmentMode);
-  
+
   const [verificationData, setVerificationData] = useState<any>({});
 
   // Cleanup camera on unmount
@@ -83,7 +83,7 @@ export default function InlineKYCSteps({
   // Skip PAN Verification (Development Mode)
   const handleSkipPANVerification = () => {
     if (!isDevelopmentMode) return;
-    
+
     setPanVerificationStatus('success');
     setPanData({ status: 'skipped_dev_mode', pan: panNumber || 'DEV_PAN' });
     setVerificationData((prev: any) => ({
@@ -131,9 +131,9 @@ export default function InlineKYCSteps({
   // Skip Aadhaar Verification (Development Mode)
   const handleSkipAadhaarVerification = () => {
     if (!isDevelopmentMode) return;
-    
+
     setAadhaarVerificationStatus('success');
-    setAadhaarData({ 
+    setAadhaarData({
       status: 'SKIPPED_DEV_MODE',
       name: userFullName,
       aadhaar_number: aadhaarNumber || 'XXXXXXXXXXXX',
@@ -211,16 +211,16 @@ export default function InlineKYCSteps({
   // Start Camera
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
           facingMode: 'user'
-        } 
+        }
       });
       setCameraStream(stream);
       setShowCamera(true);
-      
+
       // Set video source when video element is ready
       if (videoRef) {
         videoRef.srcObject = stream;
@@ -243,12 +243,12 @@ export default function InlineKYCSteps({
   // Capture Photo
   const capturePhoto = () => {
     if (!videoRef) return;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.videoWidth;
     canvas.height = videoRef.videoHeight;
     const ctx = canvas.getContext('2d');
-    
+
     if (ctx) {
       ctx.drawImage(videoRef, 0, 0);
       const imageData = canvas.toDataURL('image/jpeg', 0.9);
@@ -267,21 +267,50 @@ export default function InlineKYCSteps({
     try {
       setFaceVerificationStatus('loading');
       setFaceVerificationError('');
-      
-      const response = await kycService.verifyFace(capturedImage, userEmail);
-      
-      // Face search returns matches - for first-time users, no matches is good!
-      // If there are matches, it might indicate duplicate or blocklisted user
-      setFaceVerificationStatus('success');
-      setVerificationData((prev: any) => ({
-        ...prev,
-        faceVerification: { 
-          status: 'verified', 
-          image: capturedImage,
-          data: response,
-          timestamp: new Date().toISOString() 
+
+      // Check if Aadhaar verification was used (has photo for face matching)
+      if (aadhaarData?.photo) {
+        // Use face matching API to compare with Aadhaar photo
+        const response = await kycService.faceMatch(
+          capturedImage,
+          aadhaarData.photo,
+          userEmail
+        );
+
+        // Check if face match was successful
+        if (response.face_match?.status === 'Approved' || response.face_match?.status === 'approved') {
+          setFaceVerificationStatus('success');
+          setVerificationData((prev: any) => ({
+            ...prev,
+            faceVerification: {
+              status: 'verified',
+              image: capturedImage,
+              matchScore: response.face_match?.score,
+              data: response,
+              timestamp: new Date().toISOString()
+            }
+          }));
+        } else {
+          setFaceVerificationStatus('error');
+          setFaceVerificationError(
+            `Face match failed. Score: ${response.face_match?.score || 'N/A'}. Please ensure good lighting and face the camera directly.`
+          );
         }
-      }));
+      } else {
+        // For PAN verification, just do a basic face search (no matching required)
+        const response = await kycService.verifyFace(capturedImage, userEmail);
+
+        setFaceVerificationStatus('success');
+        setVerificationData((prev: any) => ({
+          ...prev,
+          faceVerification: {
+            status: 'verified',
+            image: capturedImage,
+            data: response,
+            timestamp: new Date().toISOString()
+          }
+        }));
+      }
     } catch (error: any) {
       setFaceVerificationStatus('error');
       setFaceVerificationError(error.message || 'Unknown error occurred during face verification');
@@ -291,14 +320,14 @@ export default function InlineKYCSteps({
   // Skip Face Verification (Development Mode Only)
   const handleSkipFaceVerification = () => {
     if (!isDevelopmentMode) return;
-    
+
     setFaceVerificationStatus('success');
     setVerificationData((prev: any) => ({
       ...prev,
-      faceVerification: { 
-        status: 'skipped_dev_mode', 
+      faceVerification: {
+        status: 'skipped_dev_mode',
         image: capturedImage || 'skipped',
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString()
       }
     }));
   };
@@ -313,14 +342,14 @@ export default function InlineKYCSteps({
   // Skip Address Verification (Development Mode)
   const handleSkipAddressVerification = () => {
     if (!isDevelopmentMode) return;
-    
+
     setAddressVerificationStatus('success');
     setVerificationData((prev: any) => ({
       ...prev,
-      addressVerification: { 
-        status: 'skipped_dev_mode', 
+      addressVerification: {
+        status: 'skipped_dev_mode',
         address: { house: 'Dev House', street: 'Dev Street', city: 'Dev City' },
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString()
       }
     }));
   };
@@ -344,9 +373,14 @@ export default function InlineKYCSteps({
   const canProceed = () => {
     if (currentStep === 'kyc-step1') {
       return panVerificationStatus === 'success' || aadhaarVerificationStatus === 'success';
-    } 
+    }
     if (currentStep === 'kyc-step2') {
-      return faceVerificationStatus === 'success' && addressVerificationStatus === 'success';
+      // Face verification is only required for Aadhaar
+      const faceVerified = selectedDocumentType === 'aadhaar'
+        ? faceVerificationStatus === 'success'
+        : true; // Skip face verification for PAN
+
+      return faceVerified && addressVerificationStatus === 'success';
     }
     return false;
   };
@@ -368,17 +402,15 @@ export default function InlineKYCSteps({
         <div className="flex items-center justify-between mb-2">
           {[1, 2].map((step) => (
             <div key={step} className="flex items-center flex-1">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                stepNumber >= step 
-                  ? 'bg-blue-600 text-white border-blue-600' 
-                  : 'bg-gray-200 text-gray-500 border-gray-300'
-              }`}>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${stepNumber >= step
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-gray-200 text-gray-500 border-gray-300'
+                }`}>
                 {step}
               </div>
               {step < 2 && (
-                <div className={`flex-1 h-1 mx-2 ${
-                  stepNumber > step ? 'bg-blue-600' : 'bg-gray-200'
-                }`} />
+                <div className={`flex-1 h-1 mx-2 ${stepNumber > step ? 'bg-blue-600' : 'bg-gray-200'
+                  }`} />
               )}
             </div>
           ))}
@@ -404,7 +436,7 @@ export default function InlineKYCSteps({
                 <CreditCard className="w-10 h-10 text-gray-400 group-hover:text-blue-600 mx-auto mb-2" />
                 <div className="text-sm font-semibold text-gray-700 group-hover:text-blue-600">PAN Card</div>
               </button>
-              
+
               <button
                 onClick={() => setSelectedDocumentType('aadhaar')}
                 className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition group"
@@ -412,7 +444,7 @@ export default function InlineKYCSteps({
                 <FileText className="w-10 h-10 text-gray-400 group-hover:text-blue-600 mx-auto mb-2" />
                 <div className="text-sm font-semibold text-gray-700 group-hover:text-blue-600">Aadhaar</div>
               </button>
-              
+
               <button
                 onClick={() => setSelectedDocumentType('digilocker')}
                 className="p-4 border-2 border-gray-200 rounded-lg hover:border-gray-300 transition opacity-50 cursor-not-allowed"
@@ -473,7 +505,7 @@ export default function InlineKYCSteps({
                       'Verify PAN'
                     )}
                   </button>
-                  
+
                   {isDevelopmentMode && (
                     <button
                       onClick={handleSkipPANVerification}
@@ -528,7 +560,7 @@ export default function InlineKYCSteps({
                         'Generate OTP'
                       )}
                     </button>
-                    
+
                     {isDevelopmentMode && (
                       <button
                         onClick={handleSkipAadhaarVerification}
@@ -594,7 +626,7 @@ export default function InlineKYCSteps({
                           'Verify OTP'
                         )}
                       </button>
-                      
+
                       {isDevelopmentMode && (
                         <button
                           onClick={handleSkipAadhaarVerification}
@@ -643,206 +675,233 @@ export default function InlineKYCSteps({
       {currentStep === 'kyc-step2' && (
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Identity Verification</h1>
-          <p className="text-gray-600 mb-6">Verify your face and address</p>
+          <p className="text-gray-600 mb-6">
+            {selectedDocumentType === 'aadhaar'
+              ? 'Verify your face matches your Aadhaar photo and confirm your address'
+              : 'Verify your face and address'}
+          </p>
 
           <div className="space-y-4">
-            {/* Face Verification */}
-            <div className="border-2 border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  Face Verification
-                </h3>
-                {faceVerificationStatus === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
-              </div>
+            {/* Face Verification - Only required for Aadhaar */}
+            {selectedDocumentType === 'aadhaar' && (
+              <div className="border-2 border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Camera className="w-5 h-5" />
+                    Face Verification (Required for Aadhaar)
+                  </h3>
+                  {faceVerificationStatus === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
+                </div>
 
-              {faceVerificationStatus === 'idle' && !showCamera && !capturedImage && (
-                <div>
-                  {/* Development Mode Banner */}
-                  {isDevelopmentMode && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                      <div className="flex items-center gap-2 text-yellow-800">
-                        <Zap className="w-4 h-4" />
-                        <span className="text-xs font-semibold">Development Mode Active</span>
+                {/* Show Aadhaar reference photo if available */}
+                {aadhaarData?.photo && faceVerificationStatus === 'idle' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <img
+                          src={`data:image/jpeg;base64,${aadhaarData.photo}`}
+                          alt="Aadhaar reference"
+                          className="w-20 h-24 object-cover rounded border-2 border-blue-300"
+                        />
                       </div>
-                      <p className="text-xs text-yellow-700 mt-1">You can skip verification for testing</p>
-                    </div>
-                  )}
-
-                  {/* Instructions */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <h4 className="font-semibold text-sm text-blue-900 mb-2">Photo Guidelines</h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <div className="font-semibold text-green-700 mb-1">✓ DO:</div>
-                        <ul className="text-gray-700 space-y-1">
-                          <li>• Face the camera directly</li>
-                          <li>• Remove glasses & hat</li>
-                          <li>• Good lighting</li>
-                          <li>• Neutral expression</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-red-700 mb-1">✗ DON'T:</div>
-                        <ul className="text-gray-700 space-y-1">
-                          <li>• Turn your head</li>
-                          <li>• Cover your face</li>
-                          <li>• Dim lighting</li>
-                          <li>• Blurry photos</li>
-                        </ul>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-blue-900 mb-1">Reference Photo from Aadhaar</h4>
+                        <p className="text-xs text-blue-700">
+                          Your captured photo will be compared with this reference image from your Aadhaar card.
+                        </p>
                       </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 gap-2">
-                    <button
-                      onClick={startCamera}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                    >
-                      <Camera className="w-5 h-5" />
-                      Open Camera
-                    </button>
-                    
+                {faceVerificationStatus === 'idle' && !showCamera && !capturedImage && (
+                  <div>
+                    {/* Development Mode Banner */}
                     {isDevelopmentMode && (
-                      <button
-                        onClick={handleSkipFaceVerification}
-                        className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
-                      >
-                        <Zap className="w-4 h-4" />
-                        Skip Verification (Dev Mode)
-                      </button>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-center gap-2 text-yellow-800">
+                          <Zap className="w-4 h-4" />
+                          <span className="text-xs font-semibold">Development Mode Active</span>
+                        </div>
+                        <p className="text-xs text-yellow-700 mt-1">You can skip verification for testing</p>
+                      </div>
                     )}
-                  </div>
-                </div>
-              )}
 
-              {/* Camera View */}
-              {showCamera && !capturedImage && (
-                <div>
-                  <div className="relative bg-black rounded-lg overflow-hidden mb-3">
-                    <video
-                      ref={(ref) => {
-                        setVideoRef(ref);
-                        if (ref && cameraStream) {
-                          ref.srcObject = cameraStream;
-                          ref.play();
-                        }
-                      }}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-64 object-cover"
-                    />
-                    {/* Face Guide Oval */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-48 h-64 border-4 border-white border-dashed rounded-full opacity-50"></div>
+                    {/* Instructions */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="font-semibold text-sm text-blue-900 mb-2">Photo Guidelines</h4>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <div className="font-semibold text-green-700 mb-1">✓ DO:</div>
+                          <ul className="text-gray-700 space-y-1">
+                            <li>• Face the camera directly</li>
+                            <li>• Remove glasses & hat</li>
+                            <li>• Good lighting</li>
+                            <li>• Neutral expression</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-red-700 mb-1">✗ DON'T:</div>
+                          <ul className="text-gray-700 space-y-1">
+                            <li>• Turn your head</li>
+                            <li>• Cover your face</li>
+                            <li>• Dim lighting</li>
+                            <li>• Blurry photos</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        onClick={startCamera}
+                        className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-5 h-5" />
+                        Open Camera
+                      </button>
+
+                      {isDevelopmentMode && (
+                        <button
+                          onClick={handleSkipFaceVerification}
+                          className="w-full bg-yellow-500 text-white py-2 rounded-lg font-semibold hover:bg-yellow-600 transition flex items-center justify-center gap-2"
+                        >
+                          <Zap className="w-4 h-4" />
+                          Skip Verification (Dev Mode)
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <p className="text-xs text-center text-gray-600 mb-3">Position your face within the oval</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={stopCamera}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={capturePhoto}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      Capture
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Captured Photo Review */}
-              {capturedImage && faceVerificationStatus === 'idle' && (
-                <div>
-                  <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
-                    <img src={capturedImage} alt="Captured face" className="w-full h-64 object-cover" />
-                  </div>
-                  <p className="text-xs text-center text-gray-600 mb-3">Review your photo</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        setCapturedImage(null);
-                        startCamera();
-                      }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Retake
-                    </button>
-                    <button
-                      onClick={handleFaceVerification}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Verify
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {faceVerificationStatus === 'loading' && (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-2" />
-                  <p className="text-sm text-gray-600">Analyzing face...</p>
-                </div>
-              )}
-
-              {faceVerificationStatus === 'error' && (
-                <div>
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <XCircle className="w-5 h-5" />
-                      <span className="font-semibold text-sm">Verification Failed</span>
+                {/* Camera View */}
+                {showCamera && !capturedImage && (
+                  <div>
+                    <div className="relative bg-black rounded-lg overflow-hidden mb-3">
+                      <video
+                        ref={(ref) => {
+                          setVideoRef(ref);
+                          if (ref && cameraStream) {
+                            ref.srcObject = cameraStream;
+                            ref.play();
+                          }
+                        }}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-64 object-cover"
+                      />
+                      {/* Face Guide Oval */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-48 h-64 border-4 border-white border-dashed rounded-full opacity-50"></div>
+                      </div>
                     </div>
-                    <p className="text-xs ml-7">{faceVerificationError}</p>
+                    <p className="text-xs text-center text-gray-600 mb-3">Position your face within the oval</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={stopCamera}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={capturePhoto}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Capture
+                      </button>
+                    </div>
                   </div>
-                  
-                  {capturedImage && (
+                )}
+
+                {/* Captured Photo Review */}
+                {capturedImage && faceVerificationStatus === 'idle' && (
+                  <div>
                     <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
-                      <img src={capturedImage} alt="Failed verification" className="w-full h-32 object-cover" />
+                      <img src={capturedImage} alt="Captured face" className="w-full h-64 object-cover" />
                     </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={handleRetryFaceVerification}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      Retry
-                    </button>
-                    {isDevelopmentMode && (
+                    <p className="text-xs text-center text-gray-600 mb-3">Review your photo</p>
+                    <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={handleSkipFaceVerification}
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition flex items-center justify-center gap-2"
+                        onClick={() => {
+                          setCapturedImage(null);
+                          startCamera();
+                        }}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                       >
-                        Skip (Dev)
+                        Retake
                       </button>
-                    )}
+                      <button
+                        onClick={handleFaceVerification}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Verify
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {faceVerificationStatus === 'success' && (
-                <div>
-                  <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
-                    <img src={capturedImage!} alt="Verified face" className="w-full h-32 object-cover" />
+                {faceVerificationStatus === 'loading' && (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-2" />
+                    <p className="text-sm text-gray-600">Analyzing face...</p>
                   </div>
-                  <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Face verified successfully
-                    {verificationData.faceVerification?.status === 'skipped_dev_mode' && (
-                      <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                )}
+
+                {faceVerificationStatus === 'error' && (
+                  <div>
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <XCircle className="w-5 h-5" />
+                        <span className="font-semibold text-sm">Verification Failed</span>
+                      </div>
+                      <p className="text-xs ml-7">{faceVerificationError}</p>
+                    </div>
+
+                    {capturedImage && (
+                      <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
+                        <img src={capturedImage} alt="Failed verification" className="w-full h-32 object-cover" />
+                      </div>
                     )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={handleRetryFaceVerification}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Retry
+                      </button>
+                      {isDevelopmentMode && (
+                        <button
+                          onClick={handleSkipFaceVerification}
+                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition flex items-center justify-center gap-2"
+                        >
+                          Skip (Dev)
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+
+                {faceVerificationStatus === 'success' && (
+                  <div>
+                    <div className="bg-gray-100 rounded-lg overflow-hidden mb-3">
+                      <img src={capturedImage!} alt="Verified face" className="w-full h-32 object-cover" />
+                    </div>
+                    <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Face verified successfully
+                      {verificationData.faceVerification?.status === 'skipped_dev_mode' && (
+                        <span className="ml-auto text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">DEV MODE</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Address Verification */}
             <div className="border-2 border-gray-200 rounded-lg p-4">
@@ -870,7 +929,7 @@ export default function InlineKYCSteps({
                     >
                       Verify Address
                     </button>
-                    
+
                     {isDevelopmentMode && (
                       <button
                         onClick={handleSkipAddressVerification}
