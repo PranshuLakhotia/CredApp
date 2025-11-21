@@ -244,14 +244,14 @@ export default function DashboardSidebar({
                 Overview
               </button>
               <button 
-                onClick={() => handleNavigation('/dashboard/profile/credentials')}
+                onClick={() => handleNavigation('/dashboard/profile/Integrations')}
                 className={`w-full flex items-center gap-2 px-6 py-2 text-sm rounded-md transition-colors ${
                   pathname === '/dashboard/profile/credentials' 
                     ? 'bg-blue-50 text-blue-700' 
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                Credentials
+                Integrations
               </button>
               <button 
                 onClick={() => handleNavigation('/dashboard/profile/pathways')}
