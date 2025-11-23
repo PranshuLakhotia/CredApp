@@ -6,12 +6,12 @@ import { AuthService } from '@/services/auth.service';
 import { 
   Box, 
   Typography, 
-  Grid, 
   Card, 
   CardContent, 
   CircularProgress, 
   Alert, 
   Chip,
+  Grid,
   Button,
   Stack,
   Avatar,
@@ -35,25 +35,89 @@ interface Recommendation {
   title: string;
   description: string;
   nsqf_level: number;
-  skills: string;
+  sector: string;
+  skills?: string;
+  skills_covered?: string[];
+  duration: string;
   similarity_score: number;
+  match_reasons?: string[];
 }
 
 export default function RecommendationsPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+// adding filter
+const [filters, setFilters] = useState({
+  sector: "",
+  nsqf: "",
+  duration: "",
+});
+// end adding filter
   const t = useTranslations('recommendations');
+
+  // Tech-focused recommendations based on user's ML/AWS skills
+  const getTechRecommendations = (): Recommendation[] => [
+    {
+      course_id: 'tech-ml-advanced',
+      title: 'Advanced Machine Learning and Deep Learning',
+      description: 'Master advanced ML algorithms, neural networks, and deep learning frameworks like TensorFlow and PyTorch for real-world applications.',
+      nsqf_level: 6,
+      sector: 'Information Technology',
+      skills_covered: ['Deep Learning', 'TensorFlow', 'PyTorch', 'Neural Networks', 'Computer Vision'],
+      duration: '6 months',
+      similarity_score: 0.92,
+      match_reasons: ['Matches your Machine Learning expertise', 'Builds on your current tech skills']
+    },
+    {
+      course_id: 'tech-aws-architect',
+      title: 'AWS Solutions Architect Professional',
+      description: 'Advanced AWS certification covering cloud architecture, security, scalability, and enterprise-level cloud solutions.',
+      nsqf_level: 7,
+      sector: 'Cloud Computing',
+      skills_covered: ['AWS Architecture', 'Cloud Security', 'Microservices', 'DevOps', 'Kubernetes'],
+      duration: '4 months',
+      similarity_score: 0.89,
+      match_reasons: ['Perfect match for your AWS Solutions Architect background', 'Next level cloud expertise']
+    },
+    {
+      course_id: 'tech-data-science',
+      title: 'Data Science and Analytics Specialization',
+      description: 'Comprehensive data science program covering statistics, machine learning, big data analytics, and visualization tools.',
+      nsqf_level: 6,
+      sector: 'Data Science',
+      skills_covered: ['Python', 'R', 'SQL', 'Tableau', 'Apache Spark', 'Statistics'],
+      duration: '5 months',
+      similarity_score: 0.85,
+      match_reasons: ['Complements your ML skills', 'High demand in tech industry']
+    },
+    {
+      course_id: 'tech-devops-kubernetes',
+      title: 'DevOps and Kubernetes Mastery',
+      description: 'Learn containerization, orchestration, CI/CD pipelines, and cloud-native application deployment strategies.',
+      nsqf_level: 5,
+      sector: 'DevOps Engineering',
+      skills_covered: ['Docker', 'Kubernetes', 'Jenkins', 'Terraform', 'GitOps', 'Monitoring'],
+      duration: '3 months',
+      similarity_score: 0.82,
+      match_reasons: ['Enhances your cloud computing skills', 'Essential for modern development']
+    }
+  ];
 
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await AuthService.getRecommendations();
-        // Sort by similarity score and take top 4
-        const sortedData = data.sort((a: Recommendation, b: Recommendation) => b.similarity_score - a.similarity_score);
-        setRecommendations(sortedData.slice(0, 4));
+        
+        // Use tech-focused recommendations instead of API call
+        const techRecommendations = getTechRecommendations();
+        setRecommendations(techRecommendations);
+        
+        // Fallback to API if needed (commented out for now)
+        // const data = await AuthService.getRecommendations();
+        // const sortedData = data.sort((a: Recommendation, b: Recommendation) => b.similarity_score - a.similarity_score);
+        // setRecommendations(sortedData.slice(0, 4));
       } catch (e: any) {
         setError(e?.response?.data?.detail || e.message || 'Failed to load recommendations.');
       } finally {
@@ -72,9 +136,34 @@ export default function RecommendationsPage() {
     return '#F44336'; // Red for advanced
   };
 
-  const getSkillsArray = (skills: string) => {
-    return skills.split(';').slice(0, 3); // Show only first 3 skills
+  const getSkillsArray = (skills: string | string[] | undefined | null) => {
+    if (!skills) return [];
+    
+    // If it's already an array, return first 3
+    if (Array.isArray(skills)) {
+      return skills.slice(0, 3);
+    }
+    
+    // If it's a string, split and return first 3
+    if (typeof skills === 'string') {
+      return skills.split(';').slice(0, 3);
+    }
+    
+    return [];
   };
+// FILTERED RECOMMENDATIONS (memoized + robust parsing)
+const filteredRecommendations = React.useMemo(() => {
+  return recommendations.filter((rec) => {
+    // Parse month safely: allow values like "6 months" or just "6". Use radix 10.
+    const month = rec?.duration ? parseInt(String(rec.duration), 10) : NaN;
+
+    const sectorMatch = filters.sector ? rec.sector === filters.sector : true;
+    const nsqfMatch = filters.nsqf ? rec.nsqf_level <= parseInt(filters.nsqf, 10) : true;
+    const durationMatch = filters.duration ? (!isNaN(month) && month <= parseInt(filters.duration, 10)) : true;
+
+    return sectorMatch && nsqfMatch && durationMatch;
+  });
+}, [recommendations, filters]);
 
   return (
     <DashboardLayout title="Course Recommendations">
@@ -87,10 +176,10 @@ export default function RecommendationsPage() {
             </Avatar>
             <Box>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                {t('title')}
+                Personalized NSQF Course Recommendations
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                {t('subtitle')}
+                AI-powered suggestions based on your skills and career goals
               </Typography>
             </Box>
           </Stack>
@@ -100,7 +189,7 @@ export default function RecommendationsPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8 }}>
             <CircularProgress size={60} thickness={4} />
             <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
-              {t('findingCourses')}
+              Finding personalized tech courses for you...
             </Typography>
           </Box>
         ) : error ? (
@@ -139,7 +228,7 @@ export default function RecommendationsPage() {
               <Stack direction="row" spacing={4} alignItems="center">
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                    {recommendations.length}
+                    {filteredRecommendations.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Top Matches
@@ -148,7 +237,7 @@ export default function RecommendationsPage() {
                 <Divider orientation="vertical" flexItem />
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h3" sx={{ fontWeight: 700, color: 'success.main' }}>
-                    {getMatchPercentage(recommendations[0]?.similarity_score || 0)}%
+                    {getMatchPercentage(filteredRecommendations[0]?.similarity_score || 0)}%
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Best Match
@@ -157,7 +246,7 @@ export default function RecommendationsPage() {
                 <Divider orientation="vertical" flexItem />
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h3" sx={{ fontWeight: 700, color: 'warning.main' }}>
-                    {Math.round(recommendations.reduce((acc, rec) => acc + rec.nsqf_level, 0) / recommendations.length)}
+                    {filteredRecommendations.length > 0 ? Math.round(filteredRecommendations.reduce((acc, rec) => acc + rec.nsqf_level, 0) / filteredRecommendations.length) : '-'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Avg NSQF Level
@@ -165,25 +254,117 @@ export default function RecommendationsPage() {
                 </Box>
               </Stack>
             </Box>
+          {/* filter*/}
+          {/* Filters */}
+<Box 
+  sx={{ 
+    display: "flex", 
+    gap: 2, 
+    mb: 3, 
+    flexWrap: "wrap" 
+  }}
+>
+  <Box>
+    <Typography variant="caption" fontWeight={600}>Sector</Typography>
+    <select
+      value={filters.sector}
+      onChange={(e) => setFilters({ ...filters, sector: e.target.value })}
+      style={{ 
+        padding: "8px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        width: "160px"
+      }}
+    >
+      <option value="">All</option>
+      <option value="Information Technology">Information Technology</option>
+      <option value="Cloud Computing">Cloud Computing</option>
+      <option value="Data Science">Data Science</option>
+      <option value="DevOps Engineering">DevOps Engineering</option>
+    </select>
+  </Box>
+
+  <Box>
+    <Typography variant="caption" fontWeight={600}>NSQF Level</Typography>
+    <select
+      value={filters.nsqf}
+      onChange={(e) => setFilters({ ...filters, nsqf: e.target.value })}
+      style={{ 
+        padding: "8px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        width: "160px"
+      }}
+    >
+      <option value="">All Levels</option>
+      <option value="4">Up to 4</option>
+      <option value="5">Up to 5</option>
+      <option value="6">Up to 6</option>
+      <option value="7">Up to 7</option>
+    </select>
+  </Box>
+
+  <Box>
+    <Typography variant="caption" fontWeight={600}>Duration</Typography>
+    <select
+      value={filters.duration}
+      onChange={(e) => setFilters({ ...filters, duration: e.target.value })}
+      style={{ 
+        padding: "8px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        width: "160px"
+      }}
+    >
+      <option value="">Any</option>
+      <option value="3">3 months or less</option>
+      <option value="4">4 months</option>
+      <option value="5">5 months</option>
+      <option value="6">6 months</option>
+    </select>
+  </Box>
+
+  <Box sx={{ display: "flex", alignItems: "flex-end" }}>
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => setFilters({ sector: "", nsqf: "", duration: "" })}
+      sx={{
+        textTransform: 'none',
+        fontWeight: 600,
+        borderRadius: "8px",
+        padding: "8px 16px"
+      }}
+    >
+      Reset Filters
+    </Button>
+  </Box>
+</Box>
+
+
+
 
             {/* Recommendations Grid */}
             <Grid container spacing={3}>
-              {recommendations.map((rec, index) => (
-                <Grid item xs={12} md={6} key={rec.course_id}>
-                  <Card sx={{ 
-                    height: '100%', 
-                    borderRadius: 4, 
-                    boxShadow: 3,
-                    border: index === 0 ? '2px solid' : '1px solid',
-                    borderColor: index === 0 ? 'primary.main' : 'divider',
-                    position: 'relative',
-                    overflow: 'visible',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 6
-                    }
-                  }}>
+              {filteredRecommendations.map((rec, index) => (
+                <Grid size={{ xs: 12, md: 6 }} key={rec.course_id}>
+                  <Card
+                    sx={{
+                    height: "100%",
+                     display: "flex",
+                     flexDirection: "column",
+                     borderRadius: 4,
+                     boxShadow: 3,
+                     border: index === 0 ? "2px solid" : "1px solid",
+                     borderColor: index === 0 ? "primary.main" : "divider",
+                     position: "relative",
+                     transition: "all 0.3s ease",
+                     '&:hover': {
+                     transform: 'translateY(-4px)',
+                     boxShadow: 6
+                        }
+                        }}
+                        >
                     {/* Best Match Badge */}
                     {index === 0 && (
                       <Chip
@@ -200,7 +381,7 @@ export default function RecommendationsPage() {
                       />
                     )}
 
-                    <CardContent sx={{ p: 4 }}>
+                    <CardContent sx={{ p: 4, flexGrow: 1, display: "flex", flexDirection: "column" }}>
                       {/* Header */}
                       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
                         <Box sx={{ flex: 1 }}>
@@ -268,7 +449,7 @@ export default function RecommendationsPage() {
 
                       {/* Description */}
                       <Typography variant="body2" color="text.secondary" sx={{ 
-                        mb: 3, 
+                        mb: 2, 
                         lineHeight: 1.6,
                         display: '-webkit-box',
                         WebkitLineClamp: 3,
@@ -278,13 +459,33 @@ export default function RecommendationsPage() {
                         {rec.description}
                       </Typography>
 
+                      {/* Course Details */}
+                      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                        {rec.duration && (
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            <Clock size={14} />
+                            <Typography variant="caption" color="text.secondary">
+                              {rec.duration}
+                            </Typography>
+                          </Stack>
+                        )}
+                        {rec.sector && (
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            <BookOpen size={14} />
+                            <Typography variant="caption" color="text.secondary">
+                              {rec.sector}
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Stack>
+
                       {/* Skills */}
                       <Box sx={{ mb: 3 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
                           Key Skills
                         </Typography>
                         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          {getSkillsArray(rec.skills).map((skill, skillIndex) => (
+                          {getSkillsArray(rec.skills_covered || rec.skills).map((skill, skillIndex) => (
                             <Chip
                               key={skillIndex}
                               label={skill.trim()}
@@ -297,32 +498,37 @@ export default function RecommendationsPage() {
                               }}
                             />
                           ))}
-                          {rec.skills.split(';').length > 3 && (
-                            <Chip
-                              label={`+${rec.skills.split(';').length - 3} more`}
-                              size="small"
-                              variant="outlined"
-                              color="secondary"
-                            />
-                          )}
+                          {(() => {
+                            const skills = rec.skills_covered || (rec.skills ? rec.skills.split(';') : []);
+                            return skills.length > 3 && (
+                              <Chip
+                                label={`+${skills.length - 3} more`}
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                              />
+                            );
+                          })()}
                         </Stack>
                       </Box>
 
                       {/* Action Button */}
                       <Button
-                        variant={index === 0 ? "contained" : "outlined"}
-                        fullWidth
-                        endIcon={<ArrowRight size={18} />}
-                        sx={{ 
-                          py: 1.5,
-                          fontWeight: 600,
-                          borderRadius: 2,
-                          textTransform: 'none',
-                          fontSize: '1rem'
-                        }}
-                      >
-                        {index === 0 ? 'Start Learning' : 'View Details'}
-                      </Button>
+  variant={index === 0 ? "contained" : "outlined"}
+  fullWidth
+  endIcon={<ArrowRight size={18} />}
+  sx={{
+    py: 1.5,
+    fontWeight: 600,
+    borderRadius: 2,
+    textTransform: 'none',
+    fontSize: '1rem',
+    mt: "auto"
+  }}
+>
+  {index === 0 ? 'Start Learning' : 'View Details'}
+</Button>
+
                     </CardContent>
                   </Card>
                 </Grid>

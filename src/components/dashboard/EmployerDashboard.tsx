@@ -144,20 +144,37 @@ export default function EmployerDashboard() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       {/* Header Section */}
-      <Box sx={{ mb: 5 }}>
-        <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, color: '#0f172a' }}>
+      <Box sx={{ mb: { xs: 3, sm: 4, md: 5 } }}>
+        <Typography variant="h3" sx={{ 
+          fontWeight: 700, 
+          mb: 2, 
+          color: '#0f172a',
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+        }}>
           Employer Dashboard 💼
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+        <Typography variant="h6" color="text.secondary" sx={{ 
+          mb: 4,
+          fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
+        }}>
           Manage your hiring process and find verified talent
         </Typography>
       </Box>
 
       {/* Stats Overview */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 5 }}>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: { 
+          xs: '1fr', 
+          sm: 'repeat(2, 1fr)', 
+          lg: 'repeat(4, 1fr)' 
+        },
+        gap: { xs: 2, sm: 3 },
+        mb: { xs: 3, sm: 4, md: 5 }
+      }}>
+        <Box sx={{ minWidth: '250px' }}>
           <StatsCard
             title="Active Jobs"
             value={mockHiringData.activeJobs}
@@ -166,7 +183,7 @@ export default function EmployerDashboard() {
             trend={{ value: 8, label: 'this month' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box sx={{ minWidth: '250px' }}>
           <StatsCard
             title="Candidates Viewed"
             value={mockHiringData.candidatesViewed}
@@ -175,7 +192,7 @@ export default function EmployerDashboard() {
             trend={{ value: 15, label: 'this week' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box sx={{ minWidth: '250px' }}>
           <StatsCard
             title="Interviews Scheduled"
             value={mockHiringData.interviewsScheduled}
@@ -184,7 +201,7 @@ export default function EmployerDashboard() {
             trend={{ value: 3, label: 'pending' }}
           />
         </Box>
-        <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+        <Box sx={{ minWidth: '250px' }}>
           <StatsCard
             title="Hired This Month"
             value={mockHiringData.hiredThisMonth}
@@ -195,42 +212,61 @@ export default function EmployerDashboard() {
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', lg: 'row' },
+        gap: { xs: 3, sm: 4 }
+      }}>
         {/* Main Actions */}
-        <Box sx={{ flex: '2 1 600px', minWidth: '400px' }}>
+        <Box sx={{ 
+          flex: { xs: '1 1 100%', lg: '2 1 600px' },
+          minWidth: { xs: '100%', lg: '400px' }
+        }}>
           {/* Quick Actions Card */}
           <Card 
             elevation={0}
             sx={{ 
-              mb: 4,
+              mb: { xs: 3, sm: 4 },
               border: '1px solid #e2e8f0',
               borderRadius: 4,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+              <Typography variant="h5" sx={{ 
+                fontWeight: 700, 
+                mb: 3, 
+                color: '#0f172a',
+                fontSize: { xs: '1.25rem', sm: '1.5rem' }
+              }}>
                 Quick Actions
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                flexWrap: 'wrap', 
+                gap: 2 
+              }}>
                 <Button
                   variant="contained"
                   size="large"
                   startIcon={<Search />}
                   onClick={handleSearchLearners}
                   sx={{
-                    px: 4,
-                    py: 2,
+                    px: { xs: 3, sm: 4 },
+                    py: { xs: 1.5, sm: 2 },
                     borderRadius: 3,
                     fontWeight: 600,
                     bgcolor: '#3b82f6',
                     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     '&:hover': {
                       bgcolor: '#2563eb',
                       boxShadow: '0 6px 16px rgba(59, 130, 246, 0.5)',
                       transform: 'translateY(-2px)',
                     },
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    flex: { xs: '1 1 100%', sm: '0 0 auto' }
                   }}
                 >
                   Search Learners
@@ -241,18 +277,20 @@ export default function EmployerDashboard() {
                   startIcon={<Add />}
                   onClick={handlePostJob}
                   sx={{
-                    px: 4,
-                    py: 2,
+                    px: { xs: 3, sm: 4 },
+                    py: { xs: 1.5, sm: 2 },
                     borderRadius: 3,
                     fontWeight: 600,
                     borderColor: '#10b981',
                     color: '#10b981',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     '&:hover': {
                       borderColor: '#059669',
                       bgcolor: 'rgba(16, 185, 129, 0.05)',
                       transform: 'translateY(-2px)',
                     },
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    flex: { xs: '1 1 100%', sm: '0 0 auto' }
                   }}
                 >
                   Post New Job
@@ -262,16 +300,18 @@ export default function EmployerDashboard() {
                   size="large"
                   startIcon={<Analytics />}
                   sx={{
-                    px: 4,
-                    py: 2,
+                    px: { xs: 3, sm: 4 },
+                    py: { xs: 1.5, sm: 2 },
                     borderRadius: 3,
                     fontWeight: 600,
                     borderColor: '#10b981',
                     color: '#10b981',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     '&:hover': {
                       borderColor: '#059669',
                       bgcolor: 'rgba(16, 185, 129, 0.05)',
-                    }
+                    },
+                    flex: { xs: '1 1 100%', sm: '0 0 auto' }
                   }}
                 >
                   View Analytics
@@ -335,28 +375,42 @@ export default function EmployerDashboard() {
         </Box>
 
         {/* Sidebar */}
-        <Box sx={{ flex: '1 1 400px', minWidth: '350px' }}>
+        <Box sx={{ 
+          flex: { xs: '1 1 100%', lg: '1 1 400px' },
+          minWidth: { xs: '100%', lg: '350px' }
+        }}>
           {/* Top Skills in Demand */}
           <Card 
             elevation={0}
             sx={{ 
-              mb: 4,
+              mb: { xs: 3, sm: 4 },
               border: '1px solid #e2e8f0',
               borderRadius: 4,
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: '#0f172a' }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 700, 
+                mb: 3, 
+                color: '#0f172a',
+                fontSize: { xs: '1rem', sm: '1.125rem' }
+              }}>
                 Top Skills in Demand
               </Typography>
               {mockTopSkills.map((skillData, index) => (
                 <Box key={index} sx={{ mb: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       {skillData.skill}
                     </Typography>
-                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" color="success.main" sx={{ 
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    }}>
                       {skillData.growth}
                     </Typography>
                   </Box>
@@ -364,7 +418,7 @@ export default function EmployerDashboard() {
                     variant="determinate" 
                     value={skillData.demand} 
                     sx={{ 
-                      height: 8, 
+                      height: { xs: 6, sm: 8 }, 
                       borderRadius: 4,
                       bgcolor: '#f1f5f9',
                       '& .MuiLinearProgress-bar': {
@@ -373,7 +427,7 @@ export default function EmployerDashboard() {
                       }
                     }} 
                   />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                     {skillData.demand}% demand
                   </Typography>
                 </Box>
@@ -390,26 +444,38 @@ export default function EmployerDashboard() {
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}
           >
-            <CardContent sx={{ p: 4 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Notifications sx={{ color: '#f59e0b' }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                <Notifications sx={{ color: '#f59e0b', fontSize: { xs: 20, sm: 24 } }} />
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 700, 
+                  color: '#0f172a',
+                  fontSize: { xs: '1rem', sm: '1.125rem' }
+                }}>
                   Notifications
                 </Typography>
               </Box>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                <Typography variant="body2" sx={{ 
+                  fontWeight: 600, 
+                  mb: 1,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}>
                   New applications received
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                   5 new candidates applied for React Developer position
                 </Typography>
               </Box>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                <Typography variant="body2" sx={{ 
+                  fontWeight: 600, 
+                  mb: 1,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}>
                   Interview reminder
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                   Interview with Priya Sharma scheduled for tomorrow at 2 PM
                 </Typography>
               </Box>
@@ -419,7 +485,8 @@ export default function EmployerDashboard() {
                 sx={{ 
                   color: '#3b82f6',
                   fontWeight: 600,
-                  textTransform: 'none'
+                  textTransform: 'none',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
                 }}
               >
                 View all notifications
@@ -430,7 +497,7 @@ export default function EmployerDashboard() {
       </Box>
 
       {/* Jobs Management Section */}
-      <Box sx={{ mt: 6 }}>
+      <Box sx={{ mt: { xs: 4, sm: 5, md: 6 } }}>
         <Card 
           elevation={0}
           sx={{ 
@@ -441,9 +508,20 @@ export default function EmployerDashboard() {
         >
           <CardContent sx={{ p: 0 }}>
             {/* Tabs Header */}
-            <Box sx={{ borderBottom: '1px solid #e2e8f0', px: 4, pt: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a' }}>
+            <Box sx={{ borderBottom: '1px solid #e2e8f0', px: { xs: 2, sm: 3, md: 4 }, pt: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', 
+                alignItems: { xs: 'flex-start', sm: 'center' }, 
+                mb: 2,
+                gap: { xs: 2, sm: 0 }
+              }}>
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 700, 
+                  color: '#0f172a',
+                  fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                }}>
                   Job Management
                 </Typography>
                 <Button
@@ -453,8 +531,9 @@ export default function EmployerDashboard() {
                   sx={{
                     borderRadius: 3,
                     fontWeight: 600,
-                    px: 3,
-                    py: 1.5,
+                    px: { xs: 2, sm: 3 },
+                    py: { xs: 1, sm: 1.5 },
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                     '&:hover': {
@@ -483,34 +562,38 @@ export default function EmployerDashboard() {
                 <Tab 
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Work sx={{ fontSize: 18 }} />
-                      <span>Active Jobs ({jobs.filter(job => job.status === 'active').length})</span>
+                      <Work sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                      <span style={{ fontSize: window.innerWidth < 600 ? '0.75rem' : '0.95rem' }}>
+                        Active Jobs ({jobs.filter(job => job.status === 'active').length})
+                      </span>
                     </Box>
                   }
                   sx={{ 
                     fontWeight: 600,
                     textTransform: 'none',
-                    fontSize: '0.95rem'
+                    fontSize: { xs: '0.75rem', sm: '0.95rem' }
                   }}
                 />
                 <Tab 
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Analytics sx={{ fontSize: 18 }} />
-                      <span>All Jobs ({jobs.length})</span>
+                      <Analytics sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                      <span style={{ fontSize: window.innerWidth < 600 ? '0.75rem' : '0.95rem' }}>
+                        All Jobs ({jobs.length})
+                      </span>
                     </Box>
                   }
                   sx={{ 
                     fontWeight: 600,
                     textTransform: 'none',
-                    fontSize: '0.95rem'
+                    fontSize: { xs: '0.75rem', sm: '0.95rem' }
                   }}
                 />
               </Tabs>
             </Box>
 
             {/* Tab Content */}
-            <Box sx={{ p: 4 }}>
+            <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
               {tabValue === 0 && (
                 <JobListings
                   jobs={jobs.filter(job => job.status === 'active')}

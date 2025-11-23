@@ -45,50 +45,91 @@ import {
   Play,
   Lock,
   Layers,
-  BarChart3
+  BarChart3,
+  CrossIcon,
+  Crosshair
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import LoadingAnimation from '@/components/LoadingAnimation';
+import { Cancel } from '@mui/icons-material';
 
 const LandingPage = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    setVisible(true);
+    // Show loader for 2 seconds
+    const loadTimer = setTimeout(() => {
+      setLoading(false);
+      setVisible(true);
+    }, 2000);
     
     // Auto-rotate features
     const interval = setInterval(() => {
       setActiveFeature((prev) => (prev + 1) % 4);
     }, 3000);
     
-    return () => clearInterval(interval);
+    // Handle scroll for header transparency
+    const handleScroll = () => {
+      // console.log("scrolling");
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 50);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      clearTimeout(loadTimer);
+      clearInterval(interval);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
+
+  // Show loading animation
+  if (loading) {
+    return (
+      <Box sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0a0a0a',
+        filter: 'none !important'
+      }}>
+        <Box sx={{ maxWidth: '500px', width: '100%', padding: '20px' }}>
+          <LoadingAnimation />
+        </Box>
+      </Box>
+    );
+  }
 
   const features = [
     {
       icon: <Shield className="w-8 h-8" />,
       title: "Secure Credentials",
       description: "Blockchain-verified digital certificates with tamper-proof security",
-      color: "#8b5cf6"
+      color: "#0279F2"
     },
     {
       icon: <Award className="w-8 h-8" />,
       title: "NSQF Aligned",
       description: "All credentials mapped to National Skills Qualification Framework",
-      color: "#ec4899"
+      color: "#014B99"
     },
     {
       icon: <Users className="w-8 h-8" />,
       title: "Multi-Stakeholder",
-      description: "Connect learners, employers, and institutions seamlessly",
-      color: "#06b6d4"
+      description: "Connect learners, employers and institutions through a ecosystem",
+      color: "#0284c7"
     },
     {
       icon: <TrendingUp className="w-8 h-8" />,
       title: "AI-Powered Insights",
-      description: "Personalized learning recommendations and career pathways",
-      color: "#10b981"
+      description: "Personalized recommendations, career pathways for Learners",
+      color: "#0ea5e9"
     }
   ];
 
@@ -115,7 +156,7 @@ const LandingPage = () => {
     {
       step: "03",
       title: "AI Analysis",
-      description: "Machine learning algorithms map credentials to NSQF standards",
+      description: "ML algorithms maps leaner credentials to NSQF standards for employers",
       icon: <Brain className="w-6 h-6" />
     },
     {
@@ -130,23 +171,23 @@ const LandingPage = () => {
     {
       icon: <GraduationCap className="w-10 h-10" />,
       title: "Educational Institutions",
-      description: "Issue tamper-proof digital degrees, certificates, and transcripts",
+      description: "Issue tamper-proof digital degrees, certificates",
       benefits: ["Reduce administrative costs", "Prevent certificate fraud", "Enhance reputation"],
-      color: "#8b5cf6"
+      color: "#0279F2"
     },
     {
       icon: <Briefcase className="w-10 h-10" />,
       title: "Employers",
       description: "Instantly verify candidate credentials and skills",
       benefits: ["Faster hiring process", "Reduce verification costs", "Access skill analytics"],
-      color: "#ec4899"
+      color: "#014B99"
     },
     {
       icon: <Users className="w-10 h-10" />,
       title: "Learners",
       description: "Own and control your digital credential portfolio",
       benefits: ["Lifelong credential storage", "Share instantly", "Career recommendations"],
-      color: "#06b6d4"
+      color: "#0284c7"
     }
   ];
 
@@ -158,7 +199,7 @@ const LandingPage = () => {
       avatar: "PS",
       rating: 5,
       text: "Credify has revolutionized how we issue and manage digital credentials. The blockchain security gives our students and alumni complete confidence.",
-      color: "#8b5cf6"
+      color: "#0279F2"
     },
     {
       name: "Rajesh Kumar",
@@ -167,7 +208,7 @@ const LandingPage = () => {
       avatar: "RK",
       rating: 5,
       text: "We've reduced our credential verification time by 95%. The AI-powered skill matching has been a game-changer for our recruitment process.",
-      color: "#ec4899"
+      color: "#014B99"
     },
     {
       name: "Ananya Desai",
@@ -176,7 +217,7 @@ const LandingPage = () => {
       avatar: "AD",
       rating: 5,
       text: "Having all my credentials in one place with instant sharing capability made my job search so much easier. Employers love the verified badges!",
-      color: "#06b6d4"
+      color: "#0284c7"
     }
   ];
 
@@ -256,7 +297,8 @@ const LandingPage = () => {
       minHeight: '100vh',
       background: '#0a0a0a',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      filter: 'none !important'
     }}>
       {/* Animated Grid Background */}
       <Box sx={{
@@ -266,8 +308,8 @@ const LandingPage = () => {
         right: 0,
         bottom: 0,
         backgroundImage: `
-          linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px)
+          linear-gradient(rgba(2, 121, 242, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(2, 121, 242, 0.03) 1px, transparent 1px)
         `,
         backgroundSize: '50px 50px',
         animation: 'gridMove 20s linear infinite',
@@ -283,7 +325,7 @@ const LandingPage = () => {
         width: '600px',
         height: '600px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(2, 121, 242, 0.15) 0%, transparent 70%)',
         top: '-300px',
         left: '-300px',
         animation: 'float 15s ease-in-out infinite',
@@ -300,7 +342,7 @@ const LandingPage = () => {
         width: '500px',
         height: '500px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(236, 72, 153, 0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(1, 75, 153, 0.15) 0%, transparent 70%)',
         bottom: '-250px',
         right: '-250px',
         animation: 'float 20s ease-in-out infinite reverse',
@@ -312,7 +354,7 @@ const LandingPage = () => {
         width: '400px',
         height: '400px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(2, 132, 199, 0.1) 0%, transparent 70%)',
         top: '50%',
         right: '10%',
         animation: 'float 18s ease-in-out infinite',
@@ -328,7 +370,7 @@ const LandingPage = () => {
             width: Math.random() * 4 + 2 + 'px',
             height: Math.random() * 4 + 2 + 'px',
             borderRadius: '50%',
-            background: `rgba(139, 92, 246, ${Math.random() * 0.5 + 0.2})`,
+            background: `rgba(2, 121, 242, ${Math.random() * 0.5 + 0.2})`,
             left: Math.random() * 100 + '%',
             top: Math.random() * 100 + '%',
             animation: `particle${i % 3} ${Math.random() * 10 + 10}s linear infinite`,
@@ -350,152 +392,196 @@ const LandingPage = () => {
 
       {/* Header */}
       <Box sx={{ 
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
+        left: 0,
+        right: 0,
         zIndex: 100,
-        py: 3,
-        px: 4,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.1)',
-        background: 'rgba(10, 10, 10, 0.8)'
+        width: '100%',
+        transition: 'all 0.3s ease-in-out',
+        ...(isScrolled ? {
+          mt: { xs: 1.5, md: 2 },
+          ml: { xs: 2, sm: 3, md: 6 },
+          mr: { xs: 2, sm: 3, md: 6 },
+          mx: 'auto',
+          maxWidth: { xs: '95%', sm: '92%', md: '90%' },
+          borderRadius: '50px',
+          background: 'rgba(10, 10, 10, 0.9)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 8px 32px rgba(2, 121, 242, 0.3)',
+          border: '1px solid rgba(2, 121, 242, 0.3)'
+        } : {
+          background: 'rgba(10, 10, 10, 0.8)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 2px 8px rgba(2, 121, 242, 0.1)',
+          borderBottom: '1px solid rgba(2, 121, 242, 0.1)'
+        })
       }}>
-        <Fade in={visible} timeout={1000}>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 2,
-            cursor: 'pointer',
-            transition: 'transform 0.3s ease',
-            '&:hover': {
-              transform: 'translateY(-2px)'
-            }
+        {/* Header Content Container */}
+        <Box sx={{
+          maxWidth: '1400px',
+          mx: 'auto',
+          px: { xs: 2, sm: 3, md: 4 },
+          py: isScrolled ? { xs: 1.5, md: 2 } : { xs: 2, md: 3 },
+          transition: 'all 0.3s ease-in-out'
+        }}>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
+            {/* Logo Section */}
+            <Fade in={visible} timeout={500}>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5
+              }}>
+                <svg 
+                  width={isScrolled ? "100" : "125"} 
+                  height={isScrolled ? "32" : "40"} 
+                  viewBox="0 0 388 106" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ transition: 'all 0.3s ease-in-out' }}
+                >
+                  <path fillRule="evenodd" clipRule="evenodd" d="M87.3006 25.5C87.3671 25.2868 87.4336 25.0743 87.5 24.8623C88.6384 20.8014 88.3406 18.7631 85 15.8623L66 1.8623C61.0271 -1.00737 58.8635 -0.600929 56 3.3623L43.5 24.8623H6C2.68629 24.8623 0 27.5486 0 30.8623V99.8623C0 103.176 2.68629 105.862 6 105.862H57C61.4057 99.4154 56.1561 95.8321 45.3873 88.4814C39.7427 84.6284 32.5817 79.7403 24.5 72.8623C24.5 72.8623 23.8567 72.2839 23.5 71.8623C20.7252 68.5829 21.0542 65.2012 23.5 60.8623L43.1457 25.5H87.3006ZM58.9336 105.862H58.5C58.6427 105.883 58.7872 105.882 58.9336 105.862Z" fill="#0279F2"/>
+                  <path d="M87.5 24.8623C87.4336 25.0743 87.3671 25.2868 87.3006 25.5C84.6983 33.8392 82.0368 43.0725 79.3996 52.2216C71.6681 79.0444 64.1453 105.143 58.9336 105.862H102C105.314 105.862 108 103.176 108 99.8623V30.8623C108 27.5486 105.314 24.8623 102 24.8623H87.5Z" fill="#014B99"/>
+                  <path d="M165.29 58.2866H150.326C149.638 53.2986 147.058 51.7506 143.962 51.7506C138.974 51.7506 136.308 56.2226 136.308 64.5646C136.308 72.8206 139.06 77.2926 144.392 77.2926C147.574 77.2926 149.81 75.4006 150.67 71.7026H165.548C163.57 83.3986 155.056 89.3326 144.048 89.3326C129.858 89.3326 121 79.7866 121 64.5646C121 48.7406 130.116 39.7106 143.962 39.7106C154.884 39.7106 163.656 45.8166 165.29 58.2866Z" fill="#014B99"/>
+                  <path d="M167.911 87.7846V41.2586H182.789V47.6226C185.627 42.1186 190.013 39.7106 194.485 39.7106C196.463 39.7106 198.269 40.2266 199.129 41.2586V53.8146C197.495 53.4706 195.947 53.2986 193.797 53.2986C186.315 53.2986 182.789 57.4266 182.789 64.3926V87.7846H167.911Z" fill="#014B99"/>
+                  <path d="M244.638 72.4766C242.23 83.1406 233.372 89.3326 221.59 89.3326C206.97 89.3326 197.768 79.8726 197.768 64.5646C197.768 48.7406 207.056 39.7106 221.074 39.7106C235.35 39.7106 244.294 49.0846 244.294 64.3926V67.6606H213.162C213.85 74.1106 216.774 77.5506 221.59 77.5506C225.374 77.5506 227.696 76.0026 228.986 72.4766H244.638ZM221.074 51.4926C216.946 51.4926 214.366 54.2446 213.42 59.4906H228.814C227.868 54.2446 225.202 51.4926 221.074 51.4926Z" fill="#014B99"/>
+                  <path d="M264.575 89.3326C252.707 89.3326 245.139 79.8726 245.139 64.5646C245.139 48.7406 252.879 39.7106 264.575 39.7106C269.305 39.7106 273.089 41.6886 275.841 45.5586V25.8646H290.719V87.7846H275.841V83.2266C273.089 87.1826 269.219 89.3326 264.575 89.3326ZM268.101 77.2926C273.175 77.2926 275.841 72.8206 275.841 64.5646C275.841 56.2226 273.175 51.7506 268.101 51.7506C263.113 51.7506 260.447 56.2226 260.447 64.5646C260.447 72.8206 263.113 77.2926 268.101 77.2926Z" fill="#014B99"/>
+                  <path d="M310.951 52.6106V41.2586H316.369C316.455 30.1646 321.873 24.3166 330.989 24.3166C334.859 24.3166 337.611 25.0906 338.987 25.7786V34.9806H337.955C332.451 34.9806 331.247 37.3886 331.247 41.2586H338.987V52.6106H331.247V87.7846H316.369V52.6106H310.951Z" fill="#014B99"/>
+                  <path d="M352 63C352 63 348.681 55 341.181 41.2583H350.234C353.363 41.3138 355 41 357.5 46.5L358.5 48.5C366.201 28.6023 372.39 22.1827 386 23L387.5 23.5C361 62 366 89.5 341 88L351.5 67C352.337 65.1285 352.957 64.6244 352 63Z" fill="#014B99"/>
+                  <path d="M293.622 87.7843V41.2583H308.5V87.7843H293.622Z" fill="#014B99"/>
+                  <circle cx="301" cy="28" r="8" fill="#0279F2"/>
+                </svg>
+              </Box>
+            </Fade>
+
+            {/* Right Section */}
             <Box sx={{
-              width: 50,
-              height: 50,
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-              borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '1.5rem',
-              boxShadow: '0 8px 32px rgba(139, 92, 246, 0.3)',
-              position: 'relative',
-              overflow: 'hidden',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: '-100%',
-                width: '100%',
-                height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                animation: 'shimmer 3s infinite'
-              },
-              '@keyframes shimmer': {
-                '0%': { left: '-100%' },
-                '100%': { left: '100%' }
-              }
+              gap: { xs: 1.5, sm: 2, md: 4 }
             }}>
-              C
-            </Box>
-            <Typography variant="h5" sx={{ 
-              fontWeight: 800, 
-              background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '1px'
-            }}>
-              Credify
-            </Typography>
-          </Box>
-        </Fade>
+              {/* Navigation Menu - Desktop Only */}
+              <Fade in={visible} timeout={500} style={{ transitionDelay: '0.2s' }}>
+                <Box sx={{
+                  display: { xs: 'none', lg: 'flex' },
+                  alignItems: 'center',
+                  gap: { lg: 3, xl: 4 }
+                }}>
+                  {['Features', 'How It Works', 'Use Cases'].map((item, index) => (
+                    <Typography
+                      key={item}
+                      onClick={() => {
+                        const sectionId = item.toLowerCase().replace(/\s+/g, '-');
+                        const element = document.getElementById(sectionId);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      sx={{
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: isScrolled ? '0.875rem' : '1rem',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        whiteSpace: 'nowrap',
+                        '&:hover': {
+                          color: '#0279F2',
+                          transform: 'translateY(-1px)'
+                        },
+                        '&::after': {
+                          content: '""',
+                          position: 'absolute',
+                          bottom: -4,
+                          left: 0,
+                          width: 0,
+                          height: '2px',
+                          background: '#0279F2',
+                          transition: 'width 0.3s ease'
+                        },
+                        '&:hover::after': {
+                          width: '100%'
+                        }
+                      }}
+                    >
+                      {item}
+                    </Typography>
+                  ))}
+                </Box>
+              </Fade>
 
-        <Fade in={visible} timeout={1200}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={() => router.push('/auth/login')}
-              sx={{
-                color: 'rgba(255,255,255,0.9)',
-                borderColor: 'rgba(139, 92, 246, 0.3)',
-                borderWidth: '2px',
-                px: 3,
-                py: 1,
-                fontWeight: 600,
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: '-100%',
-                  width: '100%',
-                  height: '100%',
-                  background: 'linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent)',
-                  transition: 'left 0.5s ease'
-                },
-                '&:hover': {
-                  borderColor: '#8b5cf6',
-                  backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                  transform: 'translateY(-2px)',
-                  '&::before': {
-                    left: '100%'
-                  }
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Sign In
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => router.push('/auth/register')}
-              sx={{
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                color: 'white',
-                px: 3,
-                py: 1,
-                fontWeight: 600,
-                position: 'relative',
-                overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(139, 92, 246, 0.4)',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  width: '0',
-                  height: '0',
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.2)',
-                  transform: 'translate(-50%, -50%)',
-                  transition: 'width 0.6s ease, height 0.6s ease'
-                },
-                '&:hover': {
-                  transform: 'translateY(-2px) scale(1.05)',
-                  boxShadow: '0 8px 30px rgba(139, 92, 246, 0.6)',
-                  '&::before': {
-                    width: '300px',
-                    height: '300px'
-                  }
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              Get Started
-            </Button>
+              {/* Auth Buttons */}
+              <Fade in={visible} timeout={500} style={{ transitionDelay: '0.4s' }}>
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: { xs: 1, sm: 1.5, md: 2 }
+                }}>
+                  {/* Sign In Button - Hidden on mobile when scrolled */}
+                  <Button
+                    variant="outlined"
+                    onClick={() => router.push('/auth/login')}
+                    sx={{
+                      display: { xs: isScrolled ? 'none' : 'inline-flex', sm: 'inline-flex' },
+                      color: 'rgba(255,255,255,0.9)',
+                      borderColor: 'rgba(2, 121, 242, 0.3)',
+                      borderWidth: '1px',
+                      px: isScrolled ? { xs: 1.5, sm: 2, md: 3 } : { xs: 2, sm: 3, md: 4 },
+                      py: isScrolled ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 },
+                      fontWeight: 600,
+                      fontSize: isScrolled ? { xs: '0.75rem', md: '0.875rem' } : { xs: '0.875rem', md: '1rem' },
+                      borderRadius: '50px',
+                      minWidth: 'auto',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        borderColor: '#0279F2',
+                        backgroundColor: 'rgba(2, 121, 242, 0.1)',
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 4px 12px rgba(2, 121, 242, 0.3)'
+                      }
+                    }}
+                  >
+                    Sign In
+                  </Button>
+                  {/* Get Started Button */}
+                  <Button
+                    variant="contained"
+                    onClick={() => router.push('/auth/register')}
+                    sx={{
+                      background: 'linear-gradient(135deg, #0279F2 0%, #014B99 100%)',
+                      color: 'white',
+                      px: isScrolled ? { xs: 1.5, sm: 2, md: 3 } : { xs: 2, sm: 3, md: 4 },
+                      py: isScrolled ? { xs: 0.75, md: 1 } : { xs: 1, md: 1.5 },
+                      fontWeight: 600,
+                      fontSize: isScrolled ? { xs: '0.75rem', md: '0.875rem' } : { xs: '0.875rem', md: '1rem' },
+                      borderRadius: '50px',
+                      minWidth: 'auto',
+                      boxShadow: '0 4px 20px rgba(2, 121, 242, 0.4)',
+                      transition: 'all 0.3s ease',
+                      whiteSpace: 'nowrap',
+                      '&:hover': {
+                        transform: 'translateY(-1px) scale(1.05)',
+                        boxShadow: '0 8px 30px rgba(2, 121, 242, 0.6)',
+                        background: 'linear-gradient(135deg, #014B99 0%, #0279F2 100%)'
+                      }
+                    }}
+                  >
+                    Get Started
+                  </Button>
+                </Box>
+              </Fade>
+            </Box>
           </Box>
-        </Fade>
+        </Box>
       </Box>
 
       {/* Hero Section - IMPROVED WITH BETTER SPACE UTILIZATION */}
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 10, py: { xs: 8, md: 10 } }}>
+      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 10, pt: { xs: 12, md: 14 }, pb: { xs: 8, md: 10 }, mt: 10 }}>
         <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
           {/* Left Content - 50% */}
           <Grid item xs={12} md={6} {...({} as any)}>
@@ -509,18 +595,18 @@ const LandingPage = () => {
                     px: 2,
                     py: 1,
                     borderRadius: '50px',
-                    background: 'rgba(139, 92, 246, 0.1)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    background: 'rgba(2, 121, 242, 0.1)',
+                    border: '1px solid rgba(2, 121, 242, 0.3)',
                     mb: 3,
                     animation: 'pulse 2s ease-in-out infinite',
                     '@keyframes pulse': {
-                      '0%, 100%': { boxShadow: '0 0 0 0 rgba(139, 92, 246, 0.4)' },
-                      '50%': { boxShadow: '0 0 0 8px rgba(139, 92, 246, 0)' }
+                      '0%, 100%': { boxShadow: '0 0 0 0 rgba(2, 121, 242, 0.4)' },
+                      '50%': { boxShadow: '0 0 0 8px rgba(2, 121, 242, 0)' }
                     }
                   }}>
-                    <Sparkles size={16} color="#8b5cf6" />
+                    <Sparkles size={16} color="#0279F2" />
                     <Typography sx={{ 
-                      color: '#8b5cf6',
+                      color: '#0279F2',
                       fontSize: '0.9rem',
                       fontWeight: 600
                     }}>
@@ -539,7 +625,7 @@ const LandingPage = () => {
                     lineHeight: 1.1,
                     letterSpacing: '-0.02em',
                     '& span': {
-                      background: 'linear-gradient(135deg, #8b5cf6, #ec4899, #06b6d4)',
+                      background: 'linear-gradient(135deg, #0279F2, #014B99, #0ea5e9)',
                       backgroundSize: '200% 200%',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
@@ -578,7 +664,7 @@ const LandingPage = () => {
                     endIcon={<ArrowRight />}
                     onClick={() => router.push('/auth/register')}
                     sx={{
-                      background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                      background: 'linear-gradient(135deg, #0279F2 0%, #014B99 100%)',
                       px: { xs: 3, sm: 4 },
                       py: { xs: 1.5, sm: 1.8 },
                       fontSize: { xs: '0.95rem', sm: '1.05rem' },
@@ -586,7 +672,7 @@ const LandingPage = () => {
                       borderRadius: '50px',
                       position: 'relative',
                       overflow: 'hidden',
-                      boxShadow: '0 8px 32px rgba(139, 92, 246, 0.4)',
+                      boxShadow: '0 8px 32px rgba(2, 121, 242, 0.4)',
                       '&::before': {
                         content: '""',
                         position: 'absolute',
@@ -594,7 +680,7 @@ const LandingPage = () => {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                        background: 'linear-gradient(135deg, #014B99 0%, #0279F2 100%)',
                         opacity: 0,
                         transition: 'opacity 0.3s ease'
                       },
@@ -603,7 +689,7 @@ const LandingPage = () => {
                       },
                       '&:hover': {
                         transform: 'translateY(-3px) scale(1.02)',
-                        boxShadow: '0 12px 48px rgba(139, 92, 246, 0.6)',
+                        boxShadow: '0 12px 48px rgba(2, 121, 242, 0.6)',
                         '&::before': {
                           opacity: 1
                         },
@@ -623,14 +709,14 @@ const LandingPage = () => {
                     startIcon={<Play />}
                     sx={{
                       color: 'rgba(255,255,255,0.9)',
-                      borderColor: 'rgba(139, 92, 246, 0.4)',
+                      borderColor: 'rgba(2, 121, 242, 0.4)',
                       borderWidth: '2px',
                       px: { xs: 3, sm: 4 },
                       py: { xs: 1.5, sm: 1.8 },
                       fontSize: { xs: '0.95rem', sm: '1.05rem' },
                       fontWeight: 700,
                       borderRadius: '50px',
-                      background: 'rgba(139, 92, 246, 0.05)',
+                      background: 'rgba(2, 121, 242, 0.05)',
                       backdropFilter: 'blur(10px)',
                       position: 'relative',
                       overflow: 'hidden',
@@ -642,13 +728,13 @@ const LandingPage = () => {
                         width: '0',
                         height: '0',
                         borderRadius: '50%',
-                        background: 'rgba(139, 92, 246, 0.2)',
+                        background: 'rgba(2, 121, 242, 0.2)',
                         transform: 'translate(-50%, -50%)',
                         transition: 'width 0.6s ease, height 0.6s ease'
                       },
                       '&:hover': {
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                        borderColor: '#0279F2',
+                        backgroundColor: 'rgba(2, 121, 242, 0.15)',
                         transform: 'translateY(-3px)',
                         '&::before': {
                           width: '400px',
@@ -663,13 +749,13 @@ const LandingPage = () => {
                 </Box>
 
                 {/* Stats Grid - Improved */}
-                <Grid container spacing={2} sx={{ mt: 2 }}>
+                {/* <Grid container spacing={2} sx={{ mt: 2 }}>
                   {stats.map((stat, index) => (
                     <Grid item xs={6} sm={6} md={3} key={index} {...({} as any)}>
                       <Box sx={{
                         background: 'rgba(17, 17, 17, 0.4)',
                         backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(139, 92, 246, 0.2)',
+                        border: '1px solid rgba(2, 121, 242, 0.2)',
                         borderRadius: '16px',
                         p: 2.5,
                         textAlign: 'center',
@@ -683,8 +769,8 @@ const LandingPage = () => {
                         animation: `fadeInUp 0.6s ease ${index * 0.1}s both`,
                         '&:hover': {
                           transform: 'translateY(-5px)',
-                          borderColor: '#8b5cf6',
-                          boxShadow: '0 10px 30px rgba(139, 92, 246, 0.3)'
+                          borderColor: '#0279F2',
+                          boxShadow: '0 10px 30px rgba(2, 121, 242, 0.3)'
                         },
                         '@keyframes fadeInUp': {
                           from: {
@@ -698,7 +784,7 @@ const LandingPage = () => {
                         }
                       }}>
                         <Box sx={{ 
-                          color: '#8b5cf6',
+                          color: '#0279F2',
                           mb: 1.5,
                           display: 'flex',
                           justifyContent: 'center'
@@ -708,7 +794,7 @@ const LandingPage = () => {
                         <Typography sx={{
                           fontSize: { xs: '1.4rem', sm: '1.6rem' },
                           fontWeight: 800,
-                          background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                          background: 'linear-gradient(135deg, #0279F2, #014B99)',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           mb: 0.5
@@ -725,144 +811,23 @@ const LandingPage = () => {
                       </Box>
                     </Grid>
                   ))}
-                </Grid>
+                </Grid> */}
               </Box>
             </Slide>
           </Grid>
 
-          {/* Right Content - 50% - IMPROVED VISUAL */}
-          <Grid item xs={12} md={6} {...({} as any)}>
-            <Zoom in={visible} timeout={1200}>
-              <Box sx={{ 
-                position: 'relative',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-                mt: { xs: 4, md: 0 }
-              }}>
-                {/* Main Credential Card */}
-                <Box sx={{
-                  width: '100%',
-                  maxWidth: { xs: '50%', sm: 450, md: 500 },
-                  position: 'relative'
-                }}>
-                  {/* Animated Feature Cards */}
-                  <Box sx={{ position: 'relative', height: { xs: 400, sm: 450 } }}>
-                    {features.map((feature, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          position: 'absolute',
-                          width: '100%',
-                          left: '5%',
-                          top: '50%',
-                          transform: `translateY(-50%) translateX(${(index - activeFeature) * 100}%)`,
-                          opacity: index === activeFeature ? 1 : 0.3,
-                          transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                          pointerEvents: index === activeFeature ? 'auto' : 'none'
-                        }}
-                      >
-                        <Box sx={{
-                          background: `linear-gradient(135deg, 
-                            rgba(139, 92, 246, ${index === activeFeature ? 0.2 : 0.1}),
-                            rgba(236, 72, 153, ${index === activeFeature ? 0.15 : 0.05})
-                          )`,
-                          backdropFilter: 'blur(20px)',
-                          border: `2px solid ${index === activeFeature ? feature.color : 'rgba(139, 92, 246, 0.2)'}`,
-                          borderRadius: { xs: '24px', sm: '32px' },
-                          p: { xs: 3, sm: 4, md: 5 },
-                          textAlign: 'center',
-                          transition: 'all 0.5s ease',
-                          boxShadow: index === activeFeature ? `0 30px 60px ${feature.color}40` : 'none',
-                          transform: index === activeFeature ? 'scale(1)' : 'scale(0.95)'
-                        }}>
-                          {/* Icon */}
-                          <Box sx={{
-                            width: { xs: 80, sm: 90, md: 100 },
-                            height: { xs: 80, sm: 90, md: 100 },
-                            margin: { xs: '0 auto 2rem', md: '0 auto 3rem' },
-                            borderRadius: { xs: '20px', sm: '24px' },
-                            background: `${feature.color}15`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: feature.color,
-                            transform: index === activeFeature ? 'scale(1) rotate(0deg)' : 'scale(0.8)',
-                            transition: 'all 0.5s ease',
-                            boxShadow: index === activeFeature ? `0 20px 40px ${feature.color}30` : 'none'
-                          }}>
-                            {React.cloneElement(feature.icon, { 
-                              className: 'w-12 h-12',
-                              style: { 
-                                filter: index === activeFeature ? `drop-shadow(0 0 10px ${feature.color})` : 'none'
-                              }
-                            })}
-                          </Box>
-
-                          {/* Content */}
-                          <Typography sx={{
-                            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                            fontWeight: 400,
-                            color: 'rgba(255,255,255,0.95)',
-                            mb: 2
-                          }}>
-                            {feature.title}
-                          </Typography>
-
-                          <Typography sx={{
-                            fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
-                            color: 'rgba(255,255,255,0.7)',
-                            lineHeight: 1.7
-                          }}>
-                            {feature.description}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-
-                  {/* Feature Indicators */}
-                  <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: 2,
-                    mt: 3
-                  }}>
-                    {features.map((feature, index) => (
-                      <Box
-                        key={index}
-                        onClick={() => setActiveFeature(index)}
-                        sx={{
-                          width: index === activeFeature ? 40 : 12,
-                          height: 12,
-                          borderRadius: '6px',
-                          background: index === activeFeature ? feature.color : 'rgba(139, 92, 246, 0.3)',
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            background: feature.color,
-                            transform: 'scale(1.1)'
-                          }
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              </Box>
-            </Zoom>
-          </Grid>
+          
         </Grid>
       </Container>
 
       {/* Features Section */}
-      <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 }, position: 'relative', zIndex: 10 }}>
+      <Container id="features" maxWidth="lg" sx={{ py: { xs: 8, md: 12 }, position: 'relative', zIndex: 10 }}>
         <Fade in={visible} timeout={1500}>
           <Box sx={{ textAlign: 'center', mb: 8 }}>
             <Typography sx={{
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#8b5cf6',
+              color: '#0279F2',
               mb: 2,
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -904,7 +869,7 @@ const LandingPage = () => {
                   height: '100%',
                   background: 'rgba(17, 17, 17, 0.6)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  border: '1px solid rgba(2, 121, 242, 0.2)',
                   borderRadius: '24px',
                   transition: 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   position: 'relative',
@@ -921,36 +886,17 @@ const LandingPage = () => {
                     opacity: 0,
                     transition: 'opacity 0.5s ease'
                   },
-                  '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    top: '-50%',
-                    left: '-50%',
-                    width: '200%',
-                    height: '200%',
-                    background: `conic-gradient(from 0deg, transparent, ${feature.color}40, transparent 60deg)`,
-                    opacity: 0,
-                    transition: 'opacity 0.5s ease, transform 0.5s ease'
-                  },
                   '&:hover': {
-                    transform: 'translateY(-15px) scale(1.02)',
-                    boxShadow: `0 30px 60px ${feature.color}40`,
+                    transform: 'translateY(-10px)',
+                    boxShadow: `0 20px 40px ${feature.color}30`,
                     borderColor: feature.color,
                     '&::before': {
                       opacity: 1
                     },
-                    '&::after': {
-                      opacity: 1,
-                      animation: 'rotate 4s linear infinite'
-                    },
                     '& .feature-icon': {
-                      transform: 'scale(1.2) rotate(5deg)',
-                      filter: `drop-shadow(0 10px 20px ${feature.color})`
+                      transform: 'scale(1.15)',
+                      filter: `drop-shadow(0 5px 15px ${feature.color})`
                     }
-                  },
-                  '@keyframes rotate': {
-                    '0%': { transform: 'rotate(0deg)' },
-                    '100%': { transform: 'rotate(360deg)' }
                   }
                 }}>
                   <CardContent sx={{ p: { xs: 3, sm: 3.5, md: 4 }, textAlign: 'center', position: 'relative', zIndex: 1 }}>
@@ -995,13 +941,13 @@ const LandingPage = () => {
       </Container>
 
       {/* How It Works Section */}
-      <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 }, position: 'relative', zIndex: 10 }}>
+      <Container id="how-it-works" maxWidth="lg" sx={{ py: { xs: 8, md: 12 }, position: 'relative', zIndex: 10 }}>
         <Fade in={visible} timeout={1500}>
           <Box sx={{ textAlign: 'center', mb: 8 }}>
             <Typography sx={{
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#ec4899',
+              color: '#014B99',
               mb: 2,
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -1040,7 +986,7 @@ const LandingPage = () => {
             left: '12%',
             right: '12%',
             height: '2px',
-            background: 'linear-gradient(90deg, #8b5cf6, #ec4899, #06b6d4, #10b981)',
+            background: 'linear-gradient(90deg, #0279F2, #014B99, #0284c7, #0ea5e9)',
             transform: 'translateY(-50%)',
             '&::before': {
               content: '""',
@@ -1074,7 +1020,7 @@ const LandingPage = () => {
                       borderRadius: '50%',
                       background: 'rgba(17, 17, 17, 0.8)',
                       border: '2px solid',
-                      borderColor: index === 0 ? '#8b5cf6' : index === 1 ? '#ec4899' : index === 2 ? '#06b6d4' : '#10b981',
+                      borderColor: index === 0 ? '#0279F2' : index === 1 ? '#014B99' : index === 2 ? '#0284c7' : '#0ea5e9',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1086,13 +1032,13 @@ const LandingPage = () => {
                         position: 'absolute',
                         inset: -10,
                         borderRadius: '50%',
-                        background: `conic-gradient(from 0deg, ${index === 0 ? '#8b5cf6' : index === 1 ? '#ec4899' : index === 2 ? '#06b6d4' : '#10b981'}, transparent)`,
+                        background: `conic-gradient(from 0deg, ${index === 0 ? '#0279F2' : index === 1 ? '#014B99' : index === 2 ? '#0284c7' : '#0ea5e9'}, transparent)`,
                         opacity: 0,
                         transition: 'opacity 0.3s ease'
                       },
                       '&:hover': {
                         transform: 'scale(1.1) translateY(-10px)',
-                        boxShadow: `0 20px 40px ${index === 0 ? '#8b5cf6' : index === 1 ? '#ec4899' : index === 2 ? '#06b6d4' : '#10b981'}40`,
+                        boxShadow: `0 20px 40px ${index === 0 ? '#0279F2' : index === 1 ? '#014B99' : index === 2 ? '#0284c7' : '#0ea5e9'}40`,
                         '&::before': {
                           opacity: 1,
                           animation: 'rotate 2s linear infinite'
@@ -1100,7 +1046,7 @@ const LandingPage = () => {
                       }
                     }}>
                       <Box sx={{ 
-                        color: index === 0 ? '#8b5cf6' : index === 1 ? '#ec4899' : index === 2 ? '#06b6d4' : '#10b981',
+                        color: index === 0 ? '#0279F2' : index === 1 ? '#014B99' : index === 2 ? '#0284c7' : '#0ea5e9',
                         position: 'relative',
                         zIndex: 1
                       }}>
@@ -1112,7 +1058,7 @@ const LandingPage = () => {
                     <Typography sx={{
                       fontSize: '0.9rem',
                       fontWeight: 800,
-                      color: index === 0 ? '#8b5cf6' : index === 1 ? '#ec4899' : index === 2 ? '#06b6d4' : '#10b981',
+                      color: index === 0 ? '#0279F2' : index === 1 ? '#014B99' : index === 2 ? '#0284c7' : '#0ea5e9',
                       mb: 1,
                       letterSpacing: '2px'
                     }}>
@@ -1232,7 +1178,7 @@ const LandingPage = () => {
             height: '100%',
             background: 'rgba(17, 17, 17, 0.6)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
+            border: '1px solid rgba(2, 121, 242, 0.2)',
             borderRadius: { xs: '16px', sm: '18px', md: '20px' },
             p: { xs: 2.5, sm: 3 },
             transition: 'all 0.3s ease',
@@ -1334,7 +1280,7 @@ const LandingPage = () => {
       p: 3,
       background: 'rgba(17, 17, 17, 0.4)',
       backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(139, 92, 246, 0.2)',
+      border: '1px solid rgba(2, 121, 242, 0.2)',
       borderRadius: '16px',
       display: 'inline-flex',
       alignItems: 'center',
@@ -1362,13 +1308,13 @@ const LandingPage = () => {
 
 
       {/* Use Cases Section - ALL IN ONE ROW */}
-      <Container maxWidth="xl" sx={{ py: { xs: 8, md: 12 }, position: 'relative', zIndex: 10 }}>
+      <Container id="use-cases" maxWidth="xl" sx={{ py: { xs: 8, md: 12 }, position: 'relative', zIndex: 10 }}>
         <Fade in={visible} timeout={1500}>
           <Box sx={{ textAlign: 'center', mb: 8 }}>
             <Typography sx={{
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#06b6d4',
+              color: '#0284c7',
               mb: 2,
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -1398,7 +1344,7 @@ const LandingPage = () => {
           </Box>
         </Fade>
 
-        <Grid container spacing={4}>
+        <Grid container spacing={6} ml={4}>
           {useCases.map((useCase, index) => (
             <Grid item xs={12} md={4} key={index} {...({} as any)}>
               <Zoom in={visible} timeout={1500 + index * 200}>
@@ -1406,7 +1352,7 @@ const LandingPage = () => {
                   height: '100%',
                   background: 'rgba(17, 17, 17, 0.6)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  border: '1px solid rgba(2, 121, 242, 0.2)',
                   borderRadius: { xs: '20px', sm: '24px' },
                   p: { xs: 3, sm: 3.5, md: 4 },
                   transition: 'all 0.4s ease',
@@ -1680,7 +1626,7 @@ const LandingPage = () => {
             <Typography sx={{
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#8b5cf6',
+              color: '#0279F2',
               mb: 2,
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -1725,7 +1671,7 @@ const LandingPage = () => {
                 borderRadius: { xs: '16px', sm: '18px', md: '20px' },
                 background: 'rgba(17, 17, 17, 0.6)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(139, 92, 246, 0.2)',
+                border: '1px solid rgba(2, 121, 242, 0.2)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -1735,16 +1681,16 @@ const LandingPage = () => {
                 cursor: 'pointer',
                 '&:hover': {
                   transform: 'translateY(-10px) scale(1.05)',
-                  borderColor: '#8b5cf6',
-                  boxShadow: '0 15px 40px rgba(139, 92, 246, 0.3)',
-                  background: 'rgba(139, 92, 246, 0.1)'
+                  borderColor: '#0279F2',
+                  boxShadow: '0 15px 40px rgba(2, 121, 242, 0.3)',
+                  background: 'rgba(2, 121, 242, 0.1)'
                 }
               }}>
                 <Box sx={{
                   width: 50,
                   height: 50,
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                  background: 'linear-gradient(135deg, #0279F2, #014B99)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1774,7 +1720,7 @@ const LandingPage = () => {
             <Typography sx={{
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#ec4899',
+              color: '#014B99',
               mb: 2,
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -1800,7 +1746,7 @@ const LandingPage = () => {
           <Box sx={{
             background: 'rgba(17, 17, 17, 0.6)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
+            border: '1px solid rgba(2, 121, 242, 0.2)',
             borderRadius: '24px',
             overflow: 'hidden'
           }}>
@@ -1808,14 +1754,14 @@ const LandingPage = () => {
             <Box sx={{
               display: 'grid',
               gridTemplateColumns: '2fr 1fr 1fr',
-              background: 'rgba(139, 92, 246, 0.1)',
-              borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+              background: 'rgba(2, 121, 242, 0.1)',
+              borderBottom: '1px solid rgba(2, 121, 242, 0.2)',
               p: 3
             }}>
               <Typography sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.95)' }}>
                 Feature
               </Typography>
-              <Typography sx={{ fontWeight: 700, color: '#8b5cf6', textAlign: 'center' }}>
+              <Typography sx={{ fontWeight: 700, color: '#0279F2', textAlign: 'center' }}>
                 Credify
               </Typography>
               <Typography sx={{ fontWeight: 700, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
@@ -1831,10 +1777,10 @@ const LandingPage = () => {
                   display: 'grid',
                   gridTemplateColumns: '2fr 1fr 1fr',
                   p: 3,
-                  borderBottom: index < comparisonData.length - 1 ? '1px solid rgba(139, 92, 246, 0.1)' : 'none',
+                  borderBottom: index < comparisonData.length - 1 ? '1px solid rgba(2, 121, 242, 0.1)' : 'none',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    background: 'rgba(139, 92, 246, 0.05)'
+                    background: 'rgba(2, 121, 242, 0.05)'
                   }
                 }}
               >
@@ -1845,14 +1791,24 @@ const LandingPage = () => {
                   {row.credify ? (
                     <CheckCircle size={24} color="#10b981" />
                   ) : (
-                    <Box sx={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />
+                    <Cancel
+                      sx={{ 
+                        fontSize: 24,
+                        color: 'rgba(239, 68, 68, 0.6)'
+                      }}
+                    />
                   )}
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                   {row.traditional ? (
                     <CheckCircle size={24} color="#10b981" />
                   ) : (
-                    <Box sx={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />
+                    <Cancel
+                      sx={{ 
+                        fontSize: 24,
+                        color: 'rgba(239, 68, 68, 0.8)'
+                      }}
+                    />
                   )}
                 </Box>
               </Box>
@@ -1868,7 +1824,7 @@ const LandingPage = () => {
             <Typography sx={{
               fontSize: '0.9rem',
               fontWeight: 700,
-              color: '#06b6d4',
+              color: '#0ea5e9',
               mb: 2,
               letterSpacing: '2px',
               textTransform: 'uppercase'
@@ -1905,17 +1861,17 @@ const LandingPage = () => {
                 sx={{
                   background: 'rgba(17, 17, 17, 0.6)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  border: '1px solid rgba(2, 121, 242, 0.2)',
                   borderRadius: '16px !important',
                   '&:before': { display: 'none' },
                   '&.Mui-expanded': {
                     margin: '0 !important',
-                    borderColor: '#8b5cf6'
+                    borderColor: '#0279F2'
                   },
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    borderColor: '#8b5cf6',
-                    boxShadow: '0 8px 30px rgba(139, 92, 246, 0.2)'
+                    borderColor: '#0279F2',
+                    boxShadow: '0 8px 30px rgba(2, 121, 242, 0.2)'
                   }
                 }}
               >
@@ -1959,7 +1915,7 @@ const LandingPage = () => {
             textAlign: 'center',
             background: 'rgba(17, 17, 17, 0.6)',
             backdropFilter: 'blur(30px)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
+            border: '1px solid rgba(2, 121, 242, 0.2)',
             borderRadius: { xs: '24px', sm: '28px', md: '32px' },
             p: { xs: 3, sm: 5, md: 6, lg: 8 },
             position: 'relative',
@@ -1971,7 +1927,7 @@ const LandingPage = () => {
               left: '-50%',
               width: '200%',
               height: '200%',
-              background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(139, 92, 246, 0.1) 90deg, transparent 180deg)',
+              background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(2, 121, 242, 0.1) 90deg, transparent 180deg)',
               animation: 'rotateBorder 8s linear infinite'
             },
             '@keyframes rotateBorder': {
@@ -1987,13 +1943,13 @@ const LandingPage = () => {
                 px: 3,
                 py: 1,
                 borderRadius: '50px',
-                background: 'rgba(139, 92, 246, 0.15)',
-                border: '1px solid rgba(139, 92, 246, 0.3)',
+                background: 'rgba(2, 121, 242, 0.15)',
+                border: '1px solid rgba(2, 121, 242, 0.3)',
                 mb: 3
               }}>
-                <Zap size={16} color="#8b5cf6" />
+                <Zap size={16} color="#0279F2" />
                 <Typography sx={{ 
-                  color: '#8b5cf6',
+                  color: '#0279F2',
                   fontSize: '0.9rem',
                   fontWeight: 600
                 }}>
@@ -2032,7 +1988,7 @@ const LandingPage = () => {
                 endIcon={<ArrowRight />}
                 onClick={() => router.push('/auth/register')}
                 sx={{
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                  background: 'linear-gradient(135deg, #0279F2 0%, #014B99 100%)',
                   px: { xs: 5, sm: 6, md: 7 },
                   py: { xs: 2, sm: 2.5 },
                   fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
@@ -2040,7 +1996,7 @@ const LandingPage = () => {
                   borderRadius: '50px',
                   position: 'relative',
                   overflow: 'hidden',
-                  boxShadow: '0 10px 40px rgba(139, 92, 246, 0.5)',
+                  boxShadow: '0 10px 40px rgba(2, 121, 242, 0.5)',
                   '&::before': {
                     content: '""',
                     position: 'absolute',
@@ -2056,7 +2012,7 @@ const LandingPage = () => {
                   },
                   '&:hover': {
                     transform: 'translateY(-4px) scale(1.05)',
-                    boxShadow: '0 15px 50px rgba(139, 92, 246, 0.7)',
+                    boxShadow: '0 15px 50px rgba(2, 121, 242, 0.7)',
                     '&::before': {
                       left: '100%'
                     },
@@ -2079,7 +2035,7 @@ const LandingPage = () => {
         position: 'relative',
         zIndex: 10,
         py: 6,
-        borderTop: '1px solid rgba(139, 92, 246, 0.1)',
+        borderTop: '1px solid rgba(2, 121, 242, 0.1)',
         background: 'rgba(10, 10, 10, 0.8)',
         backdropFilter: 'blur(10px)'
       }}>
@@ -2087,28 +2043,18 @@ const LandingPage = () => {
           <Grid container spacing={4}>
             <Grid item xs={12} md={4} {...({} as any)}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Box sx={{
-                  width: 40,
-                  height: 40,
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: '1.2rem'
-                }}>
-                  C
-                </Box>
-                <Typography variant="h6" sx={{ 
-                  fontWeight: 700, 
-                  background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  Credify
-                </Typography>
+              <svg width="125" height="40" viewBox="0 0 388 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M87.3006 25.5C87.3671 25.2868 87.4336 25.0743 87.5 24.8623C88.6384 20.8014 88.3406 18.7631 85 15.8623L66 1.8623C61.0271 -1.00737 58.8635 -0.600929 56 3.3623L43.5 24.8623H6C2.68629 24.8623 0 27.5486 0 30.8623V99.8623C0 103.176 2.68629 105.862 6 105.862H57C61.4057 99.4154 56.1561 95.8321 45.3873 88.4814C39.7427 84.6284 32.5817 79.7403 24.5 72.8623C24.5 72.8623 23.8567 72.2839 23.5 71.8623C20.7252 68.5829 21.0542 65.2012 23.5 60.8623L43.1457 25.5H87.3006ZM58.9336 105.862H58.5C58.6427 105.883 58.7872 105.882 58.9336 105.862Z" fill="#0279F2"/>
+                    <path d="M87.5 24.8623C87.4336 25.0743 87.3671 25.2868 87.3006 25.5C84.6983 33.8392 82.0368 43.0725 79.3996 52.2216C71.6681 79.0444 64.1453 105.143 58.9336 105.862H102C105.314 105.862 108 103.176 108 99.8623V30.8623C108 27.5486 105.314 24.8623 102 24.8623H87.5Z" fill="#014B99"/>
+                    <path d="M165.29 58.2866H150.326C149.638 53.2986 147.058 51.7506 143.962 51.7506C138.974 51.7506 136.308 56.2226 136.308 64.5646C136.308 72.8206 139.06 77.2926 144.392 77.2926C147.574 77.2926 149.81 75.4006 150.67 71.7026H165.548C163.57 83.3986 155.056 89.3326 144.048 89.3326C129.858 89.3326 121 79.7866 121 64.5646C121 48.7406 130.116 39.7106 143.962 39.7106C154.884 39.7106 163.656 45.8166 165.29 58.2866Z" fill="#014B99"/>
+                    <path d="M167.911 87.7846V41.2586H182.789V47.6226C185.627 42.1186 190.013 39.7106 194.485 39.7106C196.463 39.7106 198.269 40.2266 199.129 41.2586V53.8146C197.495 53.4706 195.947 53.2986 193.797 53.2986C186.315 53.2986 182.789 57.4266 182.789 64.3926V87.7846H167.911Z" fill="#014B99"/>
+                    <path d="M244.638 72.4766C242.23 83.1406 233.372 89.3326 221.59 89.3326C206.97 89.3326 197.768 79.8726 197.768 64.5646C197.768 48.7406 207.056 39.7106 221.074 39.7106C235.35 39.7106 244.294 49.0846 244.294 64.3926V67.6606H213.162C213.85 74.1106 216.774 77.5506 221.59 77.5506C225.374 77.5506 227.696 76.0026 228.986 72.4766H244.638ZM221.074 51.4926C216.946 51.4926 214.366 54.2446 213.42 59.4906H228.814C227.868 54.2446 225.202 51.4926 221.074 51.4926Z" fill="#014B99"/>
+                    <path d="M264.575 89.3326C252.707 89.3326 245.139 79.8726 245.139 64.5646C245.139 48.7406 252.879 39.7106 264.575 39.7106C269.305 39.7106 273.089 41.6886 275.841 45.5586V25.8646H290.719V87.7846H275.841V83.2266C273.089 87.1826 269.219 89.3326 264.575 89.3326ZM268.101 77.2926C273.175 77.2926 275.841 72.8206 275.841 64.5646C275.841 56.2226 273.175 51.7506 268.101 51.7506C263.113 51.7506 260.447 56.2226 260.447 64.5646C260.447 72.8206 263.113 77.2926 268.101 77.2926Z" fill="#014B99"/>
+                    <path d="M310.951 52.6106V41.2586H316.369C316.455 30.1646 321.873 24.3166 330.989 24.3166C334.859 24.3166 337.611 25.0906 338.987 25.7786V34.9806H337.955C332.451 34.9806 331.247 37.3886 331.247 41.2586H338.987V52.6106H331.247V87.7846H316.369V52.6106H310.951Z" fill="#014B99"/>
+                    <path d="M352 63C352 63 348.681 55 341.181 41.2583H350.234C353.363 41.3138 355 41 357.5 46.5L358.5 48.5C366.201 28.6023 372.39 22.1827 386 23L387.5 23.5C361 62 366 89.5 341 88L351.5 67C352.337 65.1285 352.957 64.6244 352 63Z" fill="#014B99"/>
+                    <path d="M293.622 87.7843V41.2583H308.5V87.7843H293.622Z" fill="#014B99"/>
+                    <circle cx="301" cy="28" r="8" fill="#0279F2"/>
+                  </svg>
               </Box>
               <Typography sx={{
                 color: 'rgba(255,255,255,0.6)',
@@ -2129,7 +2075,7 @@ const LandingPage = () => {
                     fontSize: '0.9rem',
                     cursor: 'pointer',
                     transition: 'color 0.3s ease',
-                    '&:hover': { color: '#8b5cf6' }
+                    '&:hover': { color: '#0279F2' }
                   }}>
                     {item}
                   </Typography>
@@ -2147,7 +2093,7 @@ const LandingPage = () => {
                     fontSize: '0.9rem',
                     cursor: 'pointer',
                     transition: 'color 0.3s ease',
-                    '&:hover': { color: '#8b5cf6' }
+                    '&:hover': { color: '#0279F2' }
                   }}>
                     {item}
                   </Typography>
@@ -2165,7 +2111,7 @@ const LandingPage = () => {
                     fontSize: '0.9rem',
                     cursor: 'pointer',
                     transition: 'color 0.3s ease',
-                    '&:hover': { color: '#8b5cf6' }
+                    '&:hover': { color: '#0279F2' }
                   }}>
                     {item}
                   </Typography>
@@ -2183,7 +2129,7 @@ const LandingPage = () => {
                     fontSize: '0.9rem',
                     cursor: 'pointer',
                     transition: 'color 0.3s ease',
-                    '&:hover': { color: '#8b5cf6' }
+                    '&:hover': { color: '#0279F2' }
                   }}>
                     {item}
                   </Typography>
@@ -2194,7 +2140,7 @@ const LandingPage = () => {
           <Box sx={{
             mt: 6,
             pt: 4,
-            borderTop: '1px solid rgba(139, 92, 246, 0.1)',
+            borderTop: '1px solid rgba(2, 121, 242, 0.1)',
             textAlign: 'center'
           }}>
             <Typography sx={{

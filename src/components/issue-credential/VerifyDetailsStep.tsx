@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle, AlertTriangle, Loader2, Edit3 } from 'lucide-react';
+import { buildApiUrl } from '@/config/api';
 
 interface CredentialData {
   credential_id: string;
@@ -57,7 +58,7 @@ export function VerifyDetailsStep({ credentialId, initialData, onNext, onBack, o
   const fetchCredentialData = async () => {
     setIsLoading(true);
     try {
-      const apiKeyResponse = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -70,7 +71,7 @@ export function VerifyDetailsStep({ credentialId, initialData, onNext, onBack, o
       const apiKeys = await apiKeyResponse.json();
       const apiKey = apiKeys[0].key;
 
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials/${credentialId}`, {
+      const response = await fetch(buildApiUrl(`/issuer/credentials/${credentialId}`), {
         headers: {
           'X-API-Key': apiKey
         }
@@ -113,7 +114,7 @@ export function VerifyDetailsStep({ credentialId, initialData, onNext, onBack, o
     setError(null);
 
     try {
-      const apiKeyResponse = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -136,7 +137,7 @@ export function VerifyDetailsStep({ credentialId, initialData, onNext, onBack, o
         skill_tags: formData.skill_tags
       };
 
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials/${credentialId}/verify`, {
+      const response = await fetch(buildApiUrl(`/issuer/credentials/${credentialId}/verify`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

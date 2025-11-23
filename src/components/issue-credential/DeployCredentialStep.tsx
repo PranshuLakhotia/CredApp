@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle, AlertTriangle, Loader2, Download, Copy, ExternalLink, QrCode } from 'lucide-react';
+import { buildApiUrl } from '@/config/api';
 
 interface CredentialData {
   credential_id: string;
@@ -57,7 +58,7 @@ export function DeployCredentialStep({
     setDeploymentStatus('pending');
 
     try {
-      const apiKeyResponse = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -75,7 +76,7 @@ export function DeployCredentialStep({
         learner_wallet: deployOptions.learner_wallet || undefined
       };
 
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials/${credentialId}/deploy`, {
+      const response = await fetch(buildApiUrl(`/issuer/credentials/${credentialId}/deploy`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +111,7 @@ export function DeployCredentialStep({
 
     const poll = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/issuer/credentials/${credentialId}`, {
+        const response = await fetch(buildApiUrl(`/issuer/credentials/${credentialId}`), {
           headers: {
             'X-API-Key': apiKey
           }

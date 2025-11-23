@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
+import { buildApiUrl } from '@/config/api';
 
 interface FormData {
   certificateTitle: string;
@@ -20,25 +21,27 @@ interface FormData {
   tagInput: string;
 }
 
-interface OcrData {
+interface ExtractedData {
+  credential_name: string;
+  issuer_name: string;
+  issued_date: string;
+  expiry_date: string;
+  skill_tags: string[];
+  description: string;
+  learner_id: string;
+  learner_name?: string;
+  nsqf_level?: number;
+  credential_type?: string;
+  tags?: string[];
+  raw_text?: string;
+}
+
+interface OcrResponse {
   success: boolean;
+  extracted_data: ExtractedData;
   provider: string;
   confidence: number;
-  extracted_data: {
-    credential_name: string;
-    issuer_name: string;
-    issued_date: string;
-    expiry_date: string;
-    skill_tags: string[];
-    description: string;
-    learner_id: string;
-    learner_name: string;
-    nsqf_level: number;
-    credential_type: string;
-    tags: string[];
-    raw_text: string;
-  };
-  metadata: {
+  metadata?: {
     processing_time: number;
     file_size: number;
     filename: string;
@@ -53,7 +56,7 @@ export const fetchApiKeys = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     console.log('🎫 Access token exists:', !!token);
     
-    const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+    const response = await fetch(buildApiUrl('/issuer/api-keys'), {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -103,7 +106,7 @@ export default function CertificateForm(): React.JSX.Element {
   
   // OCR extraction states
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
-  const [ocrData, setOcrData] = useState<OcrData | null>(null);
+  const [ocrData, setOcrData] = useState<OcrResponse | null>(null);
   const [showExtractedData, setShowExtractedData] = useState<boolean>(false);
   const [learnerIdMatch, setLearnerIdMatch] = useState<boolean>(false);
   
@@ -313,7 +316,7 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('📤 Sending OCR extraction request...');
       console.log('👤 User entered Learner ID:', userEnteredLearnerId);
       
-      const response = await fetch('http://localhost:8000/api/v1/issuer/credentials/extract-ocr', {
+      const response = await fetch(buildApiUrl('/issuer/credentials/extract-ocr'), {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
@@ -322,10 +325,14 @@ export default function CertificateForm(): React.JSX.Element {
       });
 
       if (response.ok) {
-        const extractedData = await response.json();
-        console.log('✅ OCR extraction successful:', extractedData);
+        const ocrResponse = await response.json();
+        console.log('✅ OCR extraction successful - Full Response:', ocrResponse);
         
-        setOcrData(extractedData);
+        // Extract the nested extracted_data object
+        const extractedData = ocrResponse.extracted_data || ocrResponse;
+        console.log('📋 Extracted Data Object:', extractedData);
+        
+        setOcrData(ocrResponse);
         
         // Compare user-entered Learner ID with OCR-extracted Learner ID
         const ocrLearnerId = (extractedData.extracted_data?.learner_id || '').trim();
@@ -338,6 +345,7 @@ export default function CertificateForm(): React.JSX.Element {
         
         setLearnerIdMatch(matches);
         
+<<<<<<< HEAD
         // Show notification if there's a mismatch
         if (!matches && ocrLearnerId) {
           console.warn('⚠️ Learner ID mismatch detected!');
@@ -362,6 +370,37 @@ export default function CertificateForm(): React.JSX.Element {
             ? extractedData.extracted_data.skill_tags 
             : prev.skills
         }));
+=======
+        // Prepare form data update
+        const updatedFormData = {
+          ...formData,
+          certificateTitle: extractedData.credential_name || formData.certificateTitle,
+          issuerOrganization: extractedData.issuer_name || formData.issuerOrganization,
+          learnerId: userEnteredLearnerId, // Keep the user-entered learner ID
+          issueDate: extractedData.issued_date || formData.issueDate,
+          skills: extractedData.skill_tags && extractedData.skill_tags.length > 0 
+            ? extractedData.skill_tags 
+            : formData.skills,
+          nsqfLevel: extractedData.nsqf_level ? String(extractedData.nsqf_level) : formData.nsqfLevel,
+          description: extractedData.description || formData.description,
+          tags: extractedData.tags && extractedData.tags.length > 0 
+            ? extractedData.tags 
+            : formData.tags
+        };
+        
+        console.log('📝 Form Data Update:');
+        console.log('  certificateTitle:', extractedData.credential_name);
+        console.log('  issuerOrganization:', extractedData.issuer_name);
+        console.log('  issueDate:', extractedData.issued_date);
+        console.log('  skills:', extractedData.skill_tags);
+        console.log('  nsqfLevel:', extractedData.nsqf_level);
+        console.log('  description:', extractedData.description);
+        console.log('  tags:', extractedData.tags);
+        console.log('🎯 Updated Form Data:', updatedFormData);
+        
+        // Auto-fill form data with OCR results
+        setFormData(updatedFormData);
+>>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
         
         setShowExtractedData(true);
       } else {
@@ -458,7 +497,7 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('🔍 Checking learner:', formData.learnerId);
         
-        const learnerResponse = await fetch(`http://localhost:8000/api/v1/issuer/users/${formData.learnerId}/is-learner`, {
+        const learnerResponse = await fetch(buildApiUrl(`/issuer/users/${formData.learnerId}/is-learner`), {
           headers: {
             'x-api-key': apiKey,
             'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -483,7 +522,7 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('🔑 Checking API key validity...');
         
-        const apiKeyResponse = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+        const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
           headers: {
             'x-api-key': apiKey,
             'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -508,7 +547,7 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('⛓️ Checking blockchain status...');
         
-        const blockchainResponse = await fetch('http://localhost:8000/api/v1/blockchain/network/status', {
+        const blockchainResponse = await fetch(buildApiUrl('/blockchain/network/status'), {
           headers: {
             'x-api-key': apiKey,
             'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
@@ -574,23 +613,39 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('📋 OCR Data:', ocrData);
       console.log('📋 Form Data:', formData);
 
+      // Extract OCR data (handle nested structure)
+      const extractedOcrData = ocrData?.extracted_data || {} as ExtractedData;
+      
       const createPayload = {
         vc_payload: {
           "@context": ["https://www.w3.org/2018/credentials/v1"],
           "type": ["VerifiableCredential", "EducationalCredential"],
           "issuer": {
             "id": "did:example:issuer",
+<<<<<<< HEAD
             "name": ocrData?.extracted_data?.issuer_name || formData.issuerOrganization
+=======
+            "name": extractedOcrData?.issuer_name || formData.issuerOrganization
+>>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
           },
           "credentialSubject": {
             "id": formData.learnerId,
             "name": learnerData?.full_name || "Learner Name",
+<<<<<<< HEAD
             "achievement": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
             "learner_address": learnerAddress,
             "course": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
             "grade": "A+",
             "completion_date": ocrData?.extracted_data?.issued_date || formData.issueDate,
             "skills": ocrData?.extracted_data?.skill_tags || [],
+=======
+            "achievement": extractedOcrData?.credential_name || formData.certificateTitle,
+            "learner_address": learnerAddress,
+            "course": extractedOcrData?.credential_name || formData.certificateTitle,
+            "grade": "A+",
+            "completion_date": extractedOcrData?.issued_date || formData.issueDate,
+            "skills": extractedOcrData?.skill_tags || [],
+>>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
             "duration": formData.duration,
             "mode": formData.mode,
             "nsqf_level": parseInt(formData.nsqfLevel),
@@ -598,19 +653,32 @@ export default function CertificateForm(): React.JSX.Element {
             "tags": formData.tags
           },
           "issuanceDate": new Date().toISOString(),
+<<<<<<< HEAD
           "expirationDate": ocrData?.extracted_data?.expiry_date || null
+=======
+          "expirationDate": extractedOcrData?.expiry_date || null
+>>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
         },
         artifact_url: pdfFile ? URL.createObjectURL(pdfFile) : "",
         idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         credential_type: "digital-certificate",
         metadata: {
           learner_address: learnerAddress,
+<<<<<<< HEAD
           completion_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
           course_name: ocrData?.extracted_data?.credential_name || formData.certificateTitle,
           issuer_name: ocrData?.extracted_data?.issuer_name || formData.issuerOrganization,
           issue_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
           expiry_date: ocrData?.extracted_data?.expiry_date || null,
           skill_tags: ocrData?.extracted_data?.skill_tags || [],
+=======
+          completion_date: extractedOcrData?.issued_date || formData.issueDate,
+          course_name: extractedOcrData?.credential_name || formData.certificateTitle,
+          issuer_name: extractedOcrData?.issuer_name || formData.issuerOrganization,
+          issue_date: extractedOcrData?.issued_date || formData.issueDate,
+          expiry_date: extractedOcrData?.expiry_date || null,
+          skill_tags: extractedOcrData?.skill_tags || [],
+>>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
           nsqf_level: parseInt(formData.nsqfLevel),
           description: formData.description,
           tags: formData.tags
@@ -619,7 +687,7 @@ export default function CertificateForm(): React.JSX.Element {
       
       console.log('📤 Credential Creation Payload:', JSON.stringify(createPayload, null, 2));
 
-      const createResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials', {
+      const createResponse = await fetch(buildApiUrl('/issuer/credentials'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -671,7 +739,7 @@ export default function CertificateForm(): React.JSX.Element {
 
       console.log('📤 Blockchain Issue Payload:', JSON.stringify(issuePayload, null, 2));
 
-      const issueResponse = await fetch('http://localhost:8000/api/v1/blockchain/credentials/issue', {
+      const issueResponse = await fetch(buildApiUrl('/blockchain/credentials/issue'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -728,7 +796,7 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('  - File Type:', fileBlob.type);
       console.log('  - QR Data:', issueResult.qr_code_data);
 
-      const overlayResponse = await fetch('http://localhost:8000/api/v1/issuer/credentials/overlay-qr', {
+      const overlayResponse = await fetch(buildApiUrl('/issuer/credentials/overlay-qr'), {
         method: 'POST',
         headers: {
           'X-API-Key': apiKey,
@@ -1034,6 +1102,82 @@ export default function CertificateForm(): React.JSX.Element {
               {/* Extracted Data and Full Form - Shown after extraction */}
               {showExtractedData && (
                 <>
+<<<<<<< HEAD
+=======
+                  {/* OCR Extracted Data - Read Only */}
+                  <div className="mb-6">
+                    <div className="mb-4 pb-2 border-b border-gray-200">
+                      <p className="text-sm text-gray-600">Auto-extracted from certificate (read-only)</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Credential Name
+              </label>
+                        <input
+                          type="text"
+                          value={ocrData?.extracted_data?.credential_name || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+            </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Issuer Name
+                        </label>
+                        <input
+                          type="text"
+                          value={ocrData?.extracted_data?.issuer_name || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+          </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Issued Date
+                        </label>
+                        <input
+                          type="text"
+                          value={ocrData?.extracted_data?.issued_date || ''}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+                      
+                      <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Expiry Date
+            </label>
+            <input
+                          type="text"
+                          value={ocrData?.extracted_data?.expiry_date || 'N/A'}
+                          disabled
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
+                        />
+          </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Skill Tags
+                        </label>
+                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-300 rounded-lg min-h-[44px]">
+                          {ocrData?.extracted_data?.skill_tags && ocrData.extracted_data.skill_tags.length > 0 ? (
+                            ocrData.extracted_data.skill_tags.map((skill: string, index: number) => (
+                              <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">No skills extracted</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+>>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
 
                   {/* Learner ID Verification Section */}
           <div className="mb-6">

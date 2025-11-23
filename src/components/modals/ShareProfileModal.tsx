@@ -52,14 +52,20 @@ export default function ShareProfileModal({ open, onClose }: ShareProfileModalPr
     
     try {
       const data = await LearnerService.createShareLink(30);
-      const fullLink = `${window.location.origin}/profile/shared/${data.share_id}`;
-      setShareLink(fullLink);
+      
+      // Backend now returns user_id and share_token directly
+      const userId = data.user_id;
+      const shareToken = data.share_token;
+      
+      if (userId && shareToken) {
+        const fullLink = `${window.location.origin}/shared/${userId}/${shareToken}`;
+        setShareLink(fullLink);
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
       console.error('Error generating share link:', err);
-      // Fallback to a demo link
-      const demoId = Math.random().toString(36).substring(2, 15);
-      const demoLink = `${window.location.origin}/profile/shared/${demoId}`;
-      setShareLink(demoLink);
+      setError('Failed to generate share link. Please try again.');
     } finally {
       setIsGenerating(false);
     }

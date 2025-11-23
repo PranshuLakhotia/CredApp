@@ -49,6 +49,8 @@ import {
   Compare,
   FileUpload,
 } from '@mui/icons-material';
+import DashboardLoader from '@/components/common/DashboardLoader';
+import { buildApiUrl } from '@/config/api';
 
 // Types
 interface VerificationResult {
@@ -228,7 +230,7 @@ export default function VerifyCredentialsPage() {
           const ocrFormData = new FormData();
           ocrFormData.append('file', file);
 
-          const ocrResponse = await fetch('http://localhost:8000/api/v1/employer/credentials/extract-ocr', {
+          const ocrResponse = await fetch(buildApiUrl('/employer/credentials/extract-ocr'), {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -249,7 +251,7 @@ export default function VerifyCredentialsPage() {
 
           // Step 2: QR Code Scanning
           result.processing_steps.qr_scanning = 'processing';
-          const qrResponse = await fetch('http://localhost:8000/api/v1/verify/qr/pdf', {
+          const qrResponse = await fetch(buildApiUrl('/verify/qr/pdf'), {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -274,7 +276,7 @@ export default function VerifyCredentialsPage() {
               try {
                 console.log(`🔍 Fetching credential details for ID: ${credentialId}`);
                 
-                const credentialResponse = await fetch(`http://localhost:8000/api/v1/employer/credentials/${credentialId}`, {
+                const credentialResponse = await fetch(buildApiUrl(`/employer/credentials/${credentialId}`), {
                   method: 'GET',
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -386,7 +388,7 @@ export default function VerifyCredentialsPage() {
                   credential_hash: result.qr_data.credential_hash
                 };
                 
-                const addVerifiedResponse = await fetch('http://localhost:8000/api/v1/employer/verified-credentials', {
+                const addVerifiedResponse = await fetch(buildApiUrl('/employer/verified-credentials'), {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -433,6 +435,17 @@ export default function VerifyCredentialsPage() {
       setBulkLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Credential Verification">
+        <DashboardLoader 
+          title="Verifying Credential" 
+          message="Checking credential authenticity and blockchain verification..." 
+        />
+      </DashboardLayout>
+    );
+  }
 
   // Helper function to convert file to base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -567,9 +580,16 @@ export default function VerifyCredentialsPage() {
               </Alert>
             )}
 
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { 
+                xs: '1fr', 
+                md: 'repeat(2, 1fr)' 
+              }, 
+              gap: 4 
+            }}>
               {/* PDF Verification */}
-              <Box sx={{ flex: 1 }}>
+              <Box>
                 <Zoom in={true} timeout={800}>
                   <Card sx={{ height: '100%' }}>
                     <CardContent>
@@ -738,26 +758,34 @@ export default function VerifyCredentialsPage() {
                 </Box>
 
                 {/* Credential Details */}
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
-                  <Box sx={{ flex: 1 }}>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { 
+                    xs: '1fr', 
+                    sm: 'repeat(2, 1fr)' 
+                  }, 
+                  gap: 2, 
+                  mb: 3 
+                }}>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Learner Name</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {verificationResult.learner_name}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1 }}>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Issuer</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {verificationResult.issuer_name}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1 }}>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Issued Date</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {new Date(verificationResult.issued_date).toLocaleDateString()}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1 }}>
+                  <Box>
                     <Typography variant="subtitle2" color="text.secondary">Expiry Date</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {verificationResult.expiry_date ? new Date(verificationResult.expiry_date).toLocaleDateString() : 'No expiry'}
@@ -846,47 +874,63 @@ export default function VerifyCredentialsPage() {
             {bulkResults && (
               <Box>
                 {/* Summary Cards */}
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
-                  <Card sx={{ textAlign: 'center', bgcolor: '#f0fdf4', flex: 1 }}>
-                    <CardContent sx={{ py: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
-                        {bulkResults.verified}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Verified
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card sx={{ textAlign: 'center', bgcolor: '#fffbeb', flex: 1 }}>
-                    <CardContent sx={{ py: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                        {bulkResults.unverified}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Unverified
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card sx={{ textAlign: 'center', bgcolor: '#fef2f2', flex: 1 }}>
-                    <CardContent sx={{ py: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
-                        {bulkResults.errors}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Errors
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Card sx={{ textAlign: 'center', bgcolor: '#f0f9ff', flex: 1 }}>
-                    <CardContent sx={{ py: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                        {bulkResults.total_processed}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Total Processed
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                <Box sx={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: { 
+                    xs: 'repeat(2, 1fr)', 
+                    sm: 'repeat(4, 1fr)' 
+                  }, 
+                  gap: 2, 
+                  mb: 3 
+                }}>
+                  <Box>
+                    <Card sx={{ textAlign: 'center', bgcolor: '#f0fdf4' }}>
+                      <CardContent sx={{ py: 2 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
+                          {bulkResults.verified}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Verified
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
+                  <Box>
+                    <Card sx={{ textAlign: 'center', bgcolor: '#fffbeb' }}>
+                      <CardContent sx={{ py: 2 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                          {bulkResults.unverified}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Unverified
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
+                  <Box>
+                    <Card sx={{ textAlign: 'center', bgcolor: '#fef2f2' }}>
+                      <CardContent sx={{ py: 2 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
+                          {bulkResults.errors}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Errors
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
+                  <Box>
+                    <Card sx={{ textAlign: 'center', bgcolor: '#f0f9ff' }}>
+                      <CardContent sx={{ py: 2 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#3b82f6' }}>
+                          {bulkResults.total_processed}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Total Processed
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 </Box>
 
                 <Divider sx={{ mb: 3 }} />
@@ -967,8 +1011,12 @@ export default function VerifyCredentialsPage() {
                           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                             Verification Details:
                           </Typography>
-                          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
-                            <Box sx={{ flex: 1 }}>
+                          <Box sx={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(2, 1fr)', 
+                            gap: 1 
+                          }}>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.learner_id_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -978,7 +1026,7 @@ export default function VerifyCredentialsPage() {
                                 <Typography variant="body2">Learner ID</Typography>
                               </Box>
                             </Box>
-                            <Box sx={{ flex: 1 }}>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.learner_name_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -988,7 +1036,7 @@ export default function VerifyCredentialsPage() {
                                 <Typography variant="body2">Learner Name</Typography>
                               </Box>
                             </Box>
-                            <Box sx={{ flex: 1 }}>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.credential_title_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />
@@ -998,7 +1046,7 @@ export default function VerifyCredentialsPage() {
                                 <Typography variant="body2">Credential Title</Typography>
                               </Box>
                             </Box>
-                            <Box sx={{ flex: 1 }}>
+                            <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {result.verification_details.issuer_name_match ? (
                                   <CheckCircle sx={{ color: '#10b981', fontSize: 16 }} />

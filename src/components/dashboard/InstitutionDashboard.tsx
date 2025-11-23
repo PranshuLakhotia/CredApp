@@ -40,6 +40,7 @@ import {
   Delete,
   Search,
 } from '@mui/icons-material';
+import { buildApiUrl } from '@/config/api';
 import { kycService } from '@/services/kyc.service';
 
 interface IssuerVerificationData {
@@ -135,8 +136,9 @@ export default function InstitutionDashboard() {
   }, []);
 
   const fetchVerificationStatus = async () => {
+    console.log('fetchVerificationStatus');
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+      const response = await fetch(buildApiUrl('/issuer/verification-status'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -156,7 +158,7 @@ export default function InstitutionDashboard() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -189,7 +191,7 @@ export default function InstitutionDashboard() {
   const handleSubmitVerification = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/submit-verification', {
+      const response = await fetch(buildApiUrl('/issuer/submit-verification'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +225,7 @@ export default function InstitutionDashboard() {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch(buildApiUrl('/issuer/api-keys'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +257,7 @@ export default function InstitutionDashboard() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/api-keys/${keyId}`, {
+      const response = await fetch(buildApiUrl(`/issuer/api-keys/${keyId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -478,7 +480,11 @@ export default function InstitutionDashboard() {
                 sx: gstinData && formData.address_line2 ? { bgcolor: '#f0fdf4' } : {}
               }}
             />
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, 
+              gap: 2 
+            }}>
               <TextField
                 label="City"
                 required
@@ -571,26 +577,38 @@ export default function InstitutionDashboard() {
   // Render verification form
   if (verificationStatus === 'not_submitted') {
     return (
-      <Box sx={{ p: 4, maxWidth: 900, mx: 'auto' }}>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+      <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 900, mx: 'auto' }}>
+        <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+          <Typography variant="h4" sx={{ 
+            fontWeight: 700, 
+            mb: 1,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+          }}>
             Institution Verification
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ 
+            fontSize: { xs: '0.875rem', sm: '1rem' }
+          }}>
             Complete the verification process to start issuing credentials
           </Typography>
         </Box>
 
-        <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3 }}>
+        <Paper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 }, border: '1px solid #e2e8f0', borderRadius: 3 }}>
           {/* GSTIN Verification Step */}
           {!gstinVerified ? (
             <Box>
-              <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Business sx={{ fontSize: 60, color: '#3b82f6', mb: 2 }} />
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+              <Box sx={{ mb: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+                <Business sx={{ fontSize: { xs: 40, sm: 50, md: 60 }, color: '#3b82f6', mb: 2 }} />
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 700, 
+                  mb: 1,
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+                }}>
                   Verify Your Organization
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ 
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}>
                   Enter your GSTIN to auto-fill organization details
                 </Typography>
               </Box>
@@ -639,7 +657,8 @@ export default function InstitutionDashboard() {
                   sx={{
                     bgcolor: '#3b82f6',
                     textTransform: 'none',
-                    py: 1.5,
+                    py: { xs: 1.5, sm: 1.5 },
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                     '&:hover': { bgcolor: '#2563eb' }
                   }}
                 >
@@ -649,7 +668,12 @@ export default function InstitutionDashboard() {
                 <Button
                   fullWidth
                   onClick={() => setGstinVerified(true)}
-                  sx={{ mt: 2, textTransform: 'none', color: 'text.secondary' }}
+                  sx={{ 
+                    mt: 2, 
+                    textTransform: 'none', 
+                    color: 'text.secondary',
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}
                 >
                   Skip & Fill Manually
                 </Button>
@@ -666,18 +690,33 @@ export default function InstitutionDashboard() {
               <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
                 {steps.map((label) => (
                   <Step key={label}>
-                    <StepLabel>{label}</StepLabel>
+                    <StepLabel sx={{ 
+                      '& .MuiStepLabel-label': {
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                      }
+                    }}>
+                      {label}
+                    </StepLabel>
                   </Step>
                 ))}
               </Stepper>
 
               {renderStepContent(activeStep)}
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', 
+                mt: 4,
+                gap: { xs: 2, sm: 0 }
+              }}>
                 <Button
                   disabled={activeStep === 0}
                   onClick={handleBack}
-                  sx={{ textTransform: 'none' }}
+                  sx={{ 
+                    textTransform: 'none',
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}
                 >
                   Back
                 </Button>
@@ -690,7 +729,8 @@ export default function InstitutionDashboard() {
                       sx={{
                         bgcolor: '#3b82f6',
                         textTransform: 'none',
-                        px: 4,
+                        px: { xs: 3, sm: 4 },
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
                         '&:hover': { bgcolor: '#2563eb' }
                       }}
                     >
@@ -703,7 +743,8 @@ export default function InstitutionDashboard() {
                       sx={{
                         bgcolor: '#3b82f6',
                         textTransform: 'none',
-                        px: 4,
+                        px: { xs: 3, sm: 4 },
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
                         '&:hover': { bgcolor: '#2563eb' }
                       }}
                     >
@@ -767,10 +808,19 @@ export default function InstitutionDashboard() {
 
   // Render verified dashboard with API key management
   return (
-    <Box sx={{ p: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          gap: 2, 
+          mb: 1 
+        }}>
+          <Typography variant="h4" sx={{ 
+            fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
+          }}>
             Institution Dashboard
           </Typography>
           <Chip
@@ -780,17 +830,28 @@ export default function InstitutionDashboard() {
             sx={{ fontWeight: 600 }}
           />
         </Box>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ 
+          fontSize: { xs: '0.875rem', sm: '1rem' }
+        }}>
           Manage your API keys and issue digital credentials
         </Typography>
       </Box>
 
       {/* Quick Actions */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+        <Typography variant="h6" sx={{ 
+          fontWeight: 600, 
+          mb: 2,
+          fontSize: { xs: '1rem', sm: '1.125rem' }
+        }}>
           Quick Actions
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2, 
+          flexWrap: 'wrap' 
+        }}>
           <Button
             variant="contained"
             startIcon={<Description />}
@@ -801,6 +862,9 @@ export default function InstitutionDashboard() {
             sx={{
               bgcolor: '#10b981',
               textTransform: 'none',
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1.5, sm: 1.5 },
               '&:hover': { bgcolor: '#059669' }
             }}
           >
@@ -814,6 +878,9 @@ export default function InstitutionDashboard() {
               borderColor: '#10b981',
               color: '#10b981',
               textTransform: 'none',
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1.5, sm: 1.5 },
               '&:hover': { 
                 borderColor: '#059669',
                 backgroundColor: '#f0fdf4'
@@ -830,6 +897,9 @@ export default function InstitutionDashboard() {
               borderColor: '#3b82f6',
               color: '#3b82f6',
               textTransform: 'none',
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1.5, sm: 1.5 },
               '&:hover': { 
                 borderColor: '#2563eb',
                 backgroundColor: '#eff6ff'
@@ -842,13 +912,31 @@ export default function InstitutionDashboard() {
       </Box>
 
       {/* API Keys Section */}
-      <Paper elevation={0} sx={{ p: 4, border: '1px solid #e2e8f0', borderRadius: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Paper elevation={0} sx={{ 
+        p: { xs: 2, sm: 3, md: 4 }, 
+        border: '1px solid #e2e8f0', 
+        borderRadius: 3, 
+        mb: 3 
+      }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          mb: 3,
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 700, 
+              mb: 0.5,
+              fontSize: { xs: '1rem', sm: '1.125rem' }
+            }}>
               API Keys
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ 
+              fontSize: { xs: '0.75rem', sm: '0.875rem' }
+            }}>
               Use API keys to authenticate requests to issue credentials
             </Typography>
           </Box>
@@ -860,6 +948,9 @@ export default function InstitutionDashboard() {
             sx={{
               bgcolor: verificationStatus === 'verified' ? '#3b82f6' : '#9ca3af',
               textTransform: 'none',
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1.5, sm: 1.5 },
               '&:hover': { 
                 bgcolor: verificationStatus === 'verified' ? '#2563eb' : '#9ca3af'
               }

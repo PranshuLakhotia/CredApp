@@ -25,9 +25,9 @@ import {
   Tooltip,
   Divider,
   Stack,
-  Grid,
 } from '@mui/material';
 import { useAuth } from '@/hooks/useAuth';
+import { buildApiUrl } from '@/config/api';
 import {
   Verified as VerifiedIcon,
   Person as PersonIcon,
@@ -82,7 +82,7 @@ const VerifiedCredentialsPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/v1/employer/verified-credentials', {
+      const response = await fetch(buildApiUrl('/employer/verified-credentials'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -213,8 +213,17 @@ const VerifiedCredentialsPage: React.FC = () => {
       </Box>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { 
+          xs: '1fr', 
+          sm: 'repeat(2, 1fr)', 
+          md: 'repeat(4, 1fr)' 
+        }, 
+        gap: 3, 
+        mb: 3 
+      }}>
+        <Box>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -228,8 +237,8 @@ const VerifiedCredentialsPage: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </Box>
+        <Box>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -245,8 +254,8 @@ const VerifiedCredentialsPage: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </Box>
+        <Box>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -262,8 +271,8 @@ const VerifiedCredentialsPage: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </Box>
+        <Box>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -279,8 +288,8 @@ const VerifiedCredentialsPage: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Credentials Table */}
       {verifiedCredentials.length === 0 ? (
@@ -411,8 +420,15 @@ const VerifiedCredentialsPage: React.FC = () => {
         <DialogContent>
           {selectedCredential && (
             <Box>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { 
+                  xs: '1fr', 
+                  md: 'repeat(2, 1fr)' 
+                }, 
+                gap: 3 
+              }}>
+                <Box>
                   <Typography variant="h6" gutterBottom>
                     Learner Information
                   </Typography>
@@ -434,8 +450,8 @@ const VerifiedCredentialsPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Stack>
-                </Grid>
-                <Grid item xs={12} md={6}>
+                </Box>
+                <Box>
                   <Typography variant="h6" gutterBottom>
                     Credential Information
                   </Typography>
@@ -475,8 +491,8 @@ const VerifiedCredentialsPage: React.FC = () => {
                       </Box>
                     )}
                   </Stack>
-                </Grid>
-                <Grid item xs={12}>
+                </Box>
+                <Box>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="h6" gutterBottom>
                     Skills & Competencies
@@ -491,8 +507,8 @@ const VerifiedCredentialsPage: React.FC = () => {
                       />
                     ))}
                   </Box>
-                </Grid>
-                <Grid item xs={12}>
+                </Box>
+                <Box>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="h6" gutterBottom>
                     Verification Information
@@ -523,8 +539,8 @@ const VerifiedCredentialsPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Stack>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
             </Box>
           )}
         </DialogContent>

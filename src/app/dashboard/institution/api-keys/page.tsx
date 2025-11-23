@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
+import { buildApiUrl } from '@/config/api';
 
 interface ApiKey {
   _id: string;
@@ -28,7 +29,7 @@ export default function ApiKeysPage() {
       const token = localStorage.getItem('access_token');
       console.log('🔍 Fetching verification status with token:', !!token);
       
-      const response = await fetch('http://localhost:8000/api/v1/issuer/verification-status', {
+      const response = await fetch(buildApiUrl('/issuer/verification-status'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -69,7 +70,7 @@ export default function ApiKeysPage() {
   const fetchApiKeys = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -127,7 +128,7 @@ export default function ApiKeysPage() {
     console.log('🔑 Token exists:', !!token);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/issuer/api-keys', {
+      const response = await fetch(buildApiUrl('/issuer/api-keys'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ export default function ApiKeysPage() {
       const token = localStorage.getItem('access_token');
       console.log('🗑️ Delete request with token:', !!token);
       
-      const response = await fetch(`http://localhost:8000/api/v1/issuer/api-keys/${keyId}`, {
+      const response = await fetch(buildApiUrl(`/issuer/api-keys/${keyId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -299,7 +300,7 @@ export default function ApiKeysPage() {
               Create New API Key
             </button>
             
-            <button
+            {/* <button
               onClick={async () => {
                 console.log('🔍 Debug: Checking verification status...');
                 await fetchVerificationStatus();
@@ -307,7 +308,7 @@ export default function ApiKeysPage() {
                 // Also try to trigger auto-verification
                 try {
                   const token = localStorage.getItem('access_token');
-                  const response = await fetch('http://localhost:8000/api/v1/issuer/trigger-auto-verification', {
+                  const response = await fetch(buildApiUrl('/issuer/trigger-auto-verification'), {
                     method: 'POST',
                     headers: {
                       'Authorization': `Bearer ${token}`,
@@ -333,7 +334,7 @@ export default function ApiKeysPage() {
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               🔄 Trigger Auto-Verification
-            </button>
+            </button> */}
           </div>
 
           {/* API Key Name Dialog */}
