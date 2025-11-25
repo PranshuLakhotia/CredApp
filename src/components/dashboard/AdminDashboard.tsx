@@ -20,9 +20,6 @@ import {
     FileText,
     Globe,
     Lock,
-    Moon,
-    Sun,
-    Loader2,
     ChevronLeft,
     ChevronRight,
     Activity,
@@ -58,14 +55,16 @@ import {
     adminService,
     Analytics as AnalyticsType,
     DetailedAnalytics as DetailedAnalyticsType,
-    Issuer as IssuerType,
-    Learner as LearnerType,
-    Employer as EmployerType,
     VerificationRequest as VerificationRequestType,
     HealthStatus as HealthStatusType,
     ReadinessStatus as ReadinessStatusType,
     LivenessStatus as LivenessStatusType,
 } from '@/services/admin.service';
+import { IssuersSection } from '../admin/IssuersSection';
+import { LearnersSection } from '../admin/LearnersSection';
+import { EmployersSection } from '../admin/EmployersSection';
+import { Loader } from '../admin/Loader';
+import { ThemeSwitch } from '../admin/ThemeSwitch';
 
 // Register ChartJS components
 ChartJS.register(
@@ -277,7 +276,7 @@ const AnalyticsSection = ({ darkMode }: any) => {
     if (loading) {
         return (
             <div className="flex justify-center items-center py-12">
-                <Loader2 className="animate-spin text-blue-600" size={48} />
+                <Loader size="lg" darkMode={darkMode} />
             </div>
         );
     }
@@ -446,42 +445,11 @@ const AnalyticsSection = ({ darkMode }: any) => {
     );
 };
 
-// --- List Section (generic) ---
-const ListSection = ({ title, data, columns, darkMode }: any) => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`rounded-2xl shadow-sm border overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-        <div className={`p-6 border-b flex justify-between items-center ${darkMode ? 'border-gray-700' : 'border-gray-50'}`}>
-            <h3 className={`text-lg font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>{title}</h3>
-            <div className="flex gap-2">
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}><Search size={20} /></button>
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}><Filter size={20} /></button>
-            </div>
-        </div>
-        <div className="overflow-x-auto">
-            <table className="w-full">
-                <thead className={darkMode ? 'bg-gray-900/50' : 'bg-gray-50/50'}>
-                    <tr>
-                        {columns.map((col: any, i: number) => (
-                            <th key={i} className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{col.header}</th>
-                        ))}
-                        <th className={`px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-50'}`}>
-                    {data.map((item: any, i: number) => (
-                        <TableRow key={item.id} index={i} darkMode={darkMode}>
-                            {columns.map((col: any, j: number) => (
-                                <td key={j} className="px-6 py-4 whitespace-nowrap">
-                                    {col.render ? col.render(item, darkMode) : <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{item[col.key]}</span>}
-                                </td>
-                            ))}
-                            <td className="px-6 py-4 whitespace-nowrap text-right"><button className={darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}><MoreVertical size={18} /></button></td>
-                        </TableRow>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </motion.div>
-);
+// --- Issuers Analytics Section --- (Now imported from components/admin/IssuersSection)
+
+// --- Learners Analytics Section --- (Now imported from components/admin/LearnersSection)
+
+// --- Employers Analytics Section --- (Now imported from components/admin/EmployersSection)
 
 // --- System Status Section ---
 const SystemStatusSection = ({ darkMode }: any) => {
@@ -619,7 +587,7 @@ const SystemStatusSection = ({ darkMode }: any) => {
     }, [pollInterval, isPaused]);
 
     if (loading && !healthStatus && !serverDown) {
-        return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;
+        return <div className="flex justify-center py-12"><Loader size="lg" darkMode={darkMode} /></div>;
     }
 
     // Calculate error rate for the last 50 data points
@@ -1233,7 +1201,7 @@ const VerificationSection = ({ darkMode }: any) => {
         }
     };
 
-    if (loading) return <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
+    if (loading) return <div className="flex justify-center py-8"><Loader size="md" darkMode={darkMode} /></div>;
     if (error) return <p className={`text-red-500 ${darkMode ? 'text-red-400' : ''}`}>Error: {error}</p>;
 
     return (
@@ -1279,32 +1247,6 @@ export default function AdminDashboard() {
     const [darkMode, setDarkMode] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    // Data fetching for lists
-    const [issuers, setIssuers] = useState<IssuerType[]>([]);
-    const [learners, setLearners] = useState<LearnerType[]>([]);
-    const [employers, setEmployers] = useState<EmployerType[]>([]);
-    const [listLoading, setListLoading] = useState(true);
-    const [listError, setListError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchLists = async () => {
-            try {
-                const [i, l, e] = await Promise.all([
-                    adminService.getIssuers(),
-                    adminService.getLearners(),
-                    adminService.getEmployers(),
-                ]);
-                setIssuers(i);
-                setLearners(l);
-                setEmployers(e);
-                setListLoading(false);
-            } catch (e: any) {
-                setListError(e.message || 'Failed to load lists');
-                setListLoading(false);
-            }
-        };
-        fetchLists();
-    }, []);
 
     const renderContent = () => {
         switch (activeTab) {
@@ -1313,31 +1255,11 @@ export default function AdminDashboard() {
             case 'system':
                 return <SystemStatusSection darkMode={darkMode} />;
             case 'issuers':
-                return listLoading ? <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-600" size={40} /></div> : (
-                    <ListSection title="Registered Issuers" data={issuers} darkMode={darkMode} columns={[
-                        { header: 'Name', key: 'name', render: (item: any, dark: boolean) => (<div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${dark ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>{item.logo?.charAt(0) ?? 'I'}</div><span className={`font-medium ${dark ? 'text-gray-100' : 'text-gray-900'}`}>{item.name}</span></div>) },
-                        { header: 'Type', key: 'type' },
-                        { header: 'Credentials', key: 'credentials_issued' },
-                        { header: 'Status', key: 'status', render: (item: any, dark: boolean) => <StatusBadge status={item.status} darkMode={dark} /> }
-                    ]} />
-                );
+                return <IssuersSection darkMode={darkMode} />;
             case 'learners':
-                return listLoading ? <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-600" size={40} /></div> : (
-                    <ListSection title="Learner Directory" data={learners} darkMode={darkMode} columns={[
-                        { header: 'Name', key: 'name', render: (item: any, dark: boolean) => (<div><div className={`font-medium ${dark ? 'text-gray-100' : 'text-gray-900'}`}>{item.name}</div><div className={`text-xs ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{item.email}</div></div>) },
-                        { header: 'Credentials Held', key: 'credentials_held' },
-                        { header: 'Status', key: 'status', render: (item: any, dark: boolean) => <StatusBadge status={item.status} darkMode={dark} /> }
-                    ]} />
-                );
+                return <LearnersSection darkMode={darkMode} />;
             case 'employers':
-                return listLoading ? <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-600" size={40} /></div> : (
-                    <ListSection title="Employer Partners" data={employers} darkMode={darkMode} columns={[
-                        { header: 'Company', key: 'name', render: (item: any, dark: boolean) => <span className={`font-medium ${dark ? 'text-gray-100' : 'text-gray-900'}`}>{item.name}</span> },
-                        { header: 'Industry', key: 'industry' },
-                        { header: 'Active Jobs', key: 'active_jobs' },
-                        { header: 'Status', key: 'status', render: (item: any, dark: boolean) => <StatusBadge status={item.status} darkMode={dark} /> }
-                    ]} />
-                );
+                return <EmployersSection darkMode={darkMode} />;
             case 'verifications':
                 return <VerificationSection darkMode={darkMode} />;
             case 'settings':
@@ -1363,7 +1285,7 @@ export default function AdminDashboard() {
                 <div className="p-6">
                     <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2'} mb-8`}>
                         <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
-                        {!sidebarCollapsed && <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">CredAdmin</span>}
+                        {!sidebarCollapsed && <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">CredifyAdmin</span>}
                     </div>
                     <nav className="space-y-1">
                         <SidebarItem icon={BarChart3} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} darkMode={darkMode} collapsed={sidebarCollapsed} />
@@ -1382,14 +1304,6 @@ export default function AdminDashboard() {
                     >
                         <Settings size={20} />
                         {!sidebarCollapsed && <span className="font-medium text-sm">Settings</span>}
-                    </button>
-                    <button
-                        onClick={() => setDarkMode(!darkMode)}
-                        className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} transition-colors w-full px-4 py-2 rounded-xl mb-3 ${darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
-                        title={sidebarCollapsed ? (darkMode ? 'Light Mode' : 'Dark Mode') : ''}
-                    >
-                        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        {!sidebarCollapsed && <span className="font-medium text-sm">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
                     </button>
                     <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -1416,6 +1330,13 @@ export default function AdminDashboard() {
                         <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Welcome back, Administrator</p>
                     </div>
                     <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center">
+                            <ThemeSwitch 
+                                checked={darkMode} 
+                                onChange={setDarkMode}
+                                className="scale-[0.6]"
+                            />
+                        </div>
                         <button className={`p-2 rounded-full shadow-sm border transition-colors relative ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-400 hover:text-blue-400' : 'bg-white border-gray-100 text-gray-500 hover:text-blue-600'}`}>
                             <Bell size={20} />
                             <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
