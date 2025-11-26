@@ -30,33 +30,99 @@ export interface DetailedAnalytics {
     }>;
 }
 
+export interface KYCVerification {
+    documentVerification?: {
+        type?: string;
+        data?: {
+            status?: string;
+            pan?: string;
+        };
+    };
+    faceVerification?: {
+        status?: string;
+        image?: string;
+        timestamp?: string;
+    };
+    addressVerification?: {
+        status?: string;
+        address?: {
+            house?: string;
+            street?: string;
+            city?: string;
+        };
+        timestamp?: string;
+    };
+    emailVerification?: {
+        status?: string;
+        email?: string;
+        timestamp?: string;
+    };
+    mobileVerification?: {
+        status?: string;
+        phone?: string;
+        timestamp?: string;
+    };
+}
+
 export interface Issuer {
-    id: number;
+    id: string;
     name: string;
     email: string;
     type: string;
     status: string;
     credentials_issued: number;
     created_at: string;
+    phone_number?: string;
+    is_active: boolean;
+    is_verified: boolean;
+    is_superuser: boolean;
+    kyc_verified: boolean;
+    kyc_verification?: KYCVerification;
+    updated_at?: string;
+    last_login?: string;
 }
 
 export interface Learner {
-    id: number;
+    id: string;
     name: string;
     email: string;
     credentials_held: number;
     status: string;
     created_at: string;
+    phone_number?: string;
+    is_active: boolean;
+    is_verified: boolean;
+    kyc_verified: boolean;
+    kyc_verification?: KYCVerification;
+    updated_at?: string;
+    last_login?: string;
+    // Learner-specific fields
+    skills?: string[];
+    education?: Record<string, any>;
+    bio?: string;
+    location?: Record<string, any>;
+    social_links?: Record<string, any>;
+    profile_completion?: number;
+    date_of_birth?: string;
+    gender?: string;
+    address?: string;
 }
 
 export interface Employer {
-    id: number;
+    id: string;
     name: string;
     email: string;
     industry: string;
     active_jobs: number;
     status: string;
     created_at: string;
+    phone_number?: string;
+    is_active: boolean;
+    is_verified: boolean;
+    kyc_verified: boolean;
+    kyc_verification?: KYCVerification;
+    updated_at?: string;
+    last_login?: string;
 }
 
 export interface VerificationRequest {
@@ -92,6 +158,57 @@ export interface LivenessStatus {
     status: string;
     service: string;
     timestamp: number;
+}
+
+export interface EntityAnalytics {
+    total_count: number;
+    active_count: number;
+    verified_count: number;
+    growth: {
+        percentage: number;
+        new_this_month: number;
+    };
+    registration_trends: {
+        daily: number[];
+        monthly: number[];
+    };
+    status_distribution: Record<string, number>;
+    top_performers: Array<{
+        id: string;
+        name: string;
+        [key: string]: any;
+    }>;
+    recent_activity: Array<{
+        id: string;
+        name: string;
+        [key: string]: any;
+    }>;
+}
+
+export interface IssuerAnalytics extends EntityAnalytics {
+    total_credentials_issued: number;
+    credentials_by_type: Array<{
+        type: string;
+        count: number;
+    }>;
+    average_credentials_per_issuer: number;
+}
+
+export interface LearnerAnalytics extends EntityAnalytics {
+    total_credentials_held: number;
+    credentials_by_type: Array<{
+        type: string;
+        count: number;
+    }>;
+    average_credentials_per_learner: number;
+}
+
+export interface EmployerAnalytics extends EntityAnalytics {
+    total_active_jobs: number;
+    industry_distribution: Array<{
+        industry: string;
+        count: number;
+    }>;
 }
 
 class AdminService {
@@ -382,6 +499,94 @@ class AdminService {
         } catch (error: any) {
             console.error('Error fetching services health:', error);
             throw new Error(error.response?.data?.detail || 'Failed to fetch services health');
+        }
+    }
+
+    /**
+     * Get comprehensive analytics for issuers
+     */
+    async getIssuerAnalytics(): Promise<IssuerAnalytics> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/issuers/analytics`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching issuer analytics:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to fetch issuer analytics');
+        }
+    }
+
+    /**
+     * Get comprehensive analytics for learners
+     */
+    async getLearnerAnalytics(): Promise<LearnerAnalytics> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/learners/analytics`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching learner analytics:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to fetch learner analytics');
+        }
+    }
+
+    /**
+     * Get comprehensive analytics for employers
+     */
+    async getEmployerAnalytics(): Promise<EmployerAnalytics> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/employers/analytics`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching employer analytics:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to fetch employer analytics');
+        }
+    }
+
+    /**
+     * Perform admin action on issuer (suspend, revoke permissions, disable credentials, restore)
+     */
+    async issuerAdminAction(
+        issuerId: string,
+        action: 'suspend' | 'revoke_permissions' | 'disable_credentials' | 'restore',
+        reason?: string
+    ): Promise<{ success: boolean; message: string; action: string; issuer_id: string }> {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/v1/admin/issuers/${issuerId}/actions`,
+                {
+                    action,
+                    reason
+                },
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error performing admin action:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to perform admin action');
+        }
+    }
+
+    /**
+     * Get detailed information about a specific issuer
+     */
+    async getIssuerDetails(issuerId: string): Promise<Issuer> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/issuers/${issuerId}/details`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching issuer details:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to fetch issuer details');
         }
     }
 
