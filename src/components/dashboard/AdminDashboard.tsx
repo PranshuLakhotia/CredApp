@@ -37,6 +37,8 @@ import {
     Play,
     TrendingDown,
     AlertTriangle as AlertTriangleIcon,
+    Menu,
+    X,
 } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -82,10 +84,10 @@ ChartJS.register(
 // --- Components ---
 const SidebarItem = ({ icon: Icon, label, active, onClick, darkMode, collapsed }: any) => (
     <motion.button
-        whileHover={{ x: 4 }}
+        whileHover={{ x: collapsed ? 0 : 4 }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${active
+        className={`w-full flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 relative ${active
             ? darkMode
                 ? 'bg-gray-800 shadow-sm text-blue-400'
                 : 'bg-white shadow-sm text-blue-600'
@@ -95,9 +97,9 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, darkMode, collapsed }
             }`}
         title={collapsed ? label : ''}
     >
-        <Icon size={20} className={active ? (darkMode ? 'text-blue-400' : 'text-blue-600') : (darkMode ? 'text-gray-500' : 'text-gray-400')} />
-        {!collapsed && <span className="font-medium text-sm">{label}</span>}
-        {active && (
+        <Icon size={20} className={`flex-shrink-0 ${active ? (darkMode ? 'text-blue-400' : 'text-blue-600') : (darkMode ? 'text-gray-400' : 'text-gray-500')}`} />
+        {!collapsed && <span className="font-medium text-sm whitespace-nowrap">{label}</span>}
+        {active && !collapsed && (
             <motion.div
                 layoutId="activeIndicator"
                 className={`absolute left-0 w-1 h-8 rounded-r-full ${darkMode ? 'bg-blue-400' : 'bg-blue-600'}`}
@@ -149,15 +151,163 @@ const StatusBadge = ({ status, darkMode }: any) => {
     return <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${style}`}>{status}</span>;
 };
 
-// --- Sections (Settings unchanged) ---
+// --- Settings Section ---
 const SettingsSection = ({ darkMode }: any) => {
     const [activeSetting, setActiveSetting] = useState('general');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [settings, setSettings] = useState({
+        platformName: 'Credify Platform',
+        supportEmail: 'support@credify.com',
+        timezone: 'UTC',
+        dateFormat: 'MM/DD/YYYY',
+        enable2FA: false,
+        sessionTimeout: 30,
+        passwordMinLength: 8,
+        requireUppercase: true,
+        requireNumbers: true,
+        requireSpecialChars: true,
+        emailNotifications: true,
+        pushNotifications: true,
+        smsNotifications: false,
+        maintenanceMode: false,
+        maintenanceMessage: 'System is currently under maintenance. Please check back later.',
+        apiRateLimit: 1000,
+    });
+    const [teamMembers, setTeamMembers] = useState<string[]>([]);
+    const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const systemSettings = await adminService.getSettings();
+                setSettings(prev => ({
+                    ...prev,
+                    maintenanceMode: systemSettings.maintenance_mode,
+                    maintenanceMessage: systemSettings.maintenance_message || prev.maintenanceMessage,
+                    apiRateLimit: systemSettings.api_rate_limit,
+                }));
+                setTeamMembers(systemSettings.team_members || []);
+                // Store in localStorage
+                localStorage.setItem('maintenanceMode', JSON.stringify({
+                    enabled: systemSettings.maintenance_mode,
+                    message: systemSettings.maintenance_message
+                }));
+            } catch (error) {
+                console.error('Failed to fetch settings:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSettings();
+    }, []);
+
     const settingsTabs = [
         { id: 'general', label: 'General', icon: Globe },
         { id: 'security', label: 'Security', icon: Lock },
         { id: 'notifications', label: 'Notifications', icon: Bell },
+        { id: 'api', label: 'API Settings', icon: Code },
+        { id: 'system', label: 'System', icon: Server },
         { id: 'team', label: 'Team Members', icon: Users },
     ];
+
+    const handleSaveMaintenance = async () => {
+        setSaving(true);
+        try {
+            const result = await adminService.updateMaintenanceMode(
+                settings.maintenanceMode,
+                settings.maintenanceMessage
+            );
+            // Update localStorage
+            localStorage.setItem('maintenanceMode', JSON.stringify({
+                enabled: result.maintenance_mode,
+                message: result.maintenance_message
+            }));
+            alert('Maintenance mode updated successfully!');
+        } catch (error: any) {
+            alert(`Failed to update maintenance mode: ${error.message}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveRateLimit = async () => {
+        setSaving(true);
+        try {
+            await adminService.updateRateLimit(settings.apiRateLimit);
+            alert('Rate limit updated successfully!');
+        } catch (error: any) {
+            alert(`Failed to update rate limit: ${error.message}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveSystem = async () => {
+        try {
+            setSaving(true);
+            const result = await adminService.updateSystemSettings({
+                maintenance_mode: settings.maintenanceMode,
+                maintenance_message: settings.maintenanceMessage,
+            });
+            // Update localStorage
+            localStorage.setItem('maintenanceMode', JSON.stringify({
+                enabled: result.maintenance_mode,
+                message: result.maintenance_message
+            }));
+            alert('System settings updated successfully!');
+        } catch (error: any) {
+            alert(`Failed to update system settings: ${error.message}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleAddTeamMember = async () => {
+        if (!newMemberEmail.trim()) {
+            alert('Please enter an email address');
+            return;
+        }
+        
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newMemberEmail.trim())) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        try {
+            setSaving(true);
+            const result = await adminService.addTeamMember(newMemberEmail.trim());
+            setTeamMembers(result.team_members);
+            setNewMemberEmail('');
+            setShowAddMemberModal(false);
+            alert(result.message);
+        } catch (error: any) {
+            alert(`Failed to add team member: ${error.message}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRemoveTeamMember = async (email: string) => {
+        if (!confirm(`Are you sure you want to remove ${email} from the team?`)) {
+            return;
+        }
+
+        try {
+            setSaving(true);
+            const result = await adminService.removeTeamMember(email);
+            setTeamMembers(result.team_members);
+            alert(result.message);
+        } catch (error: any) {
+            alert(`Failed to remove team member: ${error.message}`);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col md:flex-row min-h-[600px] ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
             <div className={`w-full md:w-64 border-r p-6 ${darkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50/50'}`}>
@@ -182,26 +332,444 @@ const SettingsSection = ({ darkMode }: any) => {
                     ))}
                 </nav>
             </div>
-            <div className="flex-1 p-8">
+            <div className="flex-1 p-8 overflow-y-auto">
                 {activeSetting === 'general' && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                         <h2 className={`text-xl font-bold mb-6 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>General Settings</h2>
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             <div>
-                                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Platform Name</label>
-                                <input type="text" defaultValue="Credify Platform" className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} />
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Platform Name</label>
+                                <input 
+                                    type="text" 
+                                    value={settings.platformName}
+                                    onChange={(e) => setSettings({...settings, platformName: e.target.value})}
+                                    className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} 
+                                />
                             </div>
                             <div>
-                                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Support Email</label>
-                                <input type="email" defaultValue="support@credify.com" className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} />
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Support Email</label>
+                                <input 
+                                    type="email" 
+                                    value={settings.supportEmail}
+                                    onChange={(e) => setSettings({...settings, supportEmail: e.target.value})}
+                                    className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} 
+                                />
                             </div>
-                            <div className="pt-4">
-                                <button className={`px-6 py-2 rounded-xl font-medium transition-colors ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>Save Changes</button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Timezone</label>
+                                    <select 
+                                        value={settings.timezone}
+                                        onChange={(e) => setSettings({...settings, timezone: e.target.value})}
+                                        className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`}
+                                    >
+                                        <option value="UTC">UTC</option>
+                                        <option value="America/New_York">Eastern Time</option>
+                                        <option value="America/Chicago">Central Time</option>
+                                        <option value="America/Denver">Mountain Time</option>
+                                        <option value="America/Los_Angeles">Pacific Time</option>
+                                        <option value="Europe/London">London</option>
+                                        <option value="Asia/Tokyo">Tokyo</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Date Format</label>
+                                    <select 
+                                        value={settings.dateFormat}
+                                        onChange={(e) => setSettings({...settings, dateFormat: e.target.value})}
+                                        className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`}
+                                    >
+                                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <button 
+                                    onClick={() => console.log('General settings save - to be implemented')}
+                                    className={`px-6 py-2 rounded-xl font-medium transition-colors ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                >
+                                    Save Changes
+                                </button>
                             </div>
                         </div>
                     </motion.div>
                 )}
-                {/* Security, Notifications, Team omitted for brevity */}
+
+                {activeSetting === 'security' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <h2 className={`text-xl font-bold mb-6 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Security Settings</h2>
+                        <div className="space-y-6">
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className={`font-semibold mb-1 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Two-Factor Authentication</h3>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Require 2FA for all admin accounts</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={settings.enable2FA}
+                                            onChange={(e) => setSettings({...settings, enable2FA: e.target.checked})}
+                                            className="sr-only peer"
+                                        />
+                                        <div className={`w-11 h-6 rounded-full peer ${darkMode ? 'bg-gray-700' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600`}></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Session Timeout (minutes)</label>
+                                <input 
+                                    type="number" 
+                                    min="5" 
+                                    max="480"
+                                    value={settings.sessionTimeout}
+                                    onChange={(e) => setSettings({...settings, sessionTimeout: parseInt(e.target.value)})}
+                                    className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} 
+                                />
+                            </div>
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                <h3 className={`font-semibold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Password Policy</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Minimum Length</label>
+                                        <input 
+                                            type="number" 
+                                            min="6" 
+                                            max="32"
+                                            value={settings.passwordMinLength}
+                                            onChange={(e) => setSettings({...settings, passwordMinLength: parseInt(e.target.value)})}
+                                            className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={settings.requireUppercase}
+                                                onChange={(e) => setSettings({...settings, requireUppercase: e.target.checked})}
+                                                className="rounded"
+                                            />
+                                            <span>Require uppercase letters</span>
+                                        </label>
+                                        <label className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={settings.requireNumbers}
+                                                onChange={(e) => setSettings({...settings, requireNumbers: e.target.checked})}
+                                                className="rounded"
+                                            />
+                                            <span>Require numbers</span>
+                                        </label>
+                                        <label className={`flex items-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={settings.requireSpecialChars}
+                                                onChange={(e) => setSettings({...settings, requireSpecialChars: e.target.checked})}
+                                                className="rounded"
+                                            />
+                                            <span>Require special characters</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <button 
+                                    onClick={() => console.log('Security settings save - to be implemented')}
+                                    className={`px-6 py-2 rounded-xl font-medium transition-colors ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                >
+                                    Save Security Settings
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeSetting === 'notifications' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <h2 className={`text-xl font-bold mb-6 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Notification Settings</h2>
+                        <div className="space-y-4">
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h3 className={`font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Email Notifications</h3>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Receive notifications via email</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={settings.emailNotifications}
+                                            onChange={(e) => setSettings({...settings, emailNotifications: e.target.checked})}
+                                            className="sr-only peer"
+                                        />
+                                        <div className={`w-11 h-6 rounded-full peer ${darkMode ? 'bg-gray-700' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600`}></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h3 className={`font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Push Notifications</h3>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Receive browser push notifications</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={settings.pushNotifications}
+                                            onChange={(e) => setSettings({...settings, pushNotifications: e.target.checked})}
+                                            className="sr-only peer"
+                                        />
+                                        <div className={`w-11 h-6 rounded-full peer ${darkMode ? 'bg-gray-700' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600`}></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h3 className={`font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>SMS Notifications</h3>
+                                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Receive notifications via SMS</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={settings.smsNotifications}
+                                            onChange={(e) => setSettings({...settings, smsNotifications: e.target.checked})}
+                                            className="sr-only peer"
+                                        />
+                                        <div className={`w-11 h-6 rounded-full peer ${darkMode ? 'bg-gray-700' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600`}></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <button 
+                                    onClick={() => console.log('Notification settings save - to be implemented')}
+                                    className={`px-6 py-2 rounded-xl font-medium transition-colors ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                >
+                                    Save Notification Settings
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeSetting === 'api' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <h2 className={`text-xl font-bold mb-6 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>API Settings</h2>
+                        <div className="space-y-6">
+                            <div>
+                                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>API Rate Limit (requests per hour)</label>
+                                <input 
+                                    type="number" 
+                                    min="100" 
+                                    max="10000"
+                                    value={settings.apiRateLimit}
+                                    onChange={(e) => setSettings({...settings, apiRateLimit: parseInt(e.target.value)})}
+                                    className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`} 
+                                />
+                                <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Maximum number of API requests allowed per hour per API key</p>
+                            </div>
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                <h3 className={`font-semibold mb-2 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>API Keys</h3>
+                                <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Manage your API keys for external integrations</p>
+                                <button className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${darkMode ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                                    Generate New API Key
+                                </button>
+                            </div>
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <button 
+                                    onClick={handleSaveRateLimit}
+                                    disabled={saving}
+                                    className={`px-6 py-2 rounded-xl font-medium transition-colors ${
+                                        saving
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : darkMode
+                                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                                >
+                                    {saving ? 'Saving...' : 'Save API Settings'}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeSetting === 'system' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <h2 className={`text-xl font-bold mb-6 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>System Settings</h2>
+                        <div className="space-y-6">
+                            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-yellow-900/20 border-yellow-700' : 'bg-yellow-50 border-yellow-200'}`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className={`font-semibold ${darkMode ? 'text-yellow-300' : 'text-yellow-800'}`}>Maintenance Mode</h3>
+                                        <p className={`text-sm ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>Temporarily disable access to the platform</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={settings.maintenanceMode}
+                                            onChange={(e) => setSettings({...settings, maintenanceMode: e.target.checked})}
+                                            className="sr-only peer"
+                                        />
+                                        <div className={`w-11 h-6 rounded-full peer ${darkMode ? 'bg-gray-700' : 'bg-gray-300'} peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600`}></div>
+                                    </label>
+                                </div>
+                                {settings.maintenanceMode && (
+                                    <div className="mt-4">
+                                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Maintenance Message</label>
+                                        <textarea
+                                            value={settings.maintenanceMessage}
+                                            onChange={(e) => setSettings({...settings, maintenanceMessage: e.target.value})}
+                                            rows={3}
+                                            className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`}
+                                            placeholder="Enter maintenance message..."
+                                        />
+                                    </div>
+                                )}
+                                <div className="mt-4">
+                                    <button
+                                        onClick={handleSaveMaintenance}
+                                        disabled={saving}
+                                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                                            saving
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : darkMode
+                                                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                                                : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                        }`}
+                                    >
+                                        {saving ? 'Saving...' : 'Save Maintenance Settings'}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <button 
+                                    onClick={handleSaveSystem}
+                                    disabled={saving}
+                                    className={`px-6 py-2 rounded-xl font-medium transition-colors ${
+                                        saving
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : darkMode
+                                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                                >
+                                    {saving ? 'Saving...' : 'Save System Settings'}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeSetting === 'team' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <h2 className={`text-xl font-bold mb-6 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Team Members</h2>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Manage admin team members by email address</p>
+                                <button 
+                                    onClick={() => setShowAddMemberModal(true)}
+                                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                >
+                                    Add Member
+                                </button>
+                            </div>
+                            
+                            {teamMembers.length === 0 ? (
+                                <div className={`p-8 rounded-xl border text-center ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                                    <Users size={48} className={`mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No team members added yet</p>
+                                    <p className={`text-sm mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Add your first team member to get started</p>
+                                </div>
+                            ) : (
+                                <div className={`rounded-xl border ${darkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-white border-gray-200'}`}>
+                                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                                        {teamMembers.map((email, index) => (
+                                            <div key={index} className={`p-4 flex items-center justify-between hover:${darkMode ? 'bg-gray-800/50' : 'bg-gray-50'} transition-colors`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                                        <Users size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{email}</p>
+                                                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Team Member</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleRemoveTeamMember(email)}
+                                                    disabled={saving}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                                        saving
+                                                            ? 'opacity-50 cursor-not-allowed'
+                                                            : darkMode
+                                                            ? 'text-red-400 hover:bg-red-900/20 hover:text-red-300'
+                                                            : 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                                                    }`}
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Add Member Modal */}
+                        {showAddMemberModal && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddMemberModal(false)}>
+                                <div 
+                                    className={`rounded-xl shadow-2xl p-6 max-w-sm w-1/2 mx-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Add Team Member</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email Address</label>
+                                            <input
+                                                type="email"
+                                                value={newMemberEmail}
+                                                onChange={(e) => setNewMemberEmail(e.target.value)}
+                                                placeholder="team.member@example.com"
+                                                className={`w-full px-4 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${darkMode ? 'bg-gray-900 border-gray-700 text-gray-100 focus:border-blue-400' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`}
+                                                onKeyPress={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        handleAddTeamMember();
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="flex gap-3 pt-2">
+                                            <button
+                                                onClick={() => {
+                                                    setShowAddMemberModal(false);
+                                                    setNewMemberEmail('');
+                                                }}
+                                                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-100' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleAddTeamMember}
+                                                disabled={saving || !newMemberEmail.trim()}
+                                                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                                    saving || !newMemberEmail.trim()
+                                                        ? 'opacity-50 cursor-not-allowed'
+                                                        : darkMode
+                                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                }`}
+                                            >
+                                                {saving ? 'Adding...' : 'Add Member'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
             </div>
         </div>
     );
@@ -1246,6 +1814,7 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
     const [darkMode, setDarkMode] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 
     const renderContent = () => {
@@ -1270,8 +1839,19 @@ export default function AdminDashboard() {
     };
 
     return (
-        <div className={`min-h-screen flex font-sans transition-colors duration-200 ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-[#F8FAFC] text-gray-900'}`}>
-            {/* Sidebar */}
+        <div className={`min-h-screen flex font-sans transition-colors duration-200 overflow-x-hidden ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-[#F8FAFC] text-gray-900'}`}>
+            {/* Mobile Menu Overlay */}
+            {mobileMenuOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                />
+            )}
+
+            {/* Sidebar - Desktop */}
             <motion.aside
                 initial={{ x: -20, opacity: 0 }}
                 animate={{
@@ -1280,14 +1860,14 @@ export default function AdminDashboard() {
                     width: sidebarCollapsed ? '80px' : '256px'
                 }}
                 transition={{ duration: 0.3 }}
-                className={`backdrop-blur-xl border-r fixed h-full z-10 hidden md:flex flex-col transition-colors duration-200 ${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white/80 border-gray-100'}`}
+                className={`backdrop-blur-xl border-r fixed h-full z-30 hidden md:flex flex-col transition-colors duration-200 ${darkMode ? 'bg-gray-800/80 border-gray-700' : 'bg-white/80 border-gray-100'}`}
             >
-                <div className="p-6">
+                <div className={`p-6 ${sidebarCollapsed ? 'px-3' : ''}`}>
                     <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2'} mb-8`}>
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
-                        {!sidebarCollapsed && <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">CredifyAdmin</span>}
+                        <div className={`${sidebarCollapsed ? 'w-10 h-10' : 'w-8 h-8'} bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0`}>C</div>
+                        {!sidebarCollapsed && <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 whitespace-nowrap">Credify<sup className="text-xs text-red-500">Admin</sup></span>}
                     </div>
-                    <nav className="space-y-1">
+                    <nav className={`space-y-1 ${sidebarCollapsed ? '' : ''}`}>
                         <SidebarItem icon={BarChart3} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} darkMode={darkMode} collapsed={sidebarCollapsed} />
                         <SidebarItem icon={Activity} label="System Status" active={activeTab === 'system'} onClick={() => setActiveTab('system')} darkMode={darkMode} collapsed={sidebarCollapsed} />
                         <SidebarItem icon={Building2} label="Issuers" active={activeTab === 'issuers'} onClick={() => setActiveTab('issuers')} darkMode={darkMode} collapsed={sidebarCollapsed} />
@@ -1296,40 +1876,93 @@ export default function AdminDashboard() {
                         <SidebarItem icon={ShieldCheck} label="Verifications" active={activeTab === 'verifications'} onClick={() => setActiveTab('verifications')} darkMode={darkMode} collapsed={sidebarCollapsed} />
                     </nav>
                 </div>
-                <div className={`mt-auto p-6 border-t ${darkMode ? 'border-gray-700' : 'border-gray-50'}`}>
+                <div className={`mt-auto ${sidebarCollapsed ? 'p-3' : 'p-6'} border-t ${darkMode ? 'border-gray-700' : 'border-gray-50'}`}>
                     <button
                         onClick={() => setActiveTab('settings')}
-                        className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} transition-colors w-full px-4 py-2 rounded-xl mb-3 ${activeTab === 'settings' ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-600') : (darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-900')}`}
+                        className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} transition-colors w-full px-4 py-2 rounded-xl mb-3 ${activeTab === 'settings' ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-600') : (darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100')}`}
                         title={sidebarCollapsed ? 'Settings' : ''}
                     >
-                        <Settings size={20} />
+                        <Settings size={20} className="flex-shrink-0" />
                         {!sidebarCollapsed && <span className="font-medium text-sm">Settings</span>}
                     </button>
                     <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className={`flex items-center justify-center transition-colors w-full px-4 py-2 rounded-xl ${darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+                        className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} transition-colors w-full px-4 py-2 rounded-xl ${darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
                         title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
                     >
-                        {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                        {sidebarCollapsed ? <ChevronRight size={20} className="flex-shrink-0" /> : <ChevronLeft size={20} className="flex-shrink-0" />}
                         {!sidebarCollapsed && <span className="font-medium text-sm">Collapse</span>}
+                    </button>
+                </div>
+            </motion.aside>
+
+            {/* Mobile Sidebar */}
+            <motion.aside
+                initial={{ x: '-100%' }}
+                animate={{ x: mobileMenuOpen ? 0 : '-100%' }}
+                transition={{ duration: 0.3, type: 'spring', damping: 25 }}
+                className={`fixed top-0 left-0 h-full w-64 z-50 md:hidden flex flex-col ${darkMode ? 'bg-gray-800 border-r border-gray-700' : 'bg-white border-r border-gray-100'}`}
+            >
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
+                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Credify<sup className="text-xs text-red-500">Admin</sup></span>
+                        </div>
+                        <button
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`p-2 rounded-lg ${darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <nav className="space-y-1">
+                        <SidebarItem icon={BarChart3} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setMobileMenuOpen(false); }} darkMode={darkMode} collapsed={false} />
+                        <SidebarItem icon={Activity} label="System Status" active={activeTab === 'system'} onClick={() => { setActiveTab('system'); setMobileMenuOpen(false); }} darkMode={darkMode} collapsed={false} />
+                        <SidebarItem icon={Building2} label="Issuers" active={activeTab === 'issuers'} onClick={() => { setActiveTab('issuers'); setMobileMenuOpen(false); }} darkMode={darkMode} collapsed={false} />
+                        <SidebarItem icon={Users} label="Learners" active={activeTab === 'learners'} onClick={() => { setActiveTab('learners'); setMobileMenuOpen(false); }} darkMode={darkMode} collapsed={false} />
+                        <SidebarItem icon={Briefcase} label="Employers" active={activeTab === 'employers'} onClick={() => { setActiveTab('employers'); setMobileMenuOpen(false); }} darkMode={darkMode} collapsed={false} />
+                        <SidebarItem icon={ShieldCheck} label="Verifications" active={activeTab === 'verifications'} onClick={() => { setActiveTab('verifications'); setMobileMenuOpen(false); }} darkMode={darkMode} collapsed={false} />
+                    </nav>
+                </div>
+                <div className="mt-auto p-6 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                        onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                        className={`flex items-center gap-3 transition-colors w-full px-4 py-2 rounded-xl mb-3 ${activeTab === 'settings' ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-600') : (darkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100')}`}
+                    >
+                        <Settings size={20} />
+                        <span className="font-medium text-sm">Settings</span>
                     </button>
                 </div>
             </motion.aside>
 
             {/* Main Content */}
             <motion.main
-                animate={{
-                    marginLeft: sidebarCollapsed ? '80px' : '256px'
+                className={`flex-1 p-4 md:p-8 transition-all duration-300 ${
+                    sidebarCollapsed ? 'md:ml-[80px]' : 'md:ml-[256px]'
+                }`}
+                style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    minWidth: 0
                 }}
-                transition={{ duration: 0.3 }}
-                className="flex-1 p-8"
             >
-                <header className="flex justify-between items-center mb-8">
-                    <div>
-                        <h1 className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
-                        <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Welcome back, Administrator</p>
+                <header className="flex justify-between items-center mb-6 md:mb-8">
+                    <div className="flex items-center gap-3 md:gap-0">
+                        {/* Mobile Menu Button */}
+                        <button
+                            onClick={() => setMobileMenuOpen(true)}
+                            className={`md:hidden p-2 rounded-lg ${darkMode ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <div>
+                            <h1 className={`text-xl md:text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
+                            <p className={`text-xs md:text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Welcome back, Administrator</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
                         <div className="flex items-center justify-center">
                             <ThemeSwitch 
                                 checked={darkMode} 
@@ -1338,11 +1971,11 @@ export default function AdminDashboard() {
                             />
                         </div>
                         <button className={`p-2 rounded-full shadow-sm border transition-colors relative ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-400 hover:text-blue-400' : 'bg-white border-gray-100 text-gray-500 hover:text-blue-600'}`}>
-                            <Bell size={20} />
-                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                            <Bell size={18} className="md:w-5 md:h-5" />
+                            <span className="absolute top-0 right-0 w-2 h-2 md:w-2.5 md:h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
                         </button>
-                        <div className={`flex items-center gap-3 pl-4 border-l ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 p-0.5">
+                        <div className={`hidden sm:flex items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 p-0.5">
                                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" />
                                 </div>

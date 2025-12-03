@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginRequest } from '@/types/auth';
 import { getUserDashboardPath } from '@/utils/roleUtils';
 import { AuthService } from '@/services/auth.service';
+import { adminService } from '@/services/admin.service';
+import { MaintenanceBanner } from '@/components/admin/MaintenanceBanner';
 
 
 export default function LoginFormNew() {
@@ -13,9 +15,63 @@ export default function LoginFormNew() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState<string>('');
   
   const { login, isLoading, error, clearError, user } = useAuth();
   const router = useRouter();
+
+  // Check maintenance mode
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        // First check localStorage
+        const stored = localStorage.getItem('maintenanceMode');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.enabled) {
+            setMaintenanceMode(true);
+            setMaintenanceMessage(parsed.message || 'System is currently under maintenance. Please check back later.');
+          }
+        }
+
+        // Then check API for latest status
+        const status = await adminService.getMaintenanceStatus();
+        if (status.maintenance_mode) {
+          setMaintenanceMode(true);
+          setMaintenanceMessage(status.message || 'System is currently under maintenance. Please check back later.');
+          // Update localStorage
+          localStorage.setItem('maintenanceMode', JSON.stringify({
+            enabled: true,
+            message: status.message
+          }));
+        } else {
+          setMaintenanceMode(false);
+          localStorage.setItem('maintenanceMode', JSON.stringify({
+            enabled: false,
+            message: null
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to check maintenance status:', error);
+        // Fallback to localStorage if API fails
+        const stored = localStorage.getItem('maintenanceMode');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.enabled) {
+            setMaintenanceMode(true);
+            setMaintenanceMessage(parsed.message || 'System is currently under maintenance. Please check back later.');
+          }
+        }
+      }
+    };
+
+    checkMaintenance();
+    
+    // Check every 30 seconds
+    const interval = setInterval(checkMaintenance, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Load remembered email and remember me preference from localStorage on client side only
   useEffect(() => {
@@ -32,6 +88,11 @@ export default function LoginFormNew() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check maintenance mode
+    if (maintenanceMode) {
+      return;
+    }
     
     if (!email.trim()) {
       return;
@@ -77,7 +138,23 @@ export default function LoginFormNew() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Maintenance Banner */}
+      {maintenanceMode && (
+        <div className="bg-yellow-500 text-yellow-900 px-4 py-3">
+          <div className="container mx-auto">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={20} className="flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-sm">System Maintenance</p>
+                <p className="text-xs">{maintenanceMessage}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex flex-1">
       {/* Left Side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full md:w-2/3 max-w-md">
@@ -161,6 +238,17 @@ export default function LoginFormNew() {
                 </button>
               </div>
 
+              {/* Maintenance Mode Message */}
+              {maintenanceMode && (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-start gap-3">
+                  <AlertTriangle size={20} className="flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-sm mb-1">System Under Maintenance</p>
+                    <p className="text-xs">{maintenanceMessage}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Error Display */}
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -171,10 +259,10 @@ export default function LoginFormNew() {
               {/* Login Button */}
               <button
                 type="submit"
-                disabled={isLoading || isSubmitting}
+                disabled={isLoading || isSubmitting || maintenanceMode}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading || isSubmitting ? 'Signing In...' : 'Login'}
+                {maintenanceMode ? 'Login Disabled (Maintenance)' : (isLoading || isSubmitting ? 'Signing In...' : 'Login')}
               </button>
 
               {/* Sign Up Link */}
@@ -183,7 +271,12 @@ export default function LoginFormNew() {
                 <button
                   type="button"
                   onClick={handleSignUp}
-                  className="text-red-500 hover:text-red-600 font-semibold"
+                  disabled={maintenanceMode}
+                  className={`font-semibold transition ${
+                    maintenanceMode
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-red-500 hover:text-red-600'
+                  }`}
                 >
                   Sign up
                 </button>
@@ -196,7 +289,6 @@ export default function LoginFormNew() {
       </div>
 
       {/* Right Side - Illustration */}
-      
       <div className="hidden lg:flex lg:w-1/2 bg-white items-center justify-center p-8">
         <div className="max-w-md w-full bg-gradient-to-br from-blue-100 via-indigo-50 to-purple-50 rounded-3xl shadow-xl pt-20">
           {/* Placeholder for illustration */}
@@ -214,7 +306,7 @@ export default function LoginFormNew() {
               </div>
               {/* <div className="text-gray-400 text-sm">Illustration Placeholder</div> */}
             </div>
-            
+      </div>
       </div>
     </div>
   );
