@@ -609,7 +609,10 @@ print(response.json())`
                   Test API endpoints directly from your browser
                 </p>
               </div>
-              <ApiTester endpoints={endpoints} />
+              <ApiTester
+                endpoints={endpoints}
+                initialEndpointId={selectedEndpoint || endpoints[0]?.id}
+              />
               <NavigationButtons />
             </div>
           ) : (
@@ -895,6 +898,11 @@ print(response.json())`
                     endpoint={endpoint}
                     onSelect={() => setSelectedEndpoint(endpoint.id)}
                     isSelected={true}
+                    onTryIt={() => {
+                      setActiveTab('test');
+                      setActiveSection('endpoints');
+                      setSelectedEndpoint(endpoint.id);
+                    }}
                   />
                 ) : null;
               })()}

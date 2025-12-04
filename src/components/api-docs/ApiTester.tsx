@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { API_BASE_URL } from "@/config/api";
 
 interface ApiEndpoint {
   id: string;
@@ -18,10 +19,11 @@ interface ApiEndpoint {
 
 interface ApiTesterProps {
   endpoints: ApiEndpoint[];
+  initialEndpointId?: string;
 }
 
-export default function ApiTester({ endpoints }: ApiTesterProps) {
-  const [selectedEndpoint, setSelectedEndpoint] = useState<string>(endpoints[0]?.id || "");
+export default function ApiTester({ endpoints, initialEndpointId }: ApiTesterProps) {
+  const [selectedEndpoint, setSelectedEndpoint] = useState<string>(initialEndpointId || endpoints[0]?.id || "");
   const [apiKey, setApiKey] = useState("");
   const [requestBody, setRequestBody] = useState("");
   const [pathParams, setPathParams] = useState<Record<string, string>>({});
@@ -31,6 +33,14 @@ export default function ApiTester({ endpoints }: ApiTesterProps) {
   const [error, setError] = useState<string | null>(null);
 
   const currentEndpoint = endpoints.find((e) => e.id === selectedEndpoint);
+
+  // Keep selected endpoint in sync with parent selection / endpoints list
+  if (!currentEndpoint && endpoints.length > 0) {
+    const fallbackId = initialEndpointId || endpoints[0].id;
+    if (fallbackId !== selectedEndpoint) {
+      setSelectedEndpoint(fallbackId);
+    }
+  }
 
   const handleEndpointChange = (endpointId: string) => {
     setSelectedEndpoint(endpointId);
@@ -54,16 +64,37 @@ export default function ApiTester({ endpoints }: ApiTesterProps) {
     setResponse(null);
 
     try {
-      // Build URL with path params
-      let url = currentEndpoint.path;
+      // Build URL path with path params
+      let path = currentEndpoint.path;
       Object.entries(pathParams).forEach(([key, value]) => {
-        url = url.replace(`{${key}}`, value);
+        path = path.replace(`{${key}}`, value);
       });
 
       // Add query params
       const queryString = new URLSearchParams(queryParams).toString();
       if (queryString) {
-        url += `?${queryString}`;
+        path += `?${queryString}`;
+      }
+
+      // Resolve full URL:
+      // - If the path is already absolute (http/https), use as-is
+      // - Otherwise, prefix with backend base URL
+      let url: string;
+      if (path.startsWith("http://") || path.startsWith("https://")) {
+        url = path;
+      } else {
+        // API_BASE_URL typically already includes `/api/v1`
+        // If the path also starts with `/api/`, strip `/api/v1` from base to avoid duplication
+        const base =
+          path.startsWith("/api/") || path.startsWith("api/")
+            ? API_BASE_URL.replace(/\/api\/v1\/?$/, "")
+            : API_BASE_URL;
+
+        if (path.startsWith("/")) {
+          url = `${base}${path}`;
+        } else {
+          url = `${base}/${path}`;
+        }
       }
 
       // Build request options
