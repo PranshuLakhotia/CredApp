@@ -102,12 +102,36 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
         },
     };
 
+    // Generate daily labels for last 7 days
+    const getDailyLabels = () => {
+        const labels = [];
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            labels.push(days[date.getDay()]);
+        }
+        return labels;
+    };
+
+    // Generate monthly labels for last 12 months
+    const getMonthlyLabels = () => {
+        const labels = [];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentMonth = new Date().getMonth();
+        for (let i = 11; i >= 0; i--) {
+            const monthIndex = (currentMonth - i + 12) % 12;
+            labels.push(months[monthIndex]);
+        }
+        return labels;
+    };
+
     const dailyData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: getDailyLabels(),
         datasets: [
             {
                 label: 'New Registrations',
-                data: analytics.registration_trends.daily,
+                data: analytics.registration_trends?.daily || [0, 0, 0, 0, 0, 0, 0],
                 borderColor: 'rgb(251, 146, 60)',
                 backgroundColor: 'rgba(251, 146, 60, 0.5)',
                 tension: 0.4,
@@ -116,24 +140,11 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
     };
 
     const monthlyData = {
-        labels: [
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'May',
-            'Jun',
-            'Jul',
-            'Aug',
-            'Sep',
-            'Oct',
-            'Nov',
-            'Dec',
-        ],
+        labels: getMonthlyLabels(),
         datasets: [
             {
                 label: 'Monthly Registrations',
-                data: analytics.registration_trends.monthly,
+                data: analytics.registration_trends?.monthly || Array(12).fill(0),
                 backgroundColor: 'rgba(251, 146, 60, 0.8)',
                 borderRadius: 4,
             },
@@ -145,8 +156,8 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
         datasets: [
             {
                 data: [
-                    analytics.status_distribution.verified || 0,
-                    analytics.status_distribution.pending || 0,
+                    analytics.status_distribution?.verified || 0,
+                    analytics.status_distribution?.pending || 0,
                 ],
                 backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(251, 146, 60, 0.8)'],
                 borderWidth: 0,
@@ -155,10 +166,10 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
     };
 
     const industryData = {
-        labels: analytics.industry_distribution.slice(0, 5).map((i) => i.industry),
+        labels: (analytics.industry_distribution || []).slice(0, 5).map((i) => i.industry || 'Unknown'),
         datasets: [
             {
-                data: analytics.industry_distribution.slice(0, 5).map((i) => i.count),
+                data: (analytics.industry_distribution || []).slice(0, 5).map((i) => i.count || 0),
                 backgroundColor: [
                     'rgba(251, 146, 60, 0.8)',
                     'rgba(59, 130, 246, 0.8)',
@@ -177,15 +188,15 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Employers"
-                    value={analytics.total_count}
-                    change={analytics.growth.percentage}
+                    value={analytics?.total_count || 0}
+                    change={analytics?.growth?.percentage || 0}
                     icon={Briefcase}
                     color="bg-orange-500 text-orange-500"
                     darkMode={darkMode}
                 />
                 <StatCard
                     title="Verified Employers"
-                    value={analytics.verified_count}
+                    value={analytics?.verified_count || 0}
                     change={0}
                     icon={ShieldCheck}
                     color="bg-green-500 text-green-500"
@@ -193,7 +204,7 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
                 />
                 <StatCard
                     title="Active Jobs"
-                    value={analytics.total_active_jobs}
+                    value={analytics?.total_active_jobs || 0}
                     change={0}
                     icon={Briefcase}
                     color="bg-blue-500 text-blue-500"
@@ -201,7 +212,7 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
                 />
                 <StatCard
                     title="Active Employers"
-                    value={analytics.active_count}
+                    value={analytics?.active_count || 0}
                     change={0}
                     icon={Activity}
                     color="bg-purple-500 text-purple-500"
@@ -330,7 +341,8 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
                     Top Verified Employers
                 </h3>
                 <div className="space-y-4">
-                    {analytics.top_performers.map((employer, i) => (
+                    {(analytics.top_performers || []).length > 0 ? (
+                        analytics.top_performers.map((employer, i) => (
                         <div
                             key={i}
                             className="flex items-center justify-between p-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -364,7 +376,12 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
                             </div>
                             <StatusBadge status={employer.status} darkMode={darkMode} />
                         </div>
-                    ))}
+                    ))
+                    ) : (
+                        <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            No top performers found
+                        </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -465,7 +482,8 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
                             </tr>
                         </thead>
                         <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-50'}`}>
-                            {employers.map((item, i) => (
+                            {employers.length > 0 ? (
+                                employers.map((item, i) => (
                                 <TableRow key={item.id} index={i} darkMode={darkMode}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div>
@@ -548,7 +566,14 @@ export const EmployersSection: React.FC<EmployersSectionProps> = ({ darkMode }) 
                                         </div>
                                     </td>
                                 </TableRow>
-                            ))}
+                            ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={7} className={`px-6 py-12 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        No employers found
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

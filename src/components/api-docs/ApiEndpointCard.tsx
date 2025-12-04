@@ -27,9 +27,10 @@ interface ApiEndpointCardProps {
   endpoint: ApiEndpoint;
   onSelect: () => void;
   isSelected: boolean;
+  onTryIt?: () => void;
 }
 
-export default function ApiEndpointCard({ endpoint, onSelect, isSelected }: ApiEndpointCardProps) {
+export default function ApiEndpointCard({ endpoint, onSelect, isSelected, onTryIt }: ApiEndpointCardProps) {
   const [activeLanguage, setActiveLanguage] = useState<"curl" | "javascript" | "python">("curl");
 
   const methodColors: Record<string, { bg: string; text: string }> = {
@@ -99,6 +100,21 @@ export default function ApiEndpointCard({ endpoint, onSelect, isSelected }: ApiE
             className="overflow-hidden border-t border-gray-200"
           >
             <div className="p-5 space-y-6 bg-gray-50">
+              {onTryIt && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={onTryIt}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                    Test this endpoint
+                  </button>
+                </div>
+              )}
+
               {/* Path Parameters */}
               {endpoint.pathParams && (
                 <div>

@@ -590,6 +590,130 @@ class AdminService {
         }
     }
 
+    /**
+     * Get system settings
+     */
+    async getSettings(): Promise<{ maintenance_mode: boolean; maintenance_message?: string; api_rate_limit: number; team_members?: string[] }> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/settings`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching settings:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to fetch settings');
+        }
+    }
+
+    /**
+     * Update maintenance mode
+     */
+    async updateMaintenanceMode(enabled: boolean, message?: string): Promise<{ maintenance_mode: boolean; maintenance_message?: string; api_rate_limit: number }> {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/v1/admin/settings/maintenance`,
+                {
+                    enabled,
+                    message: message || "System is currently under maintenance. Please check back later."
+                },
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error updating maintenance mode:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to update maintenance mode');
+        }
+    }
+
+    /**
+     * Update system settings
+     */
+    async updateSystemSettings(data: { maintenance_mode: boolean; maintenance_message?: string }): Promise<{ maintenance_mode: boolean; maintenance_message?: string; api_rate_limit: number; team_members?: string[] }> {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/v1/admin/settings/maintenance`,
+                {
+                    enabled: data.maintenance_mode,
+                    message: data.maintenance_message || "System is currently under maintenance. Please check back later."
+                },
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error updating system settings:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to update system settings');
+        }
+    }
+
+    /**
+     * Update API rate limit
+     */
+    async updateRateLimit(rateLimit: number): Promise<{ maintenance_mode: boolean; maintenance_message?: string; api_rate_limit: number }> {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/v1/admin/settings/rate-limit`,
+                {
+                    api_rate_limit: rateLimit
+                },
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error updating rate limit:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to update rate limit');
+        }
+    }
+
+    /**
+     * Get maintenance mode status (public endpoint, no auth required)
+     */
+    async getMaintenanceStatus(): Promise<{ maintenance_mode: boolean; message?: string }> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/settings/maintenance/status`
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching maintenance status:', error);
+            // Return default if error (assume not in maintenance)
+            return { maintenance_mode: false, message: undefined };
+        }
+    }
+
+    /**
+     * Add team member
+     */
+    async addTeamMember(email: string): Promise<{ success: boolean; message: string; team_members: string[] }> {
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/v1/admin/settings/team-members`,
+                { email },
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error adding team member:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to add team member');
+        }
+    }
+
+    /**
+     * Remove team member
+     */
+    async removeTeamMember(email: string): Promise<{ success: boolean; message: string; team_members: string[] }> {
+        try {
+            const response = await axios.delete(
+                `${API_BASE_URL}/api/v1/admin/settings/team-members/${encodeURIComponent(email)}`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error removing team member:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to remove team member');
+        }
+    }
+
 }
 
 export const adminService = new AdminService();
