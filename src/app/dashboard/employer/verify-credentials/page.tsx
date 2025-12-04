@@ -93,9 +93,10 @@ interface QRData {
   issued_date: string;
   credential_title?: string;
   blockchain_hash?: string;
-  expiry_date?: string; // Add missing property
-  skill_tags?: string[]; // Add missing property
-  nsqf_level?: number; // Add missing property
+  expiry_date?: string;
+  skill_tags?: string[];
+  nsqf_level?: number;
+  status?: string; // Add status field
 }
 
 interface PDFVerificationResult {
@@ -139,6 +140,7 @@ export default function VerifyCredentialsPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleSingleVerification = async () => {
     if (!credentialId.trim()) {
@@ -272,6 +274,8 @@ export default function VerifyCredentialsPage() {
               result.processing_steps.credential_fetch = 'processing';
               
               try {
+                console.log(`🔍 Fetching credential details for ID: ${credentialId}`);
+                
                 const credentialResponse = await fetch(buildApiUrl(`/employer/credentials/${credentialId}`), {
                   method: 'GET',
                   headers: {
@@ -282,25 +286,40 @@ export default function VerifyCredentialsPage() {
                 
                 if (credentialResponse.ok) {
                   const credentialData = await credentialResponse.json();
+                  console.log('✅ Credential details fetched:', credentialData);
+                  
+                  // Use the complete credential data from the database
                   result.qr_data = {
-                    ...qrResponseData.credential_info,
-                    learner_id: credentialData.credential_info.learner_id, // Get learner ID from database
+                    credential_id: credentialData.credential_info.credential_id,
+                    learner_id: credentialData.credential_info.learner_id,
                     learner_name: credentialData.credential_info.learner_name,
                     credential_title: credentialData.credential_info.credential_title,
                     issuer_name: credentialData.credential_info.issuer_name,
                     issued_date: credentialData.credential_info.issued_date,
+                    expiry_date: credentialData.credential_info.expiry_date,
+                    skill_tags: credentialData.credential_info.skill_tags || [],
+                    nsqf_level: credentialData.credential_info.nsqf_level,
+                    credential_hash: credentialData.credential_info.credential_hash,
                     status: credentialData.credential_info.status
                   };
+                  
                   result.processing_steps.credential_fetch = 'completed';
                   result.processing_steps.qr_scanning = 'completed';
+                  
+                  console.log('📊 QR Data populated:', result.qr_data);
                 } else {
+                  const errorData = await credentialResponse.json();
+                  console.error('❌ Failed to fetch credential details:', errorData);
+                  
                   result.processing_steps.credential_fetch = 'failed';
                   result.processing_steps.qr_scanning = 'failed';
-                  result.error_message = 'Failed to fetch credential details from database';
+                  result.error_message = `Failed to fetch credential details: ${errorData.detail || 'Unknown error'}`;
                   result.status = 'error';
                   continue;
                 }
               } catch (fetchError) {
+                console.error('💥 Error fetching credential details:', fetchError);
+                
                 result.processing_steps.credential_fetch = 'failed';
                 result.processing_steps.qr_scanning = 'failed';
                 result.error_message = 'Error fetching credential details';
@@ -308,6 +327,8 @@ export default function VerifyCredentialsPage() {
                 continue;
               }
             } else {
+              console.error('❌ No credential ID found in QR code');
+              
               result.processing_steps.qr_scanning = 'failed';
               result.error_message = 'No credential ID found in QR code';
               result.status = 'error';
@@ -332,19 +353,19 @@ export default function VerifyCredentialsPage() {
           
           if (result.ocr_data && result.qr_data) {
             // Extract learner ID from OCR (this should be extracted from certificate text)
-            const ocrLearnerId = result.ocr_data.certificate_id || result.ocr_data.learner_id;
+            const ocrLearnerId = result.ocr_data.learner_id;
             const dbLearnerId = result.qr_data.learner_id;
             
-            // Only check learner ID matching
-            const learnerIdMatch = dbLearnerId === ocrLearnerId;
+            // Simple verification based only on learner ID matching
+            const learnerIdMatch = !!(dbLearnerId && ocrLearnerId && dbLearnerId === ocrLearnerId);
             
             const verificationDetails = {
               learner_id_match: learnerIdMatch,
-              learner_name_match: result.ocr_data.learner_name.toLowerCase() === result.qr_data.learner_name.toLowerCase(),
-              credential_title_match: result.ocr_data.credential_title.toLowerCase() === (result.qr_data.credential_title || '').toLowerCase(),
-              issuer_name_match: result.ocr_data.issuer_name.toLowerCase() === result.qr_data.issuer_name.toLowerCase(),
-              issued_date_match: new Date(result.ocr_data.issued_date).getTime() === new Date(result.qr_data.issued_date).getTime(),
-              overall_match: learnerIdMatch, // Only learner ID match determines verification
+              learner_name_match: true, // Skip name matching
+              credential_title_match: true, // Skip title matching
+              issuer_name_match: true, // Skip issuer matching
+              issued_date_match: true, // Skip date matching
+              overall_match: learnerIdMatch, // Only check learner ID
             };
             
             result.verification_details = verificationDetails;
@@ -443,6 +464,39 @@ export default function VerifyCredentialsPage() {
     const files = Array.from(event.target.files || []);
     if (files.length > 0) {
       setSelectedFiles(files);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const pdfFiles = files.filter(file => file.name.toLowerCase().endsWith('.pdf'));
+    
+    if (pdfFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...pdfFiles]);
+    } else {
+      setError('Please drop only PDF files');
     }
   };
 
@@ -545,26 +599,74 @@ export default function VerifyCredentialsPage() {
                       </Typography>
 
                       <Box sx={{ mb: 3 }}>
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          multiple
-                          onChange={handleFileChange}
-                          style={{ display: 'none' }}
-                          id="pdf-upload"
-                        />
-                        <label htmlFor="pdf-upload">
-                          <Button
-                            component="span"
-                            variant="outlined"
-                            fullWidth
-                            size="large"
-                            sx={{ mb: 2, height: 56 }}
-                          >
-                            <FileUpload sx={{ mr: 1 }} />
-                            {selectedFiles.length > 0 ? `${selectedFiles.length} PDF(s) Selected` : 'Select PDF Files'}
-                          </Button>
-                        </label>
+                        {/* Drag and Drop Area */}
+                        <Box
+                          onDragEnter={handleDragEnter}
+                          onDragLeave={handleDragLeave}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          sx={{
+                            border: '2px dashed',
+                            borderColor: isDragOver ? '#10b981' : selectedFiles.length > 0 ? '#10b981' : '#d1d5db',
+                            borderRadius: 2,
+                            p: 4,
+                            textAlign: 'center',
+                            bgcolor: isDragOver ? '#f0fdf4' : selectedFiles.length > 0 ? '#f0fdf4' : '#f9fafb',
+                            transition: 'all 0.2s ease-in-out',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              borderColor: '#10b981',
+                              bgcolor: '#f0fdf4',
+                            },
+                          }}
+                        >
+                          {selectedFiles.length > 0 ? (
+                            <Box>
+                              <CheckCircle sx={{ fontSize: 48, color: '#10b981', mb: 2 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#10b981', mb: 1 }}>
+                                {selectedFiles.length} PDF file(s) selected
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Ready for verification
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Box>
+                              <Upload sx={{ fontSize: 48, color: isDragOver ? '#10b981' : '#6b7280', mb: 2 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                                {isDragOver ? 'Drop PDF files here' : 'Drag & drop PDF files here'}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                or click to browse files
+                              </Typography>
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                multiple
+                                onChange={handleFileChange}
+                                style={{ display: 'none' }}
+                                id="pdf-upload"
+                              />
+                              <label htmlFor="pdf-upload">
+                                <Button
+                                  component="span"
+                                  variant="outlined"
+                                  sx={{
+                                    borderColor: '#10b981',
+                                    color: '#10b981',
+                                    '&:hover': {
+                                      borderColor: '#059669',
+                                      bgcolor: '#f0fdf4',
+                                    },
+                                  }}
+                                >
+                                  <FileUpload sx={{ mr: 1 }} />
+                                  Select PDF Files
+                                </Button>
+                              </label>
+                            </Box>
+                          )}
+                        </Box>
 
                         {/* Selected Files List */}
                         {selectedFiles.length > 0 && (

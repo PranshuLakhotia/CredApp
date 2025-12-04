@@ -23,9 +23,12 @@ import {
   MoreVert,
   School,
   WorkspacePremium,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { Credential } from '@/types/dashboard';
+import { useState } from 'react';
+import MintNFTModal from '@/components/nft/MintNFTModal';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -89,6 +92,8 @@ export default function CredentialCard({
   showActions = true,
   compact = false 
 }: CredentialCardProps) {
+  const [nftModalOpen, setNftModalOpen] = useState(false);
+  const isLearner = typeof window !== 'undefined' && window.location.pathname.includes('/learner');
   
   const getVerificationIcon = (status: string) => {
     switch (status) {
@@ -241,11 +246,39 @@ export default function CredentialCard({
           <Button size="small" startIcon={<Share />}>
             Share
           </Button>
+          {/* Mint as NFT button - only visible to learners */}
+          {isLearner && credential.blockchain_hash && (
+            <Button 
+              size="small" 
+              startIcon={<ImageIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setNftModalOpen(true);
+              }}
+              sx={{ ml: 'auto' }}
+            >
+              Mint as NFT
+            </Button>
+          )}
           <Box sx={{ flexGrow: 1 }} />
           <IconButton size="small">
             <MoreVert />
           </IconButton>
         </CardActions>
+      )}
+
+      {/* NFT Minting Modal */}
+      {credential.blockchain_hash && (
+        <MintNFTModal
+          open={nftModalOpen}
+          onClose={() => setNftModalOpen(false)}
+          certHash={credential.blockchain_hash}
+          onSuccess={(tokenId, txHash) => {
+            console.log('NFT minted:', { tokenId, txHash });
+            setNftModalOpen(false);
+            // TODO: Update credential with NFT info
+          }}
+        />
       )}
     </StyledCard>
   );
