@@ -39,7 +39,9 @@ import {
   ArrowForward,
   Close,
   Download,
+  Token,
 } from '@mui/icons-material';
+import MintNFTModal from '@/components/nft/MintNFTModal';
 import LearnerService, { LearnerCredential } from '@/services/learner.service';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -288,11 +290,14 @@ interface CredentialCardProps {
   credential: LearnerCredential;
   onViewDetails: (cred: LearnerCredential) => void;
   onDownload: (cred: LearnerCredential) => void;
+  onMintNFT: (cred: LearnerCredential) => void;
 }
 
-const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetails, onDownload }) => {
+const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetails, onDownload, onMintNFT }) => {
   const verified = (credential.status || '').toLowerCase() === 'verified';
   const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
+  const hasBlockchainHash = !!credential.credential_hash;
+  const isNFTMinted = !!credential.nft_minted;
   
   return (
     <Card sx={{ 
@@ -399,7 +404,8 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
         display: 'flex', 
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 1, sm: 2 },
-        alignItems: { xs: 'stretch', sm: 'center' }
+        alignItems: { xs: 'stretch', sm: 'center' },
+        flexWrap: 'wrap'
       }}>
         <Button 
           variant="text" 
@@ -432,6 +438,43 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
         >
           Download
         </Button>
+        {/* Mint as NFT button - only show for blockchain-anchored credentials */}
+        {hasBlockchainHash && (
+          isNFTMinted ? (
+            <Chip
+              icon={<Token sx={{ fontSize: 14 }} />}
+              label={`NFT #${credential.nft_token_id || 'Minted'}`}
+              size="small"
+              color="success"
+              variant="outlined"
+              sx={{ 
+                fontWeight: 600,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+              }}
+            />
+          ) : (
+            <Button 
+              variant="text" 
+              size="small"
+              startIcon={<Token sx={{ fontSize: { xs: 14, sm: 16 } }} />}
+              onClick={() => onMintNFT(credential)}
+              sx={{ 
+                color: '#6366f1', 
+                textTransform: 'none',
+                fontWeight: 600, 
+                p: 0, 
+                minWidth: 'auto',
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                justifyContent: { xs: 'center', sm: 'flex-start' },
+                '&:hover': {
+                  bgcolor: 'rgba(99, 102, 241, 0.08)',
+                }
+              }}
+            >
+              Mint NFT
+            </Button>
+          )
+        )}
       </Box>
     </Card>
   );
@@ -442,10 +485,13 @@ interface CredentialListCardProps {
   credential: LearnerCredential;
   onViewDetails: (cred: LearnerCredential) => void;
   onDownload: (cred: LearnerCredential) => void;
+  onMintNFT: (cred: LearnerCredential) => void;
 }
 
-const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onViewDetails, onDownload }) => {
+const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onViewDetails, onDownload, onMintNFT }) => {
   const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
+  const hasBlockchainHash = !!credential.credential_hash;
+  const isNFTMinted = !!credential.nft_minted;
 
   return (
     <Card
@@ -483,7 +529,7 @@ const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onV
         </Typography>
 
         {/* Actions */}
-        <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+        <Box sx={{ display: 'flex', gap: 2, mt: 0.5, flexWrap: 'wrap' }}>
           <Button
             size="small"
             onClick={() => onViewDetails(credential)}
@@ -515,6 +561,37 @@ const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onV
           >
             Download
           </Button>
+
+          {/* Mint as NFT button */}
+          {hasBlockchainHash && (
+            isNFTMinted ? (
+              <Chip
+                icon={<Token sx={{ fontSize: 12 }} />}
+                label={`NFT #${credential.nft_token_id || 'Minted'}`}
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+              />
+            ) : (
+              <Button
+                size="small"
+                startIcon={<Token sx={{ fontSize: 14 }} />}
+                onClick={() => onMintNFT(credential)}
+                sx={{
+                  color: '#6366f1',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  p: 0,
+                  minWidth: 'auto',
+                  fontSize: '0.75rem',
+                  '&:hover': { textDecoration: 'underline' }
+                }}
+              >
+                Mint NFT
+              </Button>
+            )
+          )}
         </Box>
       </Box>
 
@@ -721,6 +798,10 @@ export default function LearnerDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCredential, setSelectedCredential] = useState<LearnerCredential | null>(null);
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  
+  // NFT Minting state
+  const [nftModalOpen, setNftModalOpen] = useState(false);
+  const [nftCredential, setNftCredential] = useState<LearnerCredential | null>(null);
 
   // Filter states
   const [query, setQuery] = useState('');
@@ -810,6 +891,51 @@ export default function LearnerDashboard() {
     } catch (error) {
       console.error('Download error:', error);
     }
+  };
+
+  const handleMintNFT = (credential: LearnerCredential) => {
+    if (!credential.credential_hash) {
+      alert('This credential is not anchored on the blockchain yet.');
+      return;
+    }
+    if (credential.nft_minted) {
+      alert('This credential has already been minted as an NFT. Each credential can only be minted once to prevent forgery and duplication.');
+      return;
+    }
+    setNftCredential(credential);
+    setNftModalOpen(true);
+  };
+
+  const handleNFTSuccess = async (tokenId: string, txHash: string) => {
+    console.log('NFT minted successfully:', { tokenId, txHash });
+    
+    // Update credential with NFT data in the backend
+    if (nftCredential?._id) {
+      try {
+        const token = localStorage.getItem('access_token');
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/learner/credentials/${nftCredential._id}/nft-status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            minted: true,
+            token_id: tokenId,
+            transaction_hash: txHash,
+            minted_at: new Date().toISOString()
+          })
+        });
+      } catch (err) {
+        console.error('Failed to update NFT status:', err);
+      }
+    }
+    
+    // Refresh credentials to show updated NFT status
+    loadCredentials();
+    
+    setNftModalOpen(false);
+    setNftCredential(null);
   };
 
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
@@ -1386,6 +1512,7 @@ export default function LearnerDashboard() {
                 credential={cred}
                 onViewDetails={handleViewDetails}
                 onDownload={handleDownload}
+                onMintNFT={handleMintNFT}
               />
             ))
           ) : (
@@ -1395,6 +1522,7 @@ export default function LearnerDashboard() {
                 credential={cred}
                 onViewDetails={handleViewDetails}
                 onDownload={handleDownload}
+                onMintNFT={handleMintNFT}
               />
             ))
           )}
@@ -1454,6 +1582,21 @@ export default function LearnerDashboard() {
         onClose={() => setViewDetailsOpen(false)}
         onDownload={handleDownload}
       />
+
+      {/* NFT Minting Modal */}
+      {nftCredential && (
+        <MintNFTModal
+          open={nftModalOpen}
+          onClose={() => {
+            setNftModalOpen(false);
+            setNftCredential(null);
+          }}
+          certHash={nftCredential.credential_hash || ''}
+          credentialTitle={nftCredential.credential_title}
+          issuerName={nftCredential.issuer_name}
+          onSuccess={handleNFTSuccess}
+        />
+      )}
     </Box>
   );
 }

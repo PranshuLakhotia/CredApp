@@ -273,6 +273,8 @@ export default function CredentialCard({
           open={nftModalOpen}
           onClose={() => setNftModalOpen(false)}
           certHash={credential.blockchain_hash}
+          credentialTitle={credential.title}
+          issuerName={credential.issuer}
           onSuccess={(tokenId, txHash) => {
             console.log('NFT minted:', { tokenId, txHash });
             setNftModalOpen(false);
