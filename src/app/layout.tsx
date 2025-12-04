@@ -9,6 +9,7 @@ import { AccessibilityProvider } from '@/contexts/AccessibilityContext';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { theme } from '@/lib/theme';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import Web3Provider from '@/components/providers/Web3Provider';
 import "./globals.css";
 
 const inter = Inter({
@@ -33,12 +34,14 @@ export default function RootLayout({
         <LanguageProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <AccessibilityProvider>
-              <AuthProvider>
-                {children}
-              </AuthProvider>
-              <AccessibilityWidget />
-            </AccessibilityProvider>
+            <Web3Provider>
+              <AccessibilityProvider>
+                <AuthProvider>
+                  {children}
+                </AuthProvider>
+                <AccessibilityWidget />
+              </AccessibilityProvider>
+            </Web3Provider>
           </ThemeProvider>
         </LanguageProvider>
       </body>

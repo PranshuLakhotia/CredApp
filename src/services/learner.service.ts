@@ -32,6 +32,11 @@ export interface LearnerCredential {
   credential_type?: string;
   credential_hash?: string;
   qr_code_image?: string;
+  // NFT status fields
+  nft_minted?: boolean;
+  nft_token_id?: string;
+  nft_transaction_hash?: string;
+  nft_minted_at?: string;
 }
 
 export interface LearnerCredentialsResponse {

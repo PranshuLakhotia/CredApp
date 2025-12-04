@@ -328,15 +328,16 @@ export default function CertificateForm(): React.JSX.Element {
         const ocrResponse = await response.json();
         console.log('✅ OCR extraction successful - Full Response:', ocrResponse);
         
-        // Extract the nested extracted_data object
-        const extractedData = ocrResponse.extracted_data || ocrResponse;
-        console.log('📋 Extracted Data Object:', extractedData);
-        
+        // Store the full response - extracted_data is nested inside
         setOcrData(ocrResponse);
         
+        // Access the nested extracted_data object
+        const extractedData = ocrResponse.extracted_data || {};
+        console.log('📋 Extracted Data Object:', extractedData);
+        
         // Compare user-entered Learner ID with OCR-extracted Learner ID
-        const ocrLearnerId = (extractedData.extracted_data?.learner_id || '').trim();
-        const matches = userEnteredLearnerId === ocrLearnerId;
+        const ocrLearnerId = (extractedData.learner_id || '').trim();
+        const matches = userEnteredLearnerId === ocrLearnerId || !ocrLearnerId;
         
         console.log('🔍 Learner ID Verification:');
         console.log('  User Entered:', `"${userEnteredLearnerId}"`);
@@ -345,7 +346,6 @@ export default function CertificateForm(): React.JSX.Element {
         
         setLearnerIdMatch(matches);
         
-<<<<<<< HEAD
         // Show notification if there's a mismatch
         if (!matches && ocrLearnerId) {
           console.warn('⚠️ Learner ID mismatch detected!');
@@ -356,53 +356,27 @@ export default function CertificateForm(): React.JSX.Element {
         
         // Auto-fill form data with OCR results
         // Use OCR-extracted learner ID if there's a mismatch to ensure consistency
-        const finalLearnerId = matches ? userEnteredLearnerId : ocrLearnerId;
+        const finalLearnerId = (ocrLearnerId && !matches) ? ocrLearnerId : userEnteredLearnerId;
         
         setFormData(prev => ({
           ...prev,
-          certificateTitle: extractedData.extracted_data?.credential_name || prev.certificateTitle,
-          issuerOrganization: extractedData.extracted_data?.issuer_name || prev.issuerOrganization,
+          certificateTitle: extractedData.credential_name || prev.certificateTitle,
+          issuerOrganization: extractedData.issuer_name || prev.issuerOrganization,
           // Use OCR-extracted learner ID to ensure consistency with certificate
-          learnerId: finalLearnerId,
-          issueDate: extractedData.extracted_data?.issued_date || prev.issueDate,
-          nsqfLevel: extractedData.extracted_data?.nsqf_level ? extractedData.extracted_data.nsqf_level.toString() : prev.nsqfLevel,
-          skills: extractedData.extracted_data?.skill_tags && extractedData.extracted_data.skill_tags.length > 0 
-            ? extractedData.extracted_data.skill_tags 
-            : prev.skills
-        }));
-=======
-        // Prepare form data update
-        const updatedFormData = {
-          ...formData,
-          certificateTitle: extractedData.credential_name || formData.certificateTitle,
-          issuerOrganization: extractedData.issuer_name || formData.issuerOrganization,
-          learnerId: userEnteredLearnerId, // Keep the user-entered learner ID
-          issueDate: extractedData.issued_date || formData.issueDate,
+          learnerId: finalLearnerId || prev.learnerId,
+          issueDate: extractedData.issued_date || prev.issueDate,
+          nsqfLevel: extractedData.nsqf_level ? extractedData.nsqf_level.toString() : prev.nsqfLevel,
           skills: extractedData.skill_tags && extractedData.skill_tags.length > 0 
             ? extractedData.skill_tags 
-            : formData.skills,
-          nsqfLevel: extractedData.nsqf_level ? String(extractedData.nsqf_level) : formData.nsqfLevel,
-          description: extractedData.description || formData.description,
+            : prev.skills,
+          description: extractedData.description || prev.description,
           tags: extractedData.tags && extractedData.tags.length > 0 
             ? extractedData.tags 
-            : formData.tags
-        };
-        
-        console.log('📝 Form Data Update:');
-        console.log('  certificateTitle:', extractedData.credential_name);
-        console.log('  issuerOrganization:', extractedData.issuer_name);
-        console.log('  issueDate:', extractedData.issued_date);
-        console.log('  skills:', extractedData.skill_tags);
-        console.log('  nsqfLevel:', extractedData.nsqf_level);
-        console.log('  description:', extractedData.description);
-        console.log('  tags:', extractedData.tags);
-        console.log('🎯 Updated Form Data:', updatedFormData);
-        
-        // Auto-fill form data with OCR results
-        setFormData(updatedFormData);
->>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
+            : prev.tags
+        }));
         
         setShowExtractedData(true);
+        console.log('✅ Form auto-filled with OCR data');
       } else {
         const errorData = await response.json();
         console.error('❌ OCR extraction failed:', errorData);
@@ -445,7 +419,7 @@ export default function CertificateForm(): React.JSX.Element {
 
       console.log('🔍 Sending verification request...');
       
-      const response = await fetch('http://localhost:8000/api/v1/issuer/credentials/extract-ocr', {
+      const response = await fetch(buildApiUrl('/issuer/credentials/extract-ocr'), {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
@@ -493,24 +467,33 @@ export default function CertificateForm(): React.JSX.Element {
 
       const verificationResults: any = {};
 
-      // 1. Check if user is a learner
+      // 1. Check if user is a learner (using API key endpoint)
       try {
         console.log('🔍 Checking learner:', formData.learnerId);
         
-        const learnerResponse = await fetch(buildApiUrl(`/issuer/users/${formData.learnerId}/is-learner`), {
+        // Use the API key authenticated endpoint
+        const learnerResponse = await fetch(buildApiUrl(`/issuer/api-key/users/${formData.learnerId}/is-learner`), {
           headers: {
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+            'x-api-key': apiKey
           }
         });
+        
+        console.log('📡 Learner check response status:', learnerResponse.status);
         
         if (learnerResponse.ok) {
           const learnerData = await learnerResponse.json();
           console.log('✅ Learner data received:', learnerData);
           verificationResults.learnerData = learnerData;
-          setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+          
+          if (learnerData.is_learner) {
+            setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+          } else {
+            console.warn('⚠️ User exists but is not a learner');
+            setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
+          }
         } else {
-          console.error('❌ Learner API failed');
+          const errorData = await learnerResponse.json().catch(() => ({}));
+          console.error('❌ Learner API failed:', learnerResponse.status, errorData);
           setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
         }
       } catch (error) {
@@ -622,30 +605,17 @@ export default function CertificateForm(): React.JSX.Element {
           "type": ["VerifiableCredential", "EducationalCredential"],
           "issuer": {
             "id": "did:example:issuer",
-<<<<<<< HEAD
-            "name": ocrData?.extracted_data?.issuer_name || formData.issuerOrganization
-=======
-            "name": extractedOcrData?.issuer_name || formData.issuerOrganization
->>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
+"name": ocrData?.extracted_data?.issuer_name || formData.issuerOrganization
           },
           "credentialSubject": {
             "id": formData.learnerId,
             "name": learnerData?.full_name || "Learner Name",
-<<<<<<< HEAD
-            "achievement": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
+"achievement": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
             "learner_address": learnerAddress,
             "course": ocrData?.extracted_data?.credential_name || formData.certificateTitle,
             "grade": "A+",
             "completion_date": ocrData?.extracted_data?.issued_date || formData.issueDate,
             "skills": ocrData?.extracted_data?.skill_tags || [],
-=======
-            "achievement": extractedOcrData?.credential_name || formData.certificateTitle,
-            "learner_address": learnerAddress,
-            "course": extractedOcrData?.credential_name || formData.certificateTitle,
-            "grade": "A+",
-            "completion_date": extractedOcrData?.issued_date || formData.issueDate,
-            "skills": extractedOcrData?.skill_tags || [],
->>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
             "duration": formData.duration,
             "mode": formData.mode,
             "nsqf_level": parseInt(formData.nsqfLevel),
@@ -653,32 +623,19 @@ export default function CertificateForm(): React.JSX.Element {
             "tags": formData.tags
           },
           "issuanceDate": new Date().toISOString(),
-<<<<<<< HEAD
-          "expirationDate": ocrData?.extracted_data?.expiry_date || null
-=======
-          "expirationDate": extractedOcrData?.expiry_date || null
->>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
+"expirationDate": ocrData?.extracted_data?.expiry_date || null
         },
         artifact_url: pdfFile ? URL.createObjectURL(pdfFile) : "",
         idempotency_key: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         credential_type: "digital-certificate",
         metadata: {
           learner_address: learnerAddress,
-<<<<<<< HEAD
-          completion_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
+completion_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
           course_name: ocrData?.extracted_data?.credential_name || formData.certificateTitle,
           issuer_name: ocrData?.extracted_data?.issuer_name || formData.issuerOrganization,
           issue_date: ocrData?.extracted_data?.issued_date || formData.issueDate,
           expiry_date: ocrData?.extracted_data?.expiry_date || null,
           skill_tags: ocrData?.extracted_data?.skill_tags || [],
-=======
-          completion_date: extractedOcrData?.issued_date || formData.issueDate,
-          course_name: extractedOcrData?.credential_name || formData.certificateTitle,
-          issuer_name: extractedOcrData?.issuer_name || formData.issuerOrganization,
-          issue_date: extractedOcrData?.issued_date || formData.issueDate,
-          expiry_date: extractedOcrData?.expiry_date || null,
-          skill_tags: extractedOcrData?.skill_tags || [],
->>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
           nsqf_level: parseInt(formData.nsqfLevel),
           description: formData.description,
           tags: formData.tags
@@ -1102,82 +1059,6 @@ export default function CertificateForm(): React.JSX.Element {
               {/* Extracted Data and Full Form - Shown after extraction */}
               {showExtractedData && (
                 <>
-<<<<<<< HEAD
-=======
-                  {/* OCR Extracted Data - Read Only */}
-                  <div className="mb-6">
-                    <div className="mb-4 pb-2 border-b border-gray-200">
-                      <p className="text-sm text-gray-600">Auto-extracted from certificate (read-only)</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Credential Name
-              </label>
-                        <input
-                          type="text"
-                          value={ocrData?.extracted_data?.credential_name || ''}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-            </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Issuer Name
-                        </label>
-                        <input
-                          type="text"
-                          value={ocrData?.extracted_data?.issuer_name || ''}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-          </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Issued Date
-                        </label>
-                        <input
-                          type="text"
-                          value={ocrData?.extracted_data?.issued_date || ''}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-                      </div>
-                      
-                      <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Expiry Date
-            </label>
-            <input
-                          type="text"
-                          value={ocrData?.extracted_data?.expiry_date || 'N/A'}
-                          disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                        />
-          </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Skill Tags
-                        </label>
-                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-300 rounded-lg min-h-[44px]">
-                          {ocrData?.extracted_data?.skill_tags && ocrData.extracted_data.skill_tags.length > 0 ? (
-                            ocrData.extracted_data.skill_tags.map((skill: string, index: number) => (
-                              <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                {skill}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-500">No skills extracted</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
->>>>>>> f5ed48c1f92dd59d1a70bf5dcef01f3f9b0bf42d
 
                   {/* Learner ID Verification Section */}
           <div className="mb-6">
