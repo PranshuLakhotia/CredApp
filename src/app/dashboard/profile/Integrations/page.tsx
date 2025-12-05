@@ -208,31 +208,42 @@ export default function IntegrationsPage() {
               </Alert>
             )}
 
-            {/* Connected Wallet */}
-            {isConnected && address && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                  Connected Wallet
-                </Typography>
+            {/* Available Wallets - Square Cards */}
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+              {isConnected ? 'Other Wallets' : 'Available Wallets'}
+            </Typography>
+            
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              {/* MetaMask */}
+              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.333% - 11px)' }, minWidth: 200 }}>
                 <Paper 
                   variant="outlined" 
                   sx={{ 
-                    p: 2, 
+                    p: 3, 
                     display: 'flex', 
+                    flexDirection: 'column',
                     alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    borderColor: '#10b981',
-                    bgcolor: 'rgba(16, 185, 129, 0.05)',
-                    borderRadius: 2
+                    justifyContent: 'center',
+                    borderRadius: 3,
+                    aspectRatio: '1',
+                    minHeight: 200,
+                    textAlign: 'center',
+                    gap: 2,
+                    borderColor: (isConnected && connector?.id === 'injected') ? '#10b981' : undefined,
+                    bgcolor: (isConnected && connector?.id === 'injected') ? 'rgba(16, 185, 129, 0.05)' : undefined,
+                    '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)', transform: 'translateY(-4px)' },
+                    transition: 'all 0.2s',
+                    cursor: (isConnecting || (isConnected && connector?.id === 'injected')) ? 'default' : 'pointer'
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar sx={{ bgcolor: '#f0fdf4', width: 40, height: 40 }}>
-                      <MetaMaskIcon />
-                    </Avatar>
-                    <Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                  <Avatar sx={{ bgcolor: (isConnected && connector?.id === 'injected') ? '#f0fdf4' : '#fef3e2', width: 56, height: 56 }}>
+                    <MetaMaskIcon />
+                  </Avatar>
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>MetaMask</Typography>
+                    {isConnected && connector?.id === 'injected' && address ? (
+                      <>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', mb: 1, fontSize: '0.75rem' }}>
                           {formatAddress(address)}
                         </Typography>
                         <Chip 
@@ -240,133 +251,162 @@ export default function IntegrationsPage() {
                           label="Connected" 
                           size="small" 
                           color="success"
-                          sx={{ height: 22, fontSize: '0.7rem' }}
+                          sx={{ height: 22, fontSize: '0.7rem', mb: 1 }}
                         />
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {connector?.name || 'MetaMask'} • Polygon Amoy
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          Polygon Amoy
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Browser extension wallet
                       </Typography>
-                    </Box>
+                    )}
                   </Box>
-                  <Button 
-                    variant="outlined" 
-                    color="error" 
-                    size="small"
-                    startIcon={<LinkOffIcon />}
-                    onClick={handleDisconnect}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Disconnect
-                  </Button>
+                  {isConnected && connector?.id === 'injected' ? (
+                    <Button 
+                      variant="outlined" 
+                      color="error" 
+                      size="small"
+                      startIcon={<LinkOffIcon />}
+                      onClick={handleDisconnect}
+                      sx={{ textTransform: 'none', mt: 'auto', minWidth: 120 }}
+                      fullWidth
+                    >
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="contained"
+                      size="small"
+                      disabled={isConnecting}
+                      onClick={() => handleConnectWallet('metamask')}
+                      sx={{ textTransform: 'none', mt: 'auto', minWidth: 120 }}
+                      fullWidth
+                    >
+                      {isConnecting ? 'Connecting...' : 'Connect'}
+                    </Button>
+                  )}
                 </Paper>
               </Box>
-            )}
-
-            {/* Available Wallets */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              {isConnected ? 'Other Wallets' : 'Available Wallets'}
-            </Typography>
-            
-            <Stack spacing={2}>
-              {/* MetaMask */}
-              <Paper 
-                variant="outlined" 
-                sx={{ 
-                  p: 2, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  borderRadius: 2,
-                  '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)' },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: '#fef3e2', width: 40, height: 40 }}>
-                    <MetaMaskIcon />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>MetaMask</Typography>
-                    <Typography variant="caption" color="text.secondary">Browser extension wallet</Typography>
-                  </Box>
-                </Box>
-                <Button 
-                  variant={isConnected && connector?.id === 'injected' ? 'outlined' : 'contained'}
-                  size="small"
-                  disabled={isConnecting || (isConnected && connector?.id === 'injected')}
-                  onClick={() => handleConnectWallet('metamask')}
-                  sx={{ textTransform: 'none', minWidth: 100 }}
-                >
-                  {isConnecting ? 'Connecting...' : (isConnected && connector?.id === 'injected') ? 'Connected' : 'Connect'}
-                </Button>
-              </Paper>
 
               {/* WalletConnect */}
-              <Paper 
-                variant="outlined" 
-                sx={{ 
-                  p: 2, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  borderRadius: 2,
-                  '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)' },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: '#eff6ff', width: 40, height: 40 }}>
+              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.333% - 11px)' }, minWidth: 200 }}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 3, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderRadius: 3,
+                    aspectRatio: '1',
+                    minHeight: 200,
+                    textAlign: 'center',
+                    gap: 2,
+                    borderColor: (isConnected && connector?.id === 'walletConnect') ? '#10b981' : undefined,
+                    bgcolor: (isConnected && connector?.id === 'walletConnect') ? 'rgba(16, 185, 129, 0.05)' : undefined,
+                    '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)', transform: 'translateY(-4px)' },
+                    transition: 'all 0.2s',
+                    cursor: (isConnecting || (isConnected && connector?.id === 'walletConnect')) ? 'default' : 'pointer'
+                  }}
+                >
+                  <Avatar sx={{ bgcolor: (isConnected && connector?.id === 'walletConnect') ? '#f0fdf4' : '#eff6ff', width: 56, height: 56 }}>
                     <WalletConnectIcon />
                   </Avatar>
-                  <Box>
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>WalletConnect</Typography>
-                    <Typography variant="caption" color="text.secondary">Connect mobile wallets via QR code</Typography>
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>WalletConnect</Typography>
+                    {isConnected && connector?.id === 'walletConnect' && address ? (
+                      <>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace', mb: 1, fontSize: '0.75rem' }}>
+                          {formatAddress(address)}
+                        </Typography>
+                        <Chip 
+                          icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                          label="Connected" 
+                          size="small" 
+                          color="success"
+                          sx={{ height: 22, fontSize: '0.7rem', mb: 1 }}
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          Polygon Amoy
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Connect mobile wallets via QR code
+                      </Typography>
+                    )}
                   </Box>
-                </Box>
-                <Button 
-                  variant={isConnected && connector?.id === 'walletConnect' ? 'outlined' : 'contained'}
-                  size="small"
-                  disabled={isConnecting || (isConnected && connector?.id === 'walletConnect')}
-                  onClick={() => handleConnectWallet('walletconnect')}
-                  sx={{ textTransform: 'none', minWidth: 100 }}
-                >
-                  {isConnecting ? 'Connecting...' : (isConnected && connector?.id === 'walletConnect') ? 'Connected' : 'Connect'}
-                </Button>
-              </Paper>
+                  {isConnected && connector?.id === 'walletConnect' ? (
+                    <Button 
+                      variant="outlined" 
+                      color="error" 
+                      size="small"
+                      startIcon={<LinkOffIcon />}
+                      onClick={handleDisconnect}
+                      sx={{ textTransform: 'none', mt: 'auto', minWidth: 120 }}
+                      fullWidth
+                    >
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="contained"
+                      size="small"
+                      disabled={isConnecting}
+                      onClick={() => handleConnectWallet('walletconnect')}
+                      sx={{ textTransform: 'none', mt: 'auto', minWidth: 120 }}
+                      fullWidth
+                    >
+                      {isConnecting ? 'Connecting...' : 'Connect'}
+                    </Button>
+                  )}
+                </Paper>
+              </Box>
 
               {/* Coinbase Wallet */}
-              <Paper 
-                variant="outlined" 
-                sx={{ 
-                  p: 2, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  borderRadius: 2,
-                  opacity: 0.6,
-                  '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)' },
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: '#eff6ff', width: 40, height: 40 }}>
+              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.333% - 11px)' }, minWidth: 200 }}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 3, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderRadius: 3,
+                    aspectRatio: '1',
+                    minHeight: 200,
+                    textAlign: 'center',
+                    gap: 2,
+                    opacity: 0.6,
+                    '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)', transform: 'translateY(-4px)' },
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Avatar sx={{ bgcolor: '#eff6ff', width: 56, height: 56 }}>
                     <CoinbaseIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>Coinbase Wallet</Typography>
-                    <Typography variant="caption" color="text.secondary">Connect via Coinbase app</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>Coinbase Wallet</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Connect via Coinbase app
+                    </Typography>
                   </Box>
-                </Box>
-                <Button 
-                  variant="outlined"
-                  size="small"
-                  disabled
-                  sx={{ textTransform: 'none', minWidth: 100 }}
-                >
-                  Coming Soon
-                </Button>
-              </Paper>
-            </Stack>
+                  <Button 
+                    variant="outlined"
+                    size="small"
+                    disabled
+                    sx={{ textTransform: 'none', mt: 'auto', minWidth: 120 }}
+                    fullWidth
+                  >
+                    Coming Soon
+                  </Button>
+                </Paper>
+              </Box>
+            </Box>
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
               Connecting your wallet only saves your address. No transactions or signatures required.
@@ -382,41 +422,107 @@ export default function IntegrationsPage() {
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
               DigiLocker
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Connect your DigiLocker to share KYC documents securely.
             </Typography>
             {notice && (
-              <Alert severity="success" sx={{ mb: 2 }}>
+              <Alert severity="success" sx={{ mb: 3 }}>
                 {notice}
               </Alert>
             )}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-              <Button variant="contained" onClick={initiateDigiLocker} disabled={loading}>
-                {loading ? 'Please wait...' : 'Initiate Session'}
-              </Button>
-              <TextField
-                label="Session ID"
-                size="small"
-                value={sessionId}
-                onChange={(e) => setSessionId(e.target.value)}
-                sx={{ minWidth: 260 }}
-              />
-              <TextField
-                label="Document Type"
-                size="small"
-                select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value as any)}
-                sx={{ minWidth: 200 }}
-              >
-                <MenuItem value="aadhaar">Aadhaar</MenuItem>
-                <MenuItem value="pan">PAN</MenuItem>
-                <MenuItem value="driving_license">Driving License</MenuItem>
-              </TextField>
-              <Button variant="outlined" onClick={fetchDocument} disabled={loading}>
-                {loading ? 'Fetching...' : 'Fetch Document'}
-              </Button>
-            </Stack>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.333% - 11px)' }, minWidth: 200 }}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2.5, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center', 
+                    justifyContent: 'flex-start',
+                    borderRadius: 3,
+                    aspectRatio: '1',
+                    minHeight: { xs: 400, sm: 350, md: 320 },
+                    textAlign: 'center',
+                    gap: 1.5,
+                    overflow: 'hidden',
+                    '&:hover': { borderColor: '#3b82f6', bgcolor: 'rgba(59, 130, 246, 0.02)', transform: 'translateY(-4px)' },
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Avatar 
+                    sx={{ 
+                      bgcolor: 'transparent', 
+                      width: { xs: 60, sm: 70, md: 80 }, 
+                      height: { xs: 50, sm: 58, md: 64 },
+                      mb: 0.5,
+                      '& img': {
+                        objectFit: 'contain',
+                        width: '100%',
+                        height: '100%'
+                      }
+                    }}
+                  >
+                    <img src="/digilocker_logo.jpeg" alt="DigiLocker" />
+                  </Avatar>
+                  <Box sx={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' } }}>DigiLocker</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, fontSize: '0.7rem' }}>
+                      Secure KYC document sharinggg
+                    </Typography>
+                    <Stack spacing={1.5} sx={{ width: '100%', flex: 1, overflowY: 'auto', pr: 0.2 }}>
+                      <Button 
+                        variant="contained" 
+                        onClick={initiateDigiLocker} 
+                        disabled={loading}
+                        fullWidth
+                        size="small"
+                        sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' },p:0.7 }}
+                      >
+                        {loading ? 'Please wait...' : 'Initiate Session'}
+                      </Button>
+                      <TextField
+                        label="Session ID"
+                        size="small"
+                        value={sessionId}
+                        onChange={(e) => setSessionId(e.target.value)}
+                        fullWidth
+                        sx={{ 
+                          '& .MuiInputBase-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } },
+                          '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } }
+                        }}
+                      />
+                      <TextField
+                        label="Document Type"
+                        size="small"
+                        select
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value as any)}
+                        fullWidth
+                        sx={{ 
+                          '& .MuiInputBase-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } },
+                          '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } }
+                        }}
+                      >
+                        <MenuItem value="aadhaar">Aadhaar</MenuItem>
+                        <MenuItem value="pan">PAN</MenuItem>
+                        <MenuItem value="driving_license">Driving License</MenuItem>
+                      </TextField>
+                      <Button 
+                        variant="outlined" 
+                        onClick={fetchDocument} 
+                        disabled={loading}
+                        fullWidth
+                        size="small"
+                        sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' }, mb: 0.5 }}
+                      >
+                        {loading ? 'Fetching...' : 'Fetch Document'}
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Paper>
+              </Box>
+            </Box>
           </Paper>
         </Box>
       </Box>
