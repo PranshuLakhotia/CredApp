@@ -291,9 +291,10 @@ interface CredentialCardProps {
   onViewDetails: (cred: LearnerCredential) => void;
   onDownload: (cred: LearnerCredential) => void;
   onMintNFT: (cred: LearnerCredential) => void;
+  onPushToDigiLocker: (cred: LearnerCredential) => void;
 }
 
-const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetails, onDownload, onMintNFT }) => {
+const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetails, onDownload, onMintNFT, onPushToDigiLocker }) => {
   const verified = (credential.status || '').toLowerCase() === 'verified';
   const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
   const hasBlockchainHash = !!credential.credential_hash;
@@ -319,6 +320,36 @@ const CredentialCard: React.FC<CredentialCardProps> = ({ credential, onViewDetai
         gap: { xs: 2, sm: 0 }
       }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
+          {/* Push to DigiLocker Button */}
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => onPushToDigiLocker(credential)}
+            startIcon={
+              <Box
+                component="img"
+                src="/digilocker_logo.jpeg"
+                alt="DigiLocker"
+                sx={{ width: 20, height: 20, borderRadius: 0.5 }}
+              />
+            }
+            sx={{
+              mb: 1.5,
+              color: '#7c4dff',
+              borderColor: '#7c4dff',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+              px: 1.5,
+              py: 0.5,
+              '&:hover': {
+                borderColor: '#6a3de8',
+                bgcolor: 'rgba(124, 77, 255, 0.08)',
+              }
+            }}
+          >
+            Push to DigiLocker
+          </Button>
           <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5} sx={{ 
             fontSize: { xs: '1rem', sm: '1.125rem' },
             lineHeight: 1.3,
@@ -486,9 +517,10 @@ interface CredentialListCardProps {
   onViewDetails: (cred: LearnerCredential) => void;
   onDownload: (cred: LearnerCredential) => void;
   onMintNFT: (cred: LearnerCredential) => void;
+  onPushToDigiLocker: (cred: LearnerCredential) => void;
 }
 
-const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onViewDetails, onDownload, onMintNFT }) => {
+const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onViewDetails, onDownload, onMintNFT, onPushToDigiLocker }) => {
   const issuedDate = credential.issued_date ? new Date(credential.issued_date).toLocaleDateString() : '-';
   const hasBlockchainHash = !!credential.credential_hash;
   const isNFTMinted = !!credential.nft_minted;
@@ -510,6 +542,37 @@ const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onV
     >
       {/* Left Content */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, flex: 1 }}>
+        {/* Push to DigiLocker Button */}
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => onPushToDigiLocker(credential)}
+          startIcon={
+            <Box
+              component="img"
+              src="/digilocker_logo.jpeg"
+              alt="DigiLocker"
+              sx={{ width: 16, height: 16, borderRadius: 0.5 }}
+            />
+          }
+          sx={{
+            mb: 0.5,
+            color: '#7c4dff',
+            borderColor: '#7c4dff',
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '0.7rem',
+            px: 1,
+            py: 0.25,
+            alignSelf: 'flex-start',
+            '&:hover': {
+              borderColor: '#6a3de8',
+              bgcolor: 'rgba(124, 77, 255, 0.08)',
+            }
+          }}
+        >
+          Push to DigiLocker
+        </Button>
         <Typography variant="subtitle2" fontWeight={700} color="#1e293b" sx={{ fontSize: '0.95rem' }}>
           {credential.credential_title || 'Certificate'}
         </Typography>
@@ -629,6 +692,340 @@ const CredentialListCard: React.FC<CredentialListCardProps> = ({ credential, onV
         )}
       </Box>
     </Card>
+  );
+};
+
+// --- PUSH TO DIGILOCKER MODAL ---
+interface PushToDigiLockerModalProps {
+  credential: LearnerCredential | null;
+  open: boolean;
+  onClose: () => void;
+}
+
+const PushToDigiLockerModal: React.FC<PushToDigiLockerModalProps> = ({ credential, open, onClose }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const steps = [
+    {
+      title: 'Preparing Credential',
+      description: 'Validating certificate data and formatting for DigiLocker',
+      icon: '📋',
+    },
+    {
+      title: 'Connecting to DigiLocker',
+      description: 'Establishing secure connection with DigiLocker API',
+      icon: '🔐',
+    },
+    {
+      title: 'Uploading Certificate',
+      description: 'Transferring your credential to your DigiLocker account',
+      icon: '☁️',
+    },
+  ];
+
+  const handlePushToDigiLocker = useCallback(async () => {
+    if (!credential) return;
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      
+      const response = await fetch(`${backendUrl}/api/v1/learners/push-to-digilocker`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          credential_id: credential._id,
+          credential_title: credential.credential_title,
+          issuer_name: credential.issuer_name,
+          issued_date: credential.issued_date,
+          nsqf_level: credential.nsqf_level,
+          status: credential.status,
+          skill_tags: credential.skill_tags,
+          tags: credential.tags,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to push credential to DigiLocker');
+      }
+
+      setIsComplete(true);
+      setTimeout(() => {
+        onClose();
+        setIsProcessing(false);
+        setIsComplete(false);
+        setCurrentStep(0);
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while pushing to DigiLocker');
+      setIsProcessing(false);
+    }
+  }, [credential, onClose]);
+
+  useEffect(() => {
+    if (open && credential) {
+      setCurrentStep(0);
+      setIsProcessing(true);
+      setIsComplete(false);
+      setError(null);
+      
+      // Simulate step progression
+      let stepCount = 0;
+      const stepInterval = setInterval(() => {
+        stepCount++;
+        if (stepCount < steps.length) {
+          setCurrentStep(stepCount);
+        } else {
+          clearInterval(stepInterval);
+          // Complete the process after last step
+          setTimeout(() => {
+            handlePushToDigiLocker();
+          }, 1000);
+        }
+      }, 2000);
+
+      return () => clearInterval(stepInterval);
+    }
+  }, [open, credential, handlePushToDigiLocker, steps.length]);
+
+  const handleClose = () => {
+    if (!isProcessing) {
+      onClose();
+      setCurrentStep(0);
+      setIsComplete(false);
+      setError(null);
+    }
+  };
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%)',
+        }
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 2,
+          borderBottom: '1px solid #e5e7eb',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            component="img"
+            src="/digilocker_logo.jpeg"
+            alt="DigiLocker"
+            sx={{ width: 40, height: 40, borderRadius: 1 }}
+          />
+          <Typography variant="h6" fontWeight={700} color="#1e293b">
+            Push to DigiLocker
+          </Typography>
+        </Box>
+        {!isProcessing && (
+          <IconButton onClick={handleClose} size="small">
+            <Close />
+          </IconButton>
+        )}
+      </DialogTitle>
+
+      <DialogContent sx={{ pt: 4, pb: 4 }}>
+        {error ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" color="error" mb={2}>
+              ❌ Error
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {error}
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleClose}
+              sx={{
+                mt: 3,
+                bgcolor: '#7c4dff',
+                textTransform: 'none',
+                '&:hover': { bgcolor: '#6a3de8' },
+              }}
+            >
+              Close
+            </Button>
+          </Box>
+        ) : isComplete ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: '#dcfce7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mx: 'auto',
+                mb: 3,
+                animation: 'pulse 0.6s ease-in-out',
+                '@keyframes pulse': {
+                  '0%, 100%': { transform: 'scale(1)' },
+                  '50%': { transform: 'scale(1.1)' },
+                },
+              }}
+            >
+              <Typography variant="h2">✅</Typography>
+            </Box>
+            <Typography variant="h6" fontWeight={700} color="#16a34a" mb={1}>
+              Successfully Pushed!
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Your credential has been added to your DigiLocker account
+            </Typography>
+          </Box>
+        ) : (
+          <Box>
+            {steps.map((step, index) => {
+              const isActive = index === currentStep;
+              const isCompleted = index < currentStep;
+              const isPending = index > currentStep;
+
+              return (
+                <Box
+                  key={index}
+                  sx={{
+                    display: 'flex',
+                    gap: 3,
+                    mb: 4,
+                    position: 'relative',
+                    opacity: isPending ? 0.5 : 1,
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  {/* Step Indicator */}
+                  <Box sx={{ position: 'relative', flexShrink: 0 }}>
+                    <Box
+                      sx={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: '50%',
+                        bgcolor: isCompleted
+                          ? '#dcfce7'
+                          : isActive
+                          ? '#ede9fe'
+                          : '#f1f5f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: `3px solid ${
+                          isCompleted
+                            ? '#16a34a'
+                            : isActive
+                            ? '#7c4dff'
+                            : '#cbd5e1'
+                        }`,
+                        transition: 'all 0.3s ease',
+                        transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                        boxShadow: isActive
+                          ? '0 0 0 8px rgba(124, 77, 255, 0.1)'
+                          : 'none',
+                      }}
+                    >
+                      {isCompleted ? (
+                        <Typography variant="h5">✓</Typography>
+                      ) : isActive ? (
+                        <CircularProgress
+                          size={24}
+                          thickness={4}
+                          sx={{ color: '#7c4dff' }}
+                        />
+                      ) : (
+                        <Typography variant="h6" sx={{ color: '#94a3b8' }}>
+                          {index + 1}
+                        </Typography>
+                      )}
+                    </Box>
+                    {index < steps.length - 1 && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 56,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: 2,
+                          height: 60,
+                          bgcolor: isCompleted ? '#16a34a' : '#e5e7eb',
+                          transition: 'all 0.3s ease',
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  {/* Step Content */}
+                  <Box sx={{ flex: 1, pt: 1 }}>
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      color={isActive ? '#7c4dff' : isCompleted ? '#16a34a' : '#64748b'}
+                      mb={0.5}
+                      sx={{
+                        transition: 'all 0.3s ease',
+                        fontSize: { xs: '0.95rem', sm: '1rem' },
+                      }}
+                    >
+                      {step.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                    >
+                      {step.description}
+                    </Typography>
+                    {isActive && (
+                      <Box
+                        sx={{
+                          mt: 2,
+                          height: 4,
+                          borderRadius: 2,
+                          bgcolor: '#e5e7eb',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: '100%',
+                            bgcolor: '#7c4dff',
+                            borderRadius: 2,
+                            animation: 'loading 2s ease-in-out infinite',
+                            '@keyframes loading': {
+                              '0%': { width: '0%' },
+                              '50%': { width: '70%' },
+                              '100%': { width: '100%' },
+                            },
+                          }}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -803,6 +1200,10 @@ export default function LearnerDashboard() {
   const [nftModalOpen, setNftModalOpen] = useState(false);
   const [nftCredential, setNftCredential] = useState<LearnerCredential | null>(null);
 
+  // Push to DigiLocker state
+  const [digilockerModalOpen, setDigilockerModalOpen] = useState(false);
+  const [digilockerCredential, setDigilockerCredential] = useState<LearnerCredential | null>(null);
+
   // Filter states
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string>('');
@@ -906,6 +1307,11 @@ export default function LearnerDashboard() {
     setNftModalOpen(true);
   };
 
+  const handlePushToDigiLocker = (credential: LearnerCredential) => {
+    setDigilockerCredential(credential);
+    setDigilockerModalOpen(true);
+  };
+
   const handleNFTSuccess = async (tokenId: string, txHash: string) => {
     console.log('NFT minted successfully:', { tokenId, txHash });
     
@@ -932,7 +1338,7 @@ export default function LearnerDashboard() {
     }
     
     // Refresh credentials to show updated NFT status
-    loadCredentials();
+    load();
     
     setNftModalOpen(false);
     setNftCredential(null);
@@ -1513,6 +1919,7 @@ export default function LearnerDashboard() {
                 onViewDetails={handleViewDetails}
                 onDownload={handleDownload}
                 onMintNFT={handleMintNFT}
+                onPushToDigiLocker={handlePushToDigiLocker}
               />
             ))
           ) : (
@@ -1523,6 +1930,7 @@ export default function LearnerDashboard() {
                 onViewDetails={handleViewDetails}
                 onDownload={handleDownload}
                 onMintNFT={handleMintNFT}
+                onPushToDigiLocker={handlePushToDigiLocker}
               />
             ))
           )}
@@ -1597,6 +2005,16 @@ export default function LearnerDashboard() {
           onSuccess={handleNFTSuccess}
         />
       )}
+
+      {/* Push to DigiLocker Modal */}
+      <PushToDigiLockerModal
+        credential={digilockerCredential}
+        open={digilockerModalOpen}
+        onClose={() => {
+          setDigilockerModalOpen(false);
+          setDigilockerCredential(null);
+        }}
+      />
     </Box>
   );
 }
