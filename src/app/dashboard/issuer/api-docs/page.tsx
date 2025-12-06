@@ -286,6 +286,161 @@ params = {"page": 1, "limit": 10}
 response = requests.get(url, headers=headers, params=params)
 print(response.json())`
       }
+    },
+    {
+      id: "nsqf-get-by-course",
+      method: "GET",
+      path: "/api/v1/nsqf/course",
+      title: "Get NSQF Level by Course Name",
+      description: "Retrieve the NSQF level for a specific course by its name. Performs case-insensitive exact match search.",
+      requiresAuth: false,
+      authType: "None",
+      queryParams: {
+        course_name: "string (required) - Name of the course to search for"
+      },
+      responseExample: {
+        course_name: "CRM Domestic Voice",
+        nsqf_level: 7,
+        found: true
+      },
+      codeExamples: {
+        curl: `curl -X GET "http://localhost:8000/api/v1/nsqf/course?course_name=CRM%20Domestic%20Voice"`,
+        javascript: `const response = await fetch(
+  'http://localhost:8000/api/v1/nsqf/course?course_name=CRM%20Domestic%20Voice'
+);
+
+const data = await response.json();
+console.log(data);`,
+        python: `import requests
+
+url = "http://localhost:8000/api/v1/nsqf/course"
+params = {"course_name": "CRM Domestic Voice"}
+
+response = requests.get(url, params=params)
+print(response.json())`
+      }
+    },
+    {
+      id: "nsqf-search-courses",
+      method: "GET",
+      path: "/api/v1/nsqf/search",
+      title: "Search Courses by Name",
+      description: "Search for courses using partial name matching. Returns a list of courses that match the search query.",
+      requiresAuth: false,
+      authType: "None",
+      queryParams: {
+        query: "string (required, min 2 chars) - Search query string",
+        limit: "number (optional, default: 10, max: 50) - Maximum number of results"
+      },
+      responseExample: [
+        {
+          course_name: "CRM Domestic Voice",
+          nsqf_level: 7
+        },
+        {
+          course_name: "CRM Domestic Voice - Bengali",
+          nsqf_level: 7
+        },
+        {
+          course_name: "CRM Domestic Voice - Hindi",
+          nsqf_level: 7
+        }
+      ],
+      codeExamples: {
+        curl: `curl -X GET "http://localhost:8000/api/v1/nsqf/search?query=Domestic&limit=5"`,
+        javascript: `const response = await fetch(
+  'http://localhost:8000/api/v1/nsqf/search?query=Domestic&limit=5'
+);
+
+const data = await response.json();
+console.log(data);`,
+        python: `import requests
+
+url = "http://localhost:8000/api/v1/nsqf/search"
+params = {"query": "Domestic", "limit": 5}
+
+response = requests.get(url, params=params)
+print(response.json())`
+      }
+    },
+    {
+      id: "nsqf-get-by-level",
+      method: "GET",
+      path: "/api/v1/nsqf/level/{nsqf_level}",
+      title: "Get Courses by NSQF Level",
+      description: "Retrieve all courses for a specific NSQF level (1-10). Returns a paginated list of courses.",
+      requiresAuth: false,
+      authType: "None",
+      pathParams: {
+        nsqf_level: "number (required, 1-10) - NSQF level to filter by"
+      },
+      queryParams: {
+        limit: "number (optional, default: 20, max: 100) - Maximum number of results"
+      },
+      responseExample: [
+        {
+          course_name: "CRM Domestic Voice",
+          nsqf_level: 7
+        },
+        {
+          course_name: "Advanced Data Analytics",
+          nsqf_level: 7
+        }
+      ],
+      codeExamples: {
+        curl: `curl -X GET "http://localhost:8000/api/v1/nsqf/level/7?limit=10"`,
+        javascript: `const response = await fetch(
+  'http://localhost:8000/api/v1/nsqf/level/7?limit=10'
+);
+
+const data = await response.json();
+console.log(data);`,
+        python: `import requests
+
+url = "http://localhost:8000/api/v1/nsqf/level/7"
+params = {"limit": 10}
+
+response = requests.get(url, params=params)
+print(response.json())`
+      }
+    },
+    {
+      id: "nsqf-stats",
+      method: "GET",
+      path: "/api/v1/nsqf/stats",
+      title: "Get NSQF Database Statistics",
+      description: "Get comprehensive statistics about the NSQF courses database including total courses and distribution by NSQF level.",
+      requiresAuth: false,
+      authType: "None",
+      responseExample: {
+        total_courses: 1261,
+        courses_by_level: {
+          level_0: 990,
+          level_1: 3,
+          level_2: 37,
+          level_3: 91,
+          level_4: 116,
+          level_5: 13,
+          level_6: 3,
+          level_7: 8
+        },
+        collection_name: "nsqf_levels"
+      },
+      codeExamples: {
+        curl: `curl -X GET "http://localhost:8000/api/v1/nsqf/stats"`,
+        javascript: `const response = await fetch(
+  'http://localhost:8000/api/v1/nsqf/stats'
+);
+
+const data = await response.json();
+console.log(data);`,
+        python: `import requests
+
+url = "http://localhost:8000/api/v1/nsqf/stats"
+
+response = requests.get(url)
+print(response.json())`
+      }
     }
   ];
 
