@@ -2,7 +2,7 @@
 
 import React from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Box, Typography, Paper, Button, Stack, TextField, MenuItem, Alert, Chip, Avatar, IconButton, Divider } from '@mui/material';
+import { Box, Typography, Paper, Button, Stack, TextField, MenuItem, Alert, Chip, Avatar, IconButton, Divider, CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
@@ -10,6 +10,9 @@ import { injected, walletConnect } from 'wagmi/connectors';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthService } from '@/services/auth.service';
+import { API_BASE_URL } from '@/config/api';
 
 // Wallet icons as simple components
 const MetaMaskIcon = () => (
@@ -40,12 +43,16 @@ const CoinbaseIcon = () => (
 
 export default function IntegrationsPage() {
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState('');
-  const [docType, setDocType] = useState<'aadhaar' | 'pan' | 'driving_license'>('aadhaar');
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
+  const [clientToken, setClientToken] = useState('');
+  const [state, setState] = useState('');
+  const [digilockerData, setDigilockerData] = useState<any>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [walletNotice, setWalletNotice] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+
 
   // Wagmi hooks for wallet connection
   const { address, isConnected, connector } = useAccount();
@@ -96,78 +103,285 @@ export default function IntegrationsPage() {
     setWalletNotice('Wallet disconnected successfully.');
   };
 
+  // Load saved DigiLocker data from MongoDB on mount
   useEffect(() => {
-    const sid = searchParams.get('session_id');
-    if (sid) {
-      setSessionId(sid);
-      setNotice('DigiLocker session created. You can now fetch documents once consent succeeds.');
-      // Optional: clean session_id from URL
+    const loadSavedData = async () => {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        console.log('Auth still loading, waiting...');
+        return;
+      }
+
+      // Check if user is available - user object has _id, not id
+      const userId = user?._id || user?.id;
+      if (!userId) {
+        console.log('User not available yet:', { user, authLoading });
+        return;
+      }
+
+      console.log('Loading saved DigiLocker data for user:', userId);
+      setLoadingCredentials(true);
+      
       try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('session_id');
-        window.history.replaceState({}, '', url.toString());
-      } catch {}
+        const token = AuthService.getAccessToken();
+        if (!token) {
+          console.error('No access token available');
+          setLoadingCredentials(false);
+          return;
+        }
+
+        
+        const url = `${API_BASE_URL}/learners/${userId}/digilocker-data`;
+        
+        console.log('Loading DigiLocker data from:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('DigiLocker data received:', data);
+          if (data?.digilocker_data) {
+            console.log('Setting DigiLocker data. Keys:', Object.keys(data.digilocker_data));
+            setDigilockerData(data.digilocker_data);
+          } else {
+            console.warn('No digilocker_data in response:', data);
+          }
+        } else if (response.status === 404) {
+          // No data found, that's okay - user hasn't fetched yet
+          console.log('No saved DigiLocker data found (404)');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to load DigiLocker data:', response.status, errorData);
+        }
+      } catch (error) {
+        console.error('Failed to load saved DigiLocker data:', error);
+      } finally {
+        setLoadingCredentials(false);
+      }
+    };
+
+    loadSavedData();
+  }, [user?._id, user?.id, authLoading]);
+
+  useEffect(() => {
+    // Check if user is returning from DigiLocker with state parameter
+    const stateParam = searchParams.get('state');
+    const codeParam = searchParams.get('code');
+    
+    // Retrieve stored client_token and state from localStorage
+    const storedClientToken = localStorage.getItem('digilocker_client_token');
+    const storedState = localStorage.getItem('digilocker_state');
+    
+    console.log('DigiLocker redirect check:', {
+      stateParam,
+      codeParam,
+      hasStoredToken: !!storedClientToken,
+      hasStoredState: !!storedState,
+      currentClientToken: clientToken,
+      currentState: state
+    });
+    
+    // If we have stored credentials, restore them
+    if (storedClientToken && storedState) {
+      setClientToken(storedClientToken);
+      setState(storedState);
+    }
+    
+    // If user is returning from DigiLocker (has state or code parameter)
+    if (stateParam || codeParam) {
+      if (storedClientToken && storedState) {
+        // If state matches or we have a code (authorization successful)
+        if (stateParam === storedState || codeParam) {
+          setClientToken(storedClientToken);
+          setState(storedState);
+          setNotice('DigiLocker authorization successful! You can now fetch your documents.');
+          
+          // Clean URL parameters
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('state');
+            url.searchParams.delete('code');
+            window.history.replaceState({}, '', url.toString());
+          } catch {}
+        } else if (stateParam) {
+          // State doesn't match, but we have one - still allow fetching
+          console.warn('State parameter mismatch, but proceeding with stored credentials');
+          setClientToken(storedClientToken);
+          setState(storedState);
+          setNotice('DigiLocker authorization completed. You can now fetch your documents.');
+          
+          // Clean URL parameters
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('state');
+            url.searchParams.delete('code');
+            window.history.replaceState({}, '', url.toString());
+          } catch {}
+        }
+      } else {
+        // We have a redirect but no stored credentials
+        setNotice('Please initiate DigiLocker session again.');
+      }
+    } else if (storedClientToken && storedState) {
+      // No redirect params but we have stored credentials - user might have refreshed
+      setClientToken(storedClientToken);
+      setState(storedState);
     }
   }, [searchParams]);
 
   const initiateDigiLocker = async () => {
     try {
       setLoading(true);
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/api/v1/digilocker/sessions/initiate`, {
+      setNotice(null);
+
+      // Step 1: Generate Token (via API route to avoid CORS)
+      const tokenResponse = await fetch('/api/digilocker/get-access-token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Check if response is ok and is JSON
+      const tokenContentType = tokenResponse.headers.get('content-type');
+      if (!tokenContentType || !tokenContentType.includes('application/json')) {
+        const text = await tokenResponse.text();
+        console.error('Non-JSON response from get-access-token:', text);
+        throw new Error('Server returned an invalid response. Please check the console for details.');
+      }
+
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenResponse.ok || !tokenData.status || !tokenData.client_token || !tokenData.state) {
+        throw new Error(tokenData.error || tokenData.msg || 'Failed to generate access token');
+      }
+
+      // Store token and state in localStorage
+      localStorage.setItem('digilocker_client_token', tokenData.client_token);
+      localStorage.setItem('digilocker_state', tokenData.state);
+      
+      setClientToken(tokenData.client_token);
+      setState(tokenData.state);
+
+      // Step 2: Generate DigiLocker Link (via API route to avoid CORS)
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/dashboard/profile/Integrations`
+        : 'https://digilocker.meon.co.in/digilocker/thank-you-page';
+
+      const linkResponse = await fetch('/api/digilocker/generate-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          '@entity': 'in.co.sandbox.kyc.digilocker.session.request',
-          flow: 'signin',
-          doc_types: ['aadhaar', 'pan', 'driving_license'],
-          // Redirect back to this Integrations page so we can capture session_id here
-          redirect_url:
-            typeof window !== 'undefined'
-              ? `${window.location.origin}/dashboard/profile/Integrations`
-              : 'https://example.com/dashboard/profile/Integrations'
+          client_token: tokenData.client_token,
+          redirect_url: redirectUrl
         })
       });
-      const data = await res.json();
-      if (!res.ok || data?.code !== 200) {
-        throw new Error(data?.message || 'Failed to initiate DigiLocker session');
+
+      // Check if response is ok and is JSON
+      const contentType = linkResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await linkResponse.text();
+        console.error('Non-JSON response:', text);
+        throw new Error('Server returned an invalid response. Please check the console for details.');
       }
-      const authUrl = data?.data?.authorization_url;
-      const sid = data?.data?.session_id;
-      if (sid) setSessionId(sid);
-      if (authUrl) {
-        window.location.href = authUrl;
+
+      const linkData = await linkResponse.json();
+      
+      if (!linkResponse.ok || !linkData.success || !linkData.url) {
+        throw new Error(linkData.error || linkData.msg || 'Failed to generate DigiLocker link');
       }
-    } catch (e) {
-      console.error(e);
-      alert('Unable to initiate DigiLocker. Please try again.');
-    } finally {
+
+      // Redirect user to DigiLocker
+      window.location.href = linkData.url;
+    } catch (e: any) {
+      console.error('DigiLocker initiation error:', e);
+      alert(e.message || 'Unable to initiate DigiLocker. Please try again.');
       setLoading(false);
     }
   };
 
   const fetchDocument = async () => {
-    if (!sessionId) {
-      alert('Enter a session id first.');
+    // Get client_token and state from state or localStorage
+    const token = clientToken || localStorage.getItem('digilocker_client_token');
+    const stateValue = state || localStorage.getItem('digilocker_state');
+
+    if (!token || !stateValue) {
+      alert('Please initiate DigiLocker session first.');
       return;
     }
+
     try {
       setLoading(true);
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/api/v1/digilocker/sessions/${sessionId}/documents/${docType}`);
-      const data = await res.json();
-      if (!res.ok || data?.code !== 200) {
-        throw new Error(data?.message || 'Failed to fetch document');
+      setNotice(null);
+
+      // Step 3: Retrieve Data (via API route to avoid CORS)
+      const response = await fetch('/api/digilocker/fetch-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_token: token,
+          state: stateValue
+        })
+      });
+
+      // Check if response is ok and is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response from fetch-data:', text);
+        throw new Error('Server returned an invalid response. Please check the console for details.');
       }
-      const files = data?.data?.files || [];
-      if (files.length && files[0].url) {
-        window.open(files[0].url, '_blank');
-      } else {
-        alert('No file url returned.');
+
+      const data = await response.json();
+      
+      if (!response.ok || !data.success || data.code !== 200) {
+        throw new Error(data.error || data.msg || 'Failed to retrieve documents');
       }
-    } catch (e) {
-      console.error(e);
-      alert('Unable to fetch document. Ensure session is succeeded.');
+
+      // Store the retrieved data
+      setDigilockerData(data.data);
+      setNotice('Documents retrieved successfully! Check your credentials above.');
+
+      // Save to MongoDB if user is logged in
+      const userId = user?._id || user?.id;
+      if (userId) {
+        try {
+          const token = AuthService.getAccessToken();
+          await fetch('/api/digilocker/save-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              learner_id: userId,
+              digilocker_data: data.data,
+            }),
+          });
+          console.log('DigiLocker data saved to MongoDB');
+        } catch (saveError) {
+          console.error('Failed to save DigiLocker data:', saveError);
+          // Don't throw - data is still displayed even if save fails
+        }
+      }
+
+      // Display the data (you can customize this)
+      console.log('DigiLocker Data:', data.data);
+
+    } catch (e: any) {
+      console.error('Fetch document error:', e);
+      alert(e.message || 'Unable to fetch documents. Please ensure you have completed the DigiLocker authorization.');
     } finally {
       setLoading(false);
     }
@@ -176,13 +390,220 @@ export default function IntegrationsPage() {
   return (
     <DashboardLayout title="Integrations">
       <Box sx={{ p: 3 }}>
-        <Paper elevation={1} sx={{ p: 4, borderRadius: 3, textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+        <Paper elevation={1} sx={{ p: 4, borderRadius: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
             Credentials
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Your credentials will be displayed here.
-          </Typography>
+          {loadingCredentials ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <CircularProgress size={48} sx={{ mb: 2 }} />
+                <Typography variant="body2" color="text.secondary">
+                  Loading credentials...
+                </Typography>
+              </Box>
+            </Box>
+          ) : digilockerData ? (
+            <Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                {/* Personal Information */}
+                <Box sx={{ width: { xs: '100%', md: 'calc(50% - 12px)' }, minWidth: 300 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
+                    Personal Information
+                  </Typography>
+                  <Stack spacing={2}>
+                    {digilockerData.name && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Full Name</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.name}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.dob && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Date of Birth</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.dob}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.gender && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Gender</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.gender}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.fathername && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Father's Name</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.fathername}</Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Box>
+
+                {/* Address Information */}
+                <Box sx={{ width: { xs: '100%', md: 'calc(50% - 12px)' }, minWidth: 300 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
+                    Address Information
+                  </Typography>
+                  <Stack spacing={2}>
+                    {digilockerData.aadhar_address && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Address</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.aadhar_address}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.house && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>House</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.house}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.locality && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Locality</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.locality}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.dist && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>District</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.dist}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.state && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>State</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.state}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.pincode && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Pincode</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.pincode}</Typography>
+                      </Box>
+                    )}
+                    {digilockerData.country && (
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Country</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.country}</Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Box>
+
+                {/* Aadhaar Documents */}
+                {digilockerData.aadhar_no && (
+                  <Box sx={{ width: { xs: '100%', md: 'calc(50% - 12px)' }, minWidth: 300 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
+                      Aadhaar
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Aadhaar Number</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, fontFamily: 'monospace' }}>{digilockerData.aadhar_no}</Typography>
+                      </Box>
+                      {digilockerData.aadhar_filename && (
+                        <Button 
+                          size="small" 
+                          variant="outlined" 
+                          onClick={() => window.open(digilockerData.aadhar_filename, '_blank')}
+                          fullWidth
+                        >
+                          View Aadhaar PDF
+                        </Button>
+                      )}
+                      {digilockerData.aadhar_img_filename && (
+                        <Button 
+                          size="small" 
+                          variant="outlined" 
+                          onClick={() => window.open(digilockerData.aadhar_img_filename, '_blank')}
+                          fullWidth
+                        >
+                          View Aadhaar Photo
+                        </Button>
+                      )}
+                      {digilockerData.aadhar_xml && (
+                        <Button 
+                          size="small" 
+                          variant="outlined" 
+                          onClick={() => window.open(digilockerData.aadhar_xml, '_blank')}
+                          fullWidth
+                        >
+                          View Aadhaar XML
+                        </Button>
+                      )}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* PAN Documents */}
+                {digilockerData.pan_number && (
+                  <Box sx={{ width: { xs: '100%', md: 'calc(50% - 12px)' }, minWidth: 300 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
+                      PAN Card
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>PAN Number</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, fontFamily: 'monospace' }}>{digilockerData.pan_number}</Typography>
+                      </Box>
+                      {digilockerData.name_on_pan && (
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>Name on PAN</Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>{digilockerData.name_on_pan}</Typography>
+                        </Box>
+                      )}
+                      {digilockerData.pan_image_path && (
+                        <Button 
+                          size="small" 
+                          variant="outlined" 
+                          onClick={() => window.open(digilockerData.pan_image_path, '_blank')}
+                          fullWidth
+                        >
+                          View PAN PDF
+                        </Button>
+                      )}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* Other Documents */}
+                {digilockerData.other_documents_files && Object.keys(digilockerData.other_documents_files).length > 0 && (
+                  <Box sx={{ width: '100%' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>
+                      Other Documents
+                    </Typography>
+                    <Stack spacing={1}>
+                      {Object.entries(digilockerData.other_documents_files).map(([key, url]: [string, any]) => (
+                        <Button 
+                          key={key}
+                          size="small" 
+                          variant="outlined" 
+                          onClick={() => window.open(url, '_blank')}
+                          sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                        >
+                          View {key.replace(/[-_]/g, ' ')}
+                        </Button>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* Metadata */}
+                {digilockerData.date_time && (
+                  <Box sx={{ width: '100%' }}>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="caption" color="text.secondary">
+                      Fetched on: {new Date(digilockerData.date_time).toLocaleString()}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              No credentials available. Connect DigiLocker below to fetch your documents.
+            </Typography>
+          )}
         </Paper>
 
         {/* Wallets Section */}
@@ -468,7 +889,7 @@ export default function IntegrationsPage() {
                   <Box sx={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' } }}>DigiLocker</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, fontSize: '0.7rem' }}>
-                      Secure KYC document sharinggg
+                      Secure KYC document sharing
                     </Typography>
                     <Stack spacing={1.5} sx={{ width: '100%', flex: 1, overflowY: 'auto', pr: 0.2 }}>
                       <Button 
@@ -477,47 +898,40 @@ export default function IntegrationsPage() {
                         disabled={loading}
                         fullWidth
                         size="small"
-                        sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' },p:0.7 }}
+                        sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' }, p: 0.7 }}
                       >
-                        {loading ? 'Please wait...' : 'Initiate Session'}
+                        {loading ? 'Please wait...' : 'Initiate DigiLocker'}
                       </Button>
-                      <TextField
-                        label="Session ID"
-                        size="small"
-                        value={sessionId}
-                        onChange={(e) => setSessionId(e.target.value)}
-                        fullWidth
-                        sx={{ 
-                          '& .MuiInputBase-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } },
-                          '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } }
-                        }}
-                      />
-                      <TextField
-                        label="Document Type"
-                        size="small"
-                        select
-                        value={docType}
-                        onChange={(e) => setDocType(e.target.value as any)}
-                        fullWidth
-                        sx={{ 
-                          '& .MuiInputBase-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } },
-                          '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '0.9rem' } }
-                        }}
-                      >
-                        <MenuItem value="aadhaar">Aadhaar</MenuItem>
-                        <MenuItem value="pan">PAN</MenuItem>
-                        <MenuItem value="driving_license">Driving License</MenuItem>
-                      </TextField>
                       <Button 
-                        variant="outlined" 
+                        variant={clientToken && state ? "contained" : "outlined"}
+                        color={clientToken && state ? "success" : "primary"}
                         onClick={fetchDocument} 
-                        disabled={loading}
+                        disabled={loading || !clientToken || !state}
                         fullWidth
                         size="small"
-                        sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' }, mb: 0.5 }}
+                        sx={{ 
+                          fontSize: { xs: '0.75rem', sm: '0.8rem' }, 
+                          mb: 0.5,
+                          ...(clientToken && state && {
+                            bgcolor: '#10b981',
+                            '&:hover': { bgcolor: '#059669' }
+                          })
+                        }}
                       >
-                        {loading ? 'Fetching...' : 'Fetch Document'}
+                        {loading ? 'Fetching...' : 'Fetch Documents'}
                       </Button>
+                      {(clientToken && state) ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.5 }}>
+                          <CheckCircleIcon sx={{ fontSize: 14, color: '#10b981' }} />
+                          <Typography variant="caption" color="success.main" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                            Session Active - Ready to fetch
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', textAlign: 'center', mt: 1 }}>
+                          Complete authorization to enable
+                        </Typography>
+                      )}
                     </Stack>
                   </Box>
                 </Paper>
