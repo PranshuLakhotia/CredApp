@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { UploadCloud, FileText, AlertTriangle, CheckCircle, Loader2, X } from 'lucide-react';
 import { buildApiUrl } from '@/config/api';
 
@@ -24,6 +24,9 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [learnerId, setLearnerId] = useState('');
+  const [emailSuggestions, setEmailSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [ocrStatus, setOcrStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
@@ -32,6 +35,8 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
   const [error, setError] = useState<string | null>(null);
   const [showExtractedData, setShowExtractedData] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Valid file types
   const validFileTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
@@ -53,7 +58,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
       setError(validationError);
       return;
     }
-    
+
     setSelectedFile(file);
     setError(null);
   }, []);
@@ -96,9 +101,75 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
     }
   };
 
+  // Search for learner emails
+  const searchLearnerEmails = async (query: string) => {
+    if (query.length < 2) {
+      setEmailSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      const response = await fetch(buildApiUrl(`/api/v1/users/search?q=${encodeURIComponent(query)}&role=learner&limit=10`), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      if (response.ok) {
+        const users = await response.json();
+        const emails = users.map((user: any) => user.email).filter(Boolean);
+        setEmailSuggestions(emails);
+        setShowSuggestions(emails.length > 0);
+      }
+    } catch (err) {
+      console.error('Error searching emails:', err);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  // Debounce email search
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (learnerId) {
+        searchLearnerEmails(learnerId);
+      } else {
+        setEmailSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [learnerId]);
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        emailInputRef.current &&
+        !emailInputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectEmail = (email: string) => {
+    setLearnerId(email);
+    setShowSuggestions(false);
+  };
+
+
   const extractData = async () => {
     if (!selectedFile || !learnerId.trim()) {
-      setError('Please select a file and enter a learner ID');
+      setError('Please select a file and enter a learner email');
       return;
     }
 
@@ -108,7 +179,29 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
     setOcrStatus('processing');
 
     try {
-      // Get API key
+      // Step 1: Lookup learner by email to get learner_id
+      setUploadProgress(10);
+      const lookupResponse = await fetch(buildApiUrl(`/wallet/lookup/${encodeURIComponent(learnerId.trim())}`), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      if (!lookupResponse.ok) {
+        const errorData = await lookupResponse.json();
+        throw new Error(errorData.detail || 'Learner not found with this email');
+      }
+
+      const learnerData = await lookupResponse.json();
+      const actualLearnerId = learnerData.learner_id;
+
+      if (!actualLearnerId) {
+        throw new Error('Learner ID not found for this email');
+      }
+
+      setUploadProgress(20);
+
+      // Step 2: Get API key
       const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
@@ -126,13 +219,13 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
 
       const apiKey = apiKeys[0].key;
 
-      // Upload file and start OCR
+      // Step 3: Upload file and start OCR with the looked-up learner_id
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('learner_id', learnerId.trim());
+      formData.append('learner_id', actualLearnerId); // Use the ID we looked up
       formData.append('idempotency_key', `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
-      setUploadProgress(25);
+      setUploadProgress(40);
 
       const uploadResponse = await fetch(buildApiUrl('/issuer/credentials/upload'), {
         method: 'POST',
@@ -142,7 +235,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
         body: formData
       });
 
-      setUploadProgress(50);
+      setUploadProgress(60);
 
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json();
@@ -240,26 +333,65 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
             Issue Single Credential
           </h2>
           <p className="text-gray-600">
-            Upload a certificate file and enter the learner ID, then click "Extract Data" to automatically extract information and fill the form
+            Upload a certificate file and enter the learner's email address, then click "Extract Data" to automatically extract information and fill the form
           </p>
         </div>
 
-        {/* Learner ID Input */}
-        <div className="mb-6">
-          <label htmlFor="learnerId" className="block text-sm font-medium text-gray-700 mb-2">
-            Learner ID
+        {/* Learner Email Input with Autocomplete */}
+        <div className="mb-6 relative">
+          <label htmlFor="learnerEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Learner Email
           </label>
-          <input
-            id="learnerId"
-            type="text"
-            value={learnerId}
-            onChange={(e) => setLearnerId(e.target.value)}
-            placeholder="Enter the learner's ID"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            disabled={isUploading || ocrStatus === 'processing'}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            The learner must be registered in the system
+          <div className="relative">
+            <input
+              ref={emailInputRef}
+              id="learnerEmail"
+              type="email"
+              value={learnerId}
+              onChange={(e) => setLearnerId(e.target.value)}
+              onFocus={() => {
+                if (emailSuggestions.length > 0) {
+                  setShowSuggestions(true);
+                }
+              }}
+              placeholder="Enter the learner's email address"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100"
+              disabled={isUploading || ocrStatus === 'processing'}
+              autoComplete="off"
+            />
+            {isLoadingSuggestions && (
+              <div className="absolute right-3 top-2.5">
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          {/* Email Suggestions Dropdown */}
+          {showSuggestions && emailSuggestions.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto"
+            >
+              {emailSuggestions.map((email, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => selectEmail(email)}
+                  className="w-full px-4 py-2 text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:outline-none text-gray-900 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="truncate">{email}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Start typing to see suggestions from registered learners
           </p>
         </div>
 
@@ -269,13 +401,12 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
             Certificate File
           </label>
           <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              isDragOver 
-                ? 'border-blue-400 bg-blue-50' 
-                : selectedFile 
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragOver
+              ? 'border-blue-400 bg-blue-50'
+              : selectedFile
                 ? 'border-green-400 bg-green-50'
                 : 'border-gray-300 hover:border-gray-400'
-            } ${(isUploading || ocrStatus === 'processing') ? 'opacity-50 pointer-events-none' : ''}`}
+              } ${(isUploading || ocrStatus === 'processing') ? 'opacity-50 pointer-events-none' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -349,7 +480,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
               </p>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${uploadProgress}%` }}
               />
@@ -369,7 +500,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
                 Data Extracted Successfully!
               </h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-green-700 mb-2">Certificate Title</label>
@@ -380,7 +511,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
                   className="w-full px-3 py-2 bg-white border border-green-200 rounded-md text-green-900 font-medium"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-green-700 mb-2">Issuer Name</label>
                 <input
@@ -390,7 +521,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
                   className="w-full px-3 py-2 bg-white border border-green-200 rounded-md text-green-900 font-medium"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-green-700 mb-2">Skills</label>
                 <input
@@ -440,7 +571,7 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-center gap-3 mt-6">
               <button
                 onClick={() => {
@@ -470,11 +601,10 @@ export function UploadCertificateStep({ onNext, onError }: UploadCertificateStep
             <button
               onClick={extractData}
               disabled={!selectedFile || !learnerId.trim() || isUploading || ocrStatus === 'processing'}
-              className={`px-8 py-3 rounded-lg font-medium transition-colors ${
-                selectedFile && learnerId.trim() && !isUploading && ocrStatus !== 'processing'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              className={`px-8 py-3 rounded-lg font-medium transition-colors ${selectedFile && learnerId.trim() && !isUploading && ocrStatus !== 'processing'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
             >
               {isUploading || ocrStatus === 'processing' ? (
                 <div className="flex items-center">
