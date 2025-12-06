@@ -69,7 +69,7 @@ ChartJS.register(
   Filler,
   ArcElement
 );
-
+import { API_BASE_URL } from '@/config/api';
 
 // --- STATS placeholders; values computed from API ---
 const baseStats = [
@@ -731,9 +731,9 @@ const PushToDigiLockerModal: React.FC<PushToDigiLockerModalProps> = ({ credentia
 
     try {
       const token = localStorage.getItem('access_token');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const backendUrl = API_BASE_URL;
       
-      const response = await fetch(`${backendUrl}/api/v1/learners/push-to-digilocker`, {
+      const response = await fetch(`${backendUrl}/learners/push-to-digilocker`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

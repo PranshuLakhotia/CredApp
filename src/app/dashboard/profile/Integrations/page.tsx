@@ -12,7 +12,6 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthService } from '@/services/auth.service';
-import { API_BASE_URL } from '@/config/api';
 
 // Wallet icons as simple components
 const MetaMaskIcon = () => (
@@ -130,8 +129,8 @@ export default function IntegrationsPage() {
           return;
         }
 
-        
-        const url = `${API_BASE_URL}/learners/${userId}/digilocker-data`;
+        const backendUrl = process.env.BACKEND_ROUTE;
+        const url = `${backendUrl}/learners/${userId}/digilocker-data`;
         
         console.log('Loading DigiLocker data from:', url);
         
