@@ -29,6 +29,19 @@ export interface ChatCompletionResponse {
   };
 }
 
+export interface CertificateData {
+  credential_name: string;
+  issuer_name: string;
+  learner_name: string;
+  learner_id: string;
+  issued_date: string;
+  expiry_date: string;
+  credential_type: string;
+  skill_tags: string[];
+  description: string;
+  raw_text: string;
+}
+
 class OpenRouterService {
   private apiKey: string;
   private baseUrl: string = 'https://openrouter.ai/api/v1/chat/completions';
@@ -100,6 +113,116 @@ class OpenRouterService {
     });
 
     return response.choices[0]?.message?.content || 'No response from AI';
+  }
+
+  /**
+   * Convert raw OCR extracted text to structured certificate data using AI
+   * @param ocrText Raw text extracted from OCR service
+   * @returns Structured certificate data
+   */
+  async convertOCRTextToCertificateData(ocrText: string): Promise<CertificateData> {
+    try {
+      const prompt = `Analyze this certificate/credential text and extract the following information in STRICT JSON format.
+Do not include any additional text, explanations, or markdown formatting - ONLY return the JSON object.
+
+Required JSON structure:
+{
+  "credential_name": "The name/title of the credential or course",
+  "issuer_name": "The organization/institution that issued it",
+  "learner_name": "The name of the person who received it",
+  "learner_id": "Any ID number or code (certificate ID, learner ID, enrollment ID, etc.)",
+  "issued_date": "The date of issuance (format: YYYY-MM-DD if possible)",
+  "expiry_date": "The expiration date if mentioned (format: YYYY-MM-DD if possible, or empty string)",
+  "credential_type": "Type (e.g., certificate, diploma, degree, badge)",
+  "skill_tags": ["Array of relevant skills or topics covered"],
+  "description": "Brief description of what this credential represents"
+}
+
+Important rules:
+- Extract ALL visible information accurately
+- If a field is not found, use empty string "" for text fields or [] for arrays
+- For learner_id, look for any alphanumeric codes like enrollment IDs, certificate numbers, etc.
+- Be precise and extract exactly what you see
+- Return ONLY valid JSON, no markdown, no explanations, no additional text
+
+Certificate Text:
+${ocrText}`;
+
+      const response = await this.chat({
+        model: 'openai/gpt-oss-20b:free', // Using a more capable model for structured extraction
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a precise data extraction assistant. You ONLY return valid JSON objects with no additional text or formatting.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3, // Lower temperature for more deterministic output
+        max_tokens: 1500,
+      });
+
+      const content = response.choices[0]?.message?.content || '{}';
+
+      // Clean the response - remove markdown code blocks if present
+      let jsonStr = content.trim();
+
+      // Remove markdown code blocks
+      if (jsonStr.includes('```json')) {
+        const startIdx = jsonStr.indexOf('```json') + 7;
+        const endIdx = jsonStr.indexOf('```', startIdx);
+        jsonStr = jsonStr.substring(startIdx, endIdx).trim();
+      } else if (jsonStr.includes('```')) {
+        const startIdx = jsonStr.indexOf('```') + 3;
+        const endIdx = jsonStr.indexOf('```', startIdx);
+        jsonStr = jsonStr.substring(startIdx, endIdx).trim();
+      }
+
+      // Extract JSON object if there's extra text
+      if (jsonStr.includes('{')) {
+        const startIdx = jsonStr.indexOf('{');
+        const endIdx = jsonStr.lastIndexOf('}') + 1;
+        jsonStr = jsonStr.substring(startIdx, endIdx);
+      }
+
+      const extractedData: CertificateData = JSON.parse(jsonStr);
+
+      // Add the raw text to the result
+      extractedData.raw_text = ocrText;
+
+      // Validate and provide defaults for missing fields
+      return {
+        credential_name: extractedData.credential_name || 'Unknown Certificate',
+        issuer_name: extractedData.issuer_name || '',
+        learner_name: extractedData.learner_name || '',
+        learner_id: extractedData.learner_id || '',
+        issued_date: extractedData.issued_date || '',
+        expiry_date: extractedData.expiry_date || '',
+        credential_type: extractedData.credential_type || 'certificate',
+        skill_tags: extractedData.skill_tags || [],
+        description: extractedData.description || 'Professional credential certificate',
+        raw_text: ocrText
+      };
+
+    } catch (error) {
+      console.error('Error converting OCR text to certificate data:', error);
+
+      // Return fallback data structure
+      return {
+        credential_name: 'Certificate',
+        issuer_name: '',
+        learner_name: '',
+        learner_id: '',
+        issued_date: '',
+        expiry_date: '',
+        credential_type: 'certificate',
+        skill_tags: [],
+        description: 'OCR text conversion failed - manual review required',
+        raw_text: ocrText
+      };
+    }
   }
 }
 
