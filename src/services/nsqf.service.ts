@@ -52,7 +52,7 @@ export class NSQFService {
    */
   static async getNSQFByCourse(courseName: string): Promise<NSQFResponse> {
     try {
-      const response = await nsqfApi.get('/api/v1/nsqf/course', {
+      const response = await nsqfApi.get('/nsqf/course', {
         params: { course_name: courseName }
       });
       return response.data;
@@ -74,7 +74,7 @@ export class NSQFService {
    */
   static async searchCourses(query: string, limit: number = 10): Promise<NSQFCourse[]> {
     try {
-      const response = await nsqfApi.get('/api/v1/nsqf/search', {
+      const response = await nsqfApi.get('/nsqf/search', {
         params: { query, limit }
       });
       return response.data;
@@ -96,7 +96,7 @@ export class NSQFService {
    */
   static async getCoursesByLevel(nsqfLevel: number, limit: number = 20): Promise<NSQFCourse[]> {
     try {
-      const response = await nsqfApi.get(`/api/v1/nsqf/level/${nsqfLevel}`, {
+      const response = await nsqfApi.get(`/nsqf/level/${nsqfLevel}`, {
         params: { limit }
       });
       return response.data;
@@ -116,7 +116,7 @@ export class NSQFService {
    */
   static async getNSQFStats(): Promise<NSQFStats> {
     try {
-      const response = await nsqfApi.get('/api/v1/nsqf/stats');
+      const response = await nsqfApi.get('/nsqf/stats');
       return response.data;
     } catch (error: any) {
       console.error('Error fetching NSQF stats:', error);
