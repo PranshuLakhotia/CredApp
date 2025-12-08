@@ -132,7 +132,7 @@ export default function RecommendationsPage() {
         const preferredNsqf = userProfile?.preferred_nsqf_level || 5;
 
         // Call the recommendation API with user's context
-        const recommendationApiUrl = 'https://gaynell-unspendable-rolanda.ngrok-free.dev/recommend';
+        const recommendationApiUrl = 'https://gaynell-unspendable-rolanda.ngrok-free.dev/api/v1/recommend';
 
         const requestBody = {
           skills: userSkills,
