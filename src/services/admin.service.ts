@@ -126,12 +126,57 @@ export interface Employer {
 }
 
 export interface VerificationRequest {
-    id: number;
+    id: string;
     entity_name: string;
     entity_type: string;
     requested_date: string;
     documents: string[];
     status: string;
+}
+
+export interface DetailedVerificationRequest {
+    id: string;
+    user_id: string;
+    entity_name: string;
+    entity_type: string;
+    requested_date: string;
+    status: string;
+    // Verification data
+    organization_name?: string;
+    organization_type?: string;
+    registration_number?: string;
+    year_established?: string;
+    website?: string;
+    govt_id_type?: string;
+    govt_id_number?: string;
+    tax_id?: string;
+    registration_certificate_url?: string;
+    official_email?: string;
+    official_phone?: string;
+    address_line1?: string;
+    address_line2?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+    representative_name?: string;
+    representative_designation?: string;
+    representative_email?: string;
+    representative_phone?: string;
+    representative_id_proof_url?: string;
+    // User registration data
+    user_email?: string;
+    user_full_name?: string;
+    user_phone_number?: string;
+    user_date_of_birth?: string;
+    user_gender?: string;
+    user_address?: any;
+    user_created_at?: string;
+    // KYC verification data
+    kyc_verification?: KYCVerification;
+    kyc_verified?: boolean;
+    // Documents list
+    documents: string[];
 }
 
 export interface HealthStatus {
@@ -333,11 +378,27 @@ class AdminService {
     }
 
     /**
-     * Approve or reject a verification request
+     * Get detailed verification request
+     */
+    async getVerificationDetails(verificationId: string): Promise<DetailedVerificationRequest> {
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/api/v1/admin/verifications/${verificationId}/details`,
+                this.getAuthHeaders()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching verification details:', error);
+            throw new Error(error.response?.data?.detail || 'Failed to fetch verification details');
+        }
+    }
+
+    /**
+     * Approve, reject, or mark for physical verification
      */
     async handleVerificationAction(
-        verificationId: number,
-        action: 'approve' | 'reject',
+        verificationId: string,
+        action: 'approve' | 'reject' | 'physical_verification',
         notes?: string
     ): Promise<{ success: boolean; message: string }> {
         try {
