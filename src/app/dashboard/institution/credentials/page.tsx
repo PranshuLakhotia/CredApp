@@ -50,6 +50,14 @@ interface OcrResponse {
   };
 }
 
+interface VerificationData {
+  learner?: any;
+  nameMatch?: boolean;
+  learnerData?: any;
+  apiKeyData?: any;
+  blockchainData?: any;
+}
+
 export const fetchApiKeys = async () => {
   try {
     console.log('🔑 Fetching API keys...');
@@ -122,7 +130,7 @@ export default function CertificateForm(): React.JSX.Element {
     blockchainCheck: 'pending',
     allVerified: false
   });
-  const [verificationData, setVerificationData] = useState<any>(null);
+  const [verificationData, setVerificationData] = useState<VerificationData | null>(null);
 
   // Certificate issuance states
   const [isIssuingCertificate, setIsIssuingCertificate] = useState<boolean>(false);
@@ -138,6 +146,14 @@ export default function CertificateForm(): React.JSX.Element {
   const [emailSuggestions, setEmailSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
+
+  // Identifier Type State
+  const [identifierType, setIdentifierType] = useState<'email' | 'aadhaar' | 'pan'>('email');
+  const [isFetchingDigiLocker, setIsFetchingDigiLocker] = useState<boolean>(false);
+  
+  // DigiLocker Data State
+  const [digilockerData, setDigilockerData] = useState<any>(null);
+  const [fetchedAadharNo, setFetchedAadharNo] = useState<string>('');
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -334,16 +350,94 @@ export default function CertificateForm(): React.JSX.Element {
     setEmailSuggestions([]);
   };
 
+  // Fetch DigiLocker data from MongoDB by Aadhaar number
+  const handleFetchFromDigiLocker = async () => {
+    try {
+      // Prompt user for Aadhaar number
+      const aadharNo = prompt('Enter Aadhaar number to fetch credentials:');
+      
+      if (!aadharNo || !aadharNo.trim()) {
+        return; // User cancelled or entered empty value
+      }
+
+      setIsFetchingDigiLocker(true);
+
+      // Get auth token
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      // Fetch from MongoDB via backend API
+      const response = await fetch(
+        buildApiUrl(`/learners/digilocker-data/by-aadhar/${encodeURIComponent(aadharNo.trim())}`),
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to fetch DigiLocker data' }));
+        throw new Error(errorData.detail || errorData.error || 'Failed to fetch DigiLocker data');
+      }
+
+      const data = await response.json();
+      const fetchedDigilockerData = data.digilocker_data;
+
+      if (!fetchedDigilockerData) {
+        throw new Error('No DigiLocker data found for this Aadhaar number');
+      }
+
+      console.log('✅ DigiLocker Data Fetched from MongoDB:', fetchedDigilockerData);
+
+      // Store the fetched data and Aadhaar number
+      setDigilockerData(fetchedDigilockerData);
+      setFetchedAadharNo(aadharNo.trim());
+
+      // Extract and populate form data
+      const name = fetchedDigilockerData.name || '';
+      const dob = fetchedDigilockerData.dob || '';
+      const panNumber = fetchedDigilockerData.pan_number || '';
+      const aadharNoFromData = fetchedDigilockerData.aadhar_no || '';
+
+      // Update form with fetched data
+      setFormData(prev => ({
+        ...prev,
+        learnerId: identifierType === 'aadhaar' ? aadharNoFromData : 
+                   identifierType === 'pan' ? panNumber : prev.learnerId,
+        description: (prev.description || '') + 
+          (prev.description ? '\n\n' : '') + 
+          `Verified via DigiLocker:\n` +
+          `Name: ${name}\n` +
+          `DOB: ${dob}\n` +
+          (panNumber ? `PAN: ${panNumber}\n` : '') +
+          (aadharNoFromData ? `Aadhaar: ${aadharNoFromData}` : '')
+      }));
+
+      alert(`DigiLocker data fetched successfully for ${name || 'User'}!`);
+
+    } catch (error: any) {
+      console.error('Error fetching DigiLocker data:', error);
+      alert(error.message || 'Failed to fetch DigiLocker data. Please check the Aadhaar number and try again.');
+    } finally {
+      setIsFetchingDigiLocker(false);
+    }
+  };
+
   useEffect(() => {
     console.log('🔍 useEffect triggered:', { learnerId: formData.learnerId, showExtractedData });
     const timer = setTimeout(() => {
-      if (formData.learnerId && !showExtractedData) {
+      if (formData.learnerId && !showExtractedData && identifierType === 'email') {
         console.log('📧 Calling searchLearnerEmails with:', formData.learnerId);
         searchLearnerEmails(formData.learnerId);
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [formData.learnerId, showExtractedData]);
+  }, [formData.learnerId, showExtractedData, identifierType]);
 
   const handleExtractData = async (): Promise<void> => {
     if (!pdfFile) {
@@ -529,65 +623,91 @@ export default function CertificateForm(): React.JSX.Element {
       const verificationResults: any = {};
 
       // 1. Check if learner exists and fetch their profile using email
+      // 1. Check if learner exists and fetch their profile using email
       try {
-        console.log('🔍 Looking up learner by email:', formData.learnerId);
+        if (identifierType === 'email') {
+          console.log('🔍 Looking up learner by email:', formData.learnerId);
 
-        // Use wallet lookup endpoint to get learner details by email
-        const learnerResponse = await fetch(buildApiUrl(`/wallet/lookup/${encodeURIComponent(formData.learnerId)}`), {
-          headers: {
-            'x-api-key': apiKey
+          // Use wallet lookup endpoint to get learner details by email
+          const learnerResponse = await fetch(buildApiUrl(`/wallet/lookup/${encodeURIComponent(formData.learnerId)}`), {
+            headers: {
+              'x-api-key': apiKey
+            }
+          });
+
+          console.log('📡 Learner lookup response status:', learnerResponse.status);
+
+          if (learnerResponse.ok) {
+            const learnerProfile = await learnerResponse.json();
+            console.log('✅ Learner profile received:', learnerProfile);
+
+            // Extract learner data from wallet response
+            const learnerData = {
+              email: learnerProfile.email || formData.learnerId,
+              full_name: learnerProfile.full_name || learnerProfile.name || '',
+              user_id: learnerProfile.user_id || learnerProfile._id || '',
+              wallet_id: learnerProfile.wallet_id || learnerProfile.did || ''
+            };
+
+            verificationResults.learnerData = learnerData;
+
+            // Compare learner name with OCR extracted name
+            const ocrLearnerName = (ocrData?.extracted_data?.learner_name || '').trim().toLowerCase();
+            const dbLearnerName = learnerData.full_name.trim().toLowerCase();
+
+            console.log('📝 Name comparison:');
+            console.log('  OCR extracted:', ocrLearnerName);
+            console.log('  Database name:', dbLearnerName);
+
+            const namesMatch = ocrLearnerName === dbLearnerName || !ocrLearnerName;
+
+            if (namesMatch) {
+              console.log('✅ Learner names match!');
+              setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+              setLearnerIdMatch(true);
+            } else {
+              console.warn('⚠️ Learner name mismatch - OCR vs Database');
+              setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
+              setLearnerIdMatch(false);
+            }
+
+            // Store verification data
+            setVerificationData((prev: VerificationData | null) => ({
+              ...(prev || {}),
+              learner: learnerData,
+              nameMatch: namesMatch
+            }));
+
+          } else {
+            const errorData = await learnerResponse.json().catch(() => ({}));
+            console.error('❌ Learner lookup failed:', learnerResponse.status, errorData);
+            console.error('   Email not found or learner doesn\'t exist');
+            setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
+            setLearnerIdMatch(false);
           }
-        });
+        } else {
+          // Logic for Aadhaar/PAN (Direct Issuance to ID)
+          console.log(`✅ Using Government ID (${identifierType}) for issuance. Skipping wallet lookup.`);
 
-        console.log('📡 Learner lookup response status:', learnerResponse.status);
-
-        if (learnerResponse.ok) {
-          const learnerProfile = await learnerResponse.json();
-          console.log('✅ Learner profile received:', learnerProfile);
-
-          // Extract learner data from wallet response
           const learnerData = {
-            email: learnerProfile.email || formData.learnerId,
-            full_name: learnerProfile.full_name || learnerProfile.name || '',
-            user_id: learnerProfile.user_id || learnerProfile._id || '',
-            wallet_id: learnerProfile.wallet_id || learnerProfile.did || ''
+            email: '',
+            full_name: ocrData?.extracted_data?.learner_name || 'Verified via DigiLocker',
+            user_id: '',
+            wallet_id: '', // Will likely generate a new wallet or link later
+            gov_id: formData.learnerId,
+            id_type: identifierType
           };
 
           verificationResults.learnerData = learnerData;
 
-          // Compare learner name with OCR extracted name
-          const ocrLearnerName = (ocrData?.extracted_data?.learner_name || '').trim().toLowerCase();
-          const dbLearnerName = learnerData.full_name.trim().toLowerCase();
+          setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+          setLearnerIdMatch(true);
 
-          console.log('📝 Name comparison:');
-          console.log('  OCR extracted:', ocrLearnerName);
-          console.log('  Database name:', dbLearnerName);
-
-          const namesMatch = ocrLearnerName === dbLearnerName || !ocrLearnerName;
-
-          if (namesMatch) {
-            console.log('✅ Learner names match!');
-            setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
-            setLearnerIdMatch(true);
-          } else {
-            console.warn('⚠️ Learner name mismatch - OCR vs Database');
-            setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
-            setLearnerIdMatch(false);
-          }
-
-          // Store verification data
-          setVerificationData(prev => ({
-            ...prev,
+          setVerificationData((prev: VerificationData | null) => ({
+            ...(prev || {}),
             learner: learnerData,
-            nameMatch: namesMatch
+            nameMatch: true
           }));
-
-        } else {
-          const errorData = await learnerResponse.json().catch(() => ({}));
-          console.error('❌ Learner lookup failed:', learnerResponse.status, errorData);
-          console.error('   Email not found or learner doesn\'t exist');
-          setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
-          setLearnerIdMatch(false);
         }
       } catch (error) {
         console.error('💥 Learner verification exception:', error);
@@ -731,7 +851,8 @@ export default function CertificateForm(): React.JSX.Element {
           skill_tags: ocrData?.extracted_data?.skill_tags || [],
           nsqf_level: parseInt(formData.nsqfLevel),
           description: formData.description,
-          tags: formData.tags
+          tags: formData.tags,
+          aadhar_number: fetchedAadharNo || (digilockerData?.aadhar_no || '')
         }
       };
 
@@ -915,6 +1036,8 @@ export default function CertificateForm(): React.JSX.Element {
       tags: [],
       tagInput: '',
     });
+    setDigilockerData(null);
+    setFetchedAadharNo('');
     setPdfFile(null);
     setErrors({});
     setCurrentStep(1);
@@ -993,47 +1116,328 @@ export default function CertificateForm(): React.JSX.Element {
                 {/* Learner ID and Certificate Upload - Initial Fields */}
                 {!showExtractedData && (
                   <>
+                    {/* Identifier Type Selection */}
                     <div className="mb-6">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Learner Email <span className="text-red-500">*</span>
+                        Learner Identifier Type
                       </label>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Enter the learner's email address. System will verify the learner exists and match with certificate details.
-                      </p>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          name="learnerId"
-                          placeholder="Enter Learner Email (e.g., learner@example.com)"
-                          value={formData.learnerId}
-                          onChange={handleInputChange}
-                          onFocus={() => { if (emailSuggestions.length > 0) setShowSuggestions(true); }}
-                          onBlur={() => { setTimeout(() => setShowSuggestions(false), 300); }}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          autoComplete="off"
-                        />
-                        {showSuggestions && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {isLoadingSuggestions ? (
-                              <div className="px-4 py-3 text-sm text-gray-500 flex items-center">
-                                <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <div className="flex space-x-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIdentifierType('email');
+                            setFormData(prev => ({ ...prev, learnerId: '' }));
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${identifierType === 'email'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          Email ID
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIdentifierType('aadhaar');
+                            setFormData(prev => ({ ...prev, learnerId: '' }));
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${identifierType === 'aadhaar'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          Aadhaar Number
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIdentifierType('pan');
+                            setFormData(prev => ({ ...prev, learnerId: '' }));
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${identifierType === 'pan'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          PAN Card
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {identifierType === 'email' ? 'Learner Email' : identifierType === 'aadhaar' ? 'Aadhaar Number' : 'PAN Number'} <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex justify-between items-start">
+                        <div className="relative flex-grow">
+                          <input
+                            type="text"
+                            name="learnerId"
+                            placeholder={identifierType === 'email' ? "Enter Learner Email (e.g., learner@example.com)" : identifierType === 'aadhaar' ? "Enter Aadhaar Number (12 digits)" : "Enter PAN Number"}
+                            value={formData.learnerId}
+                            onChange={handleInputChange}
+                            onFocus={() => { if (identifierType === 'email' && emailSuggestions.length > 0) setShowSuggestions(true); }}
+                            onBlur={() => { setTimeout(() => setShowSuggestions(false), 300); }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            autoComplete="off"
+                          />
+                          {identifierType === 'email' && showSuggestions && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {isLoadingSuggestions ? (
+                                <div className="px-4 py-3 text-sm text-gray-500 flex items-center">
+                                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Loading...
+                                </div>
+                              ) : (
+                                emailSuggestions.map((email, index) => (
+                                  <button key={index} type="button" onMouseDown={(e) => { e.preventDefault(); handleEmailSelect(email); }} className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b last:border-b-0">
+                                    {email}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {(identifierType === 'aadhaar' || identifierType === 'pan') && (
+                          <button
+                            type="button"
+                            onClick={handleFetchFromDigiLocker}
+                            disabled={isFetchingDigiLocker}
+                            className="ml-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-sm hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all flex items-center whitespace-nowrap"
+                          >
+                            {isFetchingDigiLocker ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                Loading...
-                              </div>
+                                Fetching...
+                              </>
                             ) : (
-                              emailSuggestions.map((email, index) => (
-                                <button key={index} type="button" onMouseDown={(e) => { e.preventDefault(); handleEmailSelect(email); }} className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b last:border-b-0">
-                                  {email}
-                                </button>
-                              ))
+                              <>
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                Fetch from DigiLocker
+                              </>
                             )}
-                          </div>
+                          </button>
                         )}
                       </div>
+
+                      <p className="text-xs text-gray-500 mt-2">
+                        {identifierType === 'email'
+                          ? "Enter the learner's email address. System will verify the learner exists and match with certificate details."
+                          : "Enter the user's government ID to issue credential directly against their identity. Use 'Fetch' to verify via DigiLocker."}
+                      </p>
+
                       {errors.learnerId && (
                         <p className="text-red-500 text-sm mt-1">{errors.learnerId}</p>
+                      )}
+
+                      {/* DigiLocker Data Display */}
+                      {digilockerData && (
+                        <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center">
+                              <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                              <h3 className="text-lg font-semibold text-gray-900">DigiLocker Verification Data</h3>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDigilockerData(null);
+                                setFetchedAadharNo('');
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                            {/* Personal Information */}
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-700 border-b pb-1">Personal Information</h4>
+                              {digilockerData.name && (
+                                <div>
+                                  <span className="text-xs text-gray-500">Name:</span>
+                                  <p className="text-sm font-medium text-gray-900">{digilockerData.name}</p>
+                                </div>
+                              )}
+                              {digilockerData.dob && (
+                                <div>
+                                  <span className="text-xs text-gray-500">Date of Birth:</span>
+                                  <p className="text-sm font-medium text-gray-900">{digilockerData.dob}</p>
+                                </div>
+                              )}
+                              {digilockerData.gender && (
+                                <div>
+                                  <span className="text-xs text-gray-500">Gender:</span>
+                                  <p className="text-sm font-medium text-gray-900">{digilockerData.gender}</p>
+                                </div>
+                              )}
+                              {digilockerData.fathername && (
+                                <div>
+                                  <span className="text-xs text-gray-500">Father's Name:</span>
+                                  <p className="text-sm font-medium text-gray-900">{digilockerData.fathername}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Identity Documents */}
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-700 border-b pb-1">Identity Documents</h4>
+                              {digilockerData.aadhar_no && (
+                                <div>
+                                  <span className="text-xs text-gray-500">Aadhaar Number:</span>
+                                  <p className="text-sm font-medium text-gray-900 font-mono">{digilockerData.aadhar_no}</p>
+                                </div>
+                              )}
+                              {digilockerData.pan_number && (
+                                <div>
+                                  <span className="text-xs text-gray-500">PAN Number:</span>
+                                  <p className="text-sm font-medium text-gray-900 font-mono">{digilockerData.pan_number}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Address Information */}
+                            {digilockerData.aadhar_address && (
+                              <div className="md:col-span-2 space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700 border-b pb-1">Address</h4>
+                                <div>
+                                  <span className="text-xs text-gray-500">Full Address:</span>
+                                  <p className="text-sm font-medium text-gray-900">{digilockerData.aadhar_address}</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 mt-2">
+                                  {digilockerData.dist && (
+                                    <div>
+                                      <span className="text-xs text-gray-500">District:</span>
+                                      <p className="text-sm font-medium text-gray-900">{digilockerData.dist}</p>
+                                    </div>
+                                  )}
+                                  {digilockerData.state && (
+                                    <div>
+                                      <span className="text-xs text-gray-500">State:</span>
+                                      <p className="text-sm font-medium text-gray-900">{digilockerData.state}</p>
+                                    </div>
+                                  )}
+                                  {digilockerData.pincode && (
+                                    <div>
+                                      <span className="text-xs text-gray-500">Pincode:</span>
+                                      <p className="text-sm font-medium text-gray-900">{digilockerData.pincode}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Document Links */}
+                            {(digilockerData.aadhar_filename || digilockerData.pan_image_path) && (
+                              <div className="md:col-span-2 space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700 border-b pb-1">Identity Document Links</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {digilockerData.aadhar_filename && (
+                                    <a
+                                      href={digilockerData.aadhar_filename}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
+                                    >
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      Aadhaar PDF
+                                    </a>
+                                  )}
+                                  {digilockerData.pan_image_path && (
+                                    <a
+                                      href={digilockerData.pan_image_path}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center px-3 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-md hover:bg-green-200 transition-colors"
+                                    >
+                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      PAN PDF
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Certificates/Other Documents */}
+                            {digilockerData.other_documents_files && Object.keys(digilockerData.other_documents_files).length > 0 && (
+                              <div className="md:col-span-2 space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700 border-b pb-1 flex items-center">
+                                  <svg className="w-4 h-4 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  Certificates Available for Issuance
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {Object.entries(digilockerData.other_documents_files)
+                                    .filter(([key, url]) => typeof url === 'string' && url.toLowerCase().endsWith('.pdf'))
+                                    .map(([docKey, docUrl]: [string, any]) => {
+                                      // Extract a readable document name from the key
+                                      const docName = docKey
+                                        .replace(/^in\.gov\./, '')
+                                        .replace(/-/g, ' ')
+                                        .replace(/\d+/g, '')
+                                        .trim() || 'Certificate';
+                                      
+                                      return (
+                                        <div
+                                          key={docKey}
+                                          className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md transition-all"
+                                        >
+                                          <div className="flex items-center flex-1 min-w-0">
+                                            <svg className="w-5 h-5 text-purple-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-sm font-medium text-gray-900 truncate">
+                                                {docName}
+                                              </p>
+                                              <p className="text-xs text-gray-500 truncate">
+                                                {docKey}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <a
+                                            href={docUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="ml-3 inline-flex items-center px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors flex-shrink-0"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            View PDF
+                                          </a>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                                {Object.entries(digilockerData.other_documents_files).filter(([key, url]) => typeof url === 'string' && url.toLowerCase().endsWith('.pdf')).length === 0 && (
+                                  <p className="text-xs text-gray-500 italic">No PDF certificates found in other documents</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
 
