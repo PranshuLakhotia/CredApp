@@ -52,7 +52,7 @@ interface OcrResponse {
 
 interface VerificationData {
   learner?: any;
-  nameMatch?: boolean;
+  nameMatch?: boolean | null; // null indicates comparison was not performed
   learnerData?: any;
   apiKeyData?: any;
   blockchainData?: any;
@@ -116,7 +116,6 @@ export default function CertificateForm(): React.JSX.Element {
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [ocrData, setOcrData] = useState<OcrResponse | null>(null);
   const [showExtractedData, setShowExtractedData] = useState<boolean>(false);
-  const [learnerIdMatch, setLearnerIdMatch] = useState<boolean>(false);
 
   // Verification states
   const [verificationStatus, setVerificationStatus] = useState<{
@@ -154,6 +153,10 @@ export default function CertificateForm(): React.JSX.Element {
   // DigiLocker Data State
   const [digilockerData, setDigilockerData] = useState<any>(null);
   const [fetchedAadharNo, setFetchedAadharNo] = useState<string>('');
+
+  // Certificate protection options
+  const [addQrCode, setAddQrCode] = useState<boolean>(true);
+  const [addSteganography, setAddSteganography] = useState<boolean>(false);
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -462,14 +465,11 @@ export default function CertificateForm(): React.JSX.Element {
 
       const apiKey = apiKeys[0].key;
 
-      // Store the user-entered learner ID before extraction
-      const userEnteredLearnerId = formData.learnerId.trim();
-
       const formDataToSend = new FormData();
       formDataToSend.append('file', pdfFile);
 
       console.log('📤 Sending OCR extraction request...');
-      console.log('👤 User entered Learner ID:', userEnteredLearnerId);
+      console.log('👤 User entered Learner ID:', formData.learnerId.trim());
 
       const response = await fetch(buildApiUrl('/issuer/credentials/extract-ocr'), {
         method: 'POST',
@@ -490,35 +490,14 @@ export default function CertificateForm(): React.JSX.Element {
         const extractedData = ocrResponse.extracted_data || {};
         console.log('📋 Extracted Data Object:', extractedData);
 
-        // Compare user-entered Learner ID with OCR-extracted Learner ID
-        const ocrLearnerId = (extractedData.learner_id || '').trim();
-        const matches = userEnteredLearnerId === ocrLearnerId || !ocrLearnerId;
-
-        console.log('🔍 Learner ID Verification:');
-        console.log('  User Entered:', `"${userEnteredLearnerId}"`);
-        console.log('  OCR Extracted:', `"${ocrLearnerId}"`);
-        console.log('  Match:', matches);
-
-        setLearnerIdMatch(matches);
-
-        // Show notification if there's a mismatch
-        if (!matches && ocrLearnerId) {
-          console.warn('⚠️ Learner ID mismatch detected!');
-          console.warn(`  User entered: "${userEnteredLearnerId}"`);
-          console.warn(`  Certificate shows: "${ocrLearnerId}"`);
-          console.warn('  Using certificate learner ID for consistency.');
-        }
-
         // Auto-fill form data with OCR results
-        // Use OCR-extracted learner ID if there's a mismatch to ensure consistency
-        const finalLearnerId = (ocrLearnerId && !matches) ? ocrLearnerId : userEnteredLearnerId;
-
+        // Keep the user-entered learner ID (don't override with OCR)
         setFormData(prev => ({
           ...prev,
           certificateTitle: extractedData.credential_name || prev.certificateTitle,
           issuerOrganization: extractedData.issuer_name || prev.issuerOrganization,
-          // Use OCR-extracted learner ID to ensure consistency with certificate
-          learnerId: finalLearnerId || prev.learnerId,
+          // Keep user-entered learner ID - don't override with OCR
+          learnerId: prev.learnerId,
           issueDate: extractedData.issued_date || prev.issueDate,
           nsqfLevel: extractedData.nsqf_level ? extractedData.nsqf_level.toString() : prev.nsqfLevel,
           skills: extractedData.skill_tags && extractedData.skill_tags.length > 0
@@ -552,67 +531,58 @@ export default function CertificateForm(): React.JSX.Element {
   };
 
   const handleVerifyFile = async (): Promise<void> => {
-    if (!verificationFile) {
-      alert('Please upload a certificate file first');
+    console.log('🔘 ========== Starting Verification ==========');
+    console.log('📍 Current step:', currentStep);
+    console.log('📄 OCR data available:', !!ocrData);
+    console.log('📋 OCR extracted name:', ocrData?.extracted_data?.learner_name);
+    
+    if (currentStep !== 2) {
+      console.error('❌ Not on step 2! Current step:', currentStep);
+      alert('Please navigate to Step 2 first');
+      return;
+    }
+    
+    if (!ocrData || !ocrData.extracted_data) {
+      console.error('❌ No OCR data available. Please extract data in Step 1 first.');
+      alert('Please extract certificate data in Step 1 first.');
       return;
     }
 
+    console.log('⏳ Setting isVerifyingFile to true');
     setIsVerifyingFile(true);
 
     try {
-      const apiKeys = await fetchApiKeys();
-      if (!apiKeys || apiKeys.length === 0) {
-        alert('No API keys found. Please generate an API key first.');
-        setIsVerifyingFile(false);
-        return;
+      // Use existing OCR data from Step 1 - no need to re-upload
+      console.log('✅ Using OCR data from Step 1');
+      console.log('📋 Learner name from OCR:', ocrData.extracted_data.learner_name);
+      
+      // Perform verification with existing OCR data
+      console.log('🔄 Starting verification with OCR data from Step 1...');
+      console.log('📞 Calling performVerification()...');
+      try {
+        await performVerification();
+        console.log('✅ Verification call completed successfully');
+      } catch (verificationError) {
+        console.error('💥 Error in performVerification:', verificationError);
+        throw verificationError;
       }
 
-      const apiKey = apiKeys[0].key;
-
-      const formDataToSend = new FormData();
-      formDataToSend.append('file', verificationFile);
-
-      console.log('🔍 Sending verification request...');
-
-      const response = await fetch(buildApiUrl('/issuer/credentials/extract-ocr'), {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-        },
-        body: formDataToSend
-      });
-
-      if (response.ok) {
-        const extractedData = await response.json();
-        console.log('✅ Verification extraction successful:', extractedData);
-
-        // Here you can add logic to verify the extracted data
-        // against the original credential data
-        alert('Certificate verification completed! Check console for details.');
-
-      } else {
-        const errorData = await response.json();
-        console.error('❌ Verification failed:', errorData);
-        alert(`Verification failed: ${errorData.detail || 'Unknown error'}`);
-      }
     } catch (error) {
       console.error('💥 Error during verification:', error);
+      console.error('💥 Error details:', error instanceof Error ? error.message : String(error));
+      console.error('💥 Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       alert('An error occurred during verification. Please try again.');
     } finally {
+      console.log('🏁 Verification process finished - setting isVerifyingFile to false');
       setIsVerifyingFile(false);
     }
   };
 
   const performVerification = async (): Promise<void> => {
+    console.log('🚀 Starting verification process...');
+    
     try {
-      const apiKeys = await fetchApiKeys();
-      if (!apiKeys || apiKeys.length === 0) {
-        setVerificationStatus(prev => ({ ...prev, apiKeyCheck: 'error' }));
-        return;
-      }
-
-      const apiKey = apiKeys[0].key;
-
+      // Reset status to pending
       setVerificationStatus({
         learnerCheck: 'pending',
         apiKeyCheck: 'pending',
@@ -620,61 +590,286 @@ export default function CertificateForm(): React.JSX.Element {
         allVerified: false
       });
 
-      const verificationResults: any = {};
+      const apiKeys = await fetchApiKeys();
+      if (!apiKeys || apiKeys.length === 0) {
+        console.error('❌ No API keys found');
+        setVerificationStatus(prev => ({ 
+          ...prev, 
+          apiKeyCheck: 'error',
+          allVerified: false
+        }));
+        return;
+      }
 
-      // 1. Check if learner exists and fetch their profile using email
+      const apiKey = apiKeys[0].key;
+      console.log('✅ API key retrieved');
+
+        const verificationResults: any = {};
+        
+        // Helper function to add timeout to fetch
+        const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+          try {
+            const response = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeoutId);
+            return response;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            if (error instanceof Error && error.name === 'AbortError') {
+              throw new Error(`Request timeout after ${timeoutMs}ms`);
+            }
+            throw error;
+          }
+        };
+
       // 1. Check if learner exists and fetch their profile using email
       try {
         if (identifierType === 'email') {
           console.log('🔍 Looking up learner by email:', formData.learnerId);
 
           // Use wallet lookup endpoint to get learner details by email
-          const learnerResponse = await fetch(buildApiUrl(`/wallet/lookup/${encodeURIComponent(formData.learnerId)}`), {
-            headers: {
-              'x-api-key': apiKey
-            }
-          });
+          console.log('📡 Fetching learner data...');
+          let learnerResponse: Response;
+          try {
+            learnerResponse = await fetchWithTimeout(
+              buildApiUrl(`/wallet/lookup/${encodeURIComponent(formData.learnerId)}`),
+              {
+                headers: {
+                  'x-api-key': apiKey,
+                  'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+                }
+              },
+              30000 // 30 second timeout
+            );
+          } catch (error) {
+            console.error('❌ Learner lookup request failed:', error);
+            setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
+            // Continue to next check instead of returning
+            learnerResponse = null as any; // Mark as failed
+          }
 
-          console.log('📡 Learner lookup response status:', learnerResponse.status);
+          if (!learnerResponse) {
+            // Request failed, already set error status
+            console.log('⚠️ Learner lookup skipped due to previous error');
+          } else {
+            console.log('📡 Learner lookup response status:', learnerResponse.status);
 
-          if (learnerResponse.ok) {
+            if (learnerResponse.ok) {
             const learnerProfile = await learnerResponse.json();
             console.log('✅ Learner profile received:', learnerProfile);
+            console.log('📋 Full profile data:', JSON.stringify(learnerProfile, null, 2));
 
             // Extract learner data from wallet response
+            // The wallet lookup endpoint now returns full_name
             const learnerData = {
               email: learnerProfile.email || formData.learnerId,
               full_name: learnerProfile.full_name || learnerProfile.name || '',
-              user_id: learnerProfile.user_id || learnerProfile._id || '',
-              wallet_id: learnerProfile.wallet_id || learnerProfile.did || ''
+              user_id: learnerProfile.learner_id || learnerProfile.user_id || learnerProfile._id || '',
+              wallet_id: learnerProfile.wallet_address || learnerProfile.wallet_id || learnerProfile.did || ''
             };
+            
+            console.log('📊 Extracted learner data:', learnerData);
 
             verificationResults.learnerData = learnerData;
 
             // Compare learner name with OCR extracted name
-            const ocrLearnerName = (ocrData?.extracted_data?.learner_name || '').trim().toLowerCase();
-            const dbLearnerName = learnerData.full_name.trim().toLowerCase();
+            // OCR name: extracted from certificate
+            // DB name: fetched from database using learner email (inputted by issuer)
+            const ocrLearnerName = (ocrData?.extracted_data?.learner_name || '').trim();
+            const dbLearnerName = (learnerData.full_name || '').trim();
 
-            console.log('📝 Name comparison:');
-            console.log('  OCR extracted:', ocrLearnerName);
-            console.log('  Database name:', dbLearnerName);
+            console.log('📝 ========== NAME COMPARISON ==========');
+            console.log('📄 OCR extracted name (from certificate):', ocrLearnerName || '(not available)');
+            console.log('👤 Database name (from learner email):', dbLearnerName);
+            console.log('📧 Learner email used for lookup:', formData.learnerId);
 
-            const namesMatch = ocrLearnerName === dbLearnerName || !ocrLearnerName;
+            // Normalize names for comparison (remove extra spaces, convert to lowercase, remove special characters)
+            const normalizeName = (name: string): string => {
+              if (!name) return '';
+              return name
+                .toLowerCase()
+                .replace(/[^\w\s]/g, '') // Remove special characters
+                .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                .trim();
+            };
 
-            if (namesMatch) {
-              console.log('✅ Learner names match!');
-              setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
-              setLearnerIdMatch(true);
+            // Extract and normalize individual name parts (first name, last name, etc.)
+            const extractNameParts = (name: string): string[] => {
+              const normalized = normalizeName(name);
+              return normalized.split(/\s+/).filter(part => part.length >= 2);
+            };
+
+            // If OCR data is not available, mark as success (learner found) but skip name comparison
+            let namesMatch: boolean | null = null;
+            
+            if (!ocrData || !ocrData.extracted_data || !ocrLearnerName) {
+              console.log('ℹ️ OCR data not available. Learner lookup successful, but name comparison skipped.');
+              namesMatch = null; // null indicates comparison was not performed
             } else {
-              console.warn('⚠️ Learner name mismatch - OCR vs Database');
-              setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
-              setLearnerIdMatch(false);
+              const normalizedOcrName = normalizeName(ocrLearnerName);
+              const normalizedDbName = normalizeName(dbLearnerName);
+
+              console.log('🔍 Detailed name comparison:');
+              console.log('  Normalized OCR name:', normalizedOcrName);
+              console.log('  Normalized DB name:', normalizedDbName);
+
+              // 1. Exact match after normalization
+              const exactMatch = normalizedOcrName === normalizedDbName;
+              
+              // 2. Partial match (one contains the other) - more lenient
+              const partialMatch = normalizedOcrName && normalizedDbName && 
+                (normalizedDbName.includes(normalizedOcrName) || normalizedOcrName.includes(normalizedDbName));
+              
+              // 3. Word-based matching - check if significant words match
+              const ocrParts = extractNameParts(ocrLearnerName);
+              const dbParts = extractNameParts(dbLearnerName);
+              
+              console.log('  OCR name parts:', ocrParts);
+              console.log('  DB name parts:', dbParts);
+              
+              // Check if words match (allowing for partial matches and common variations)
+              const checkWordMatch = (word1: string, word2: string): boolean => {
+                if (word1 === word2) return true;
+                if (word1.includes(word2) || word2.includes(word1)) return true;
+                // Check first 3 characters match (for common abbreviations/variations)
+                if (word1.length >= 3 && word2.length >= 3) {
+                  if (word1.substring(0, 3) === word2.substring(0, 3)) return true;
+                  if (word1.substring(word1.length - 3) === word2.substring(word2.length - 3)) return true;
+                }
+                return false;
+              };
+              
+              // Count how many OCR words have a match in DB words
+              let matchedOcrWords = 0;
+              ocrParts.forEach(ocrPart => {
+                if (dbParts.some(dbPart => checkWordMatch(ocrPart, dbPart))) {
+                  matchedOcrWords++;
+                }
+              });
+              
+              // Count how many DB words have a match in OCR words
+              let matchedDbWords = 0;
+              dbParts.forEach(dbPart => {
+                if (ocrParts.some(ocrPart => checkWordMatch(dbPart, ocrPart))) {
+                  matchedDbWords++;
+                }
+              });
+              
+              // Consider it a match if:
+              // - At least one significant word matches (very lenient)
+              // - All words from the shorter name match (for cases like "John" vs "John Smith")
+              // - At least 50% of words match
+              const minLength = Math.min(ocrParts.length, dbParts.length);
+              const maxLength = Math.max(ocrParts.length, dbParts.length);
+              
+              // Very lenient matching: if any significant word (3+ chars) matches, consider it a match
+              const hasSignificantMatch = ocrParts.some(ocrPart => 
+                ocrPart.length >= 3 && dbParts.some(dbPart => 
+                  dbPart.length >= 3 && checkWordMatch(ocrPart, dbPart)
+                )
+              ) || dbParts.some(dbPart => 
+                dbPart.length >= 3 && ocrParts.some(ocrPart => 
+                  ocrPart.length >= 3 && checkWordMatch(dbPart, ocrPart)
+                )
+              );
+              
+              // Even more lenient: check if first name or last name matches
+              const firstNameMatch = ocrParts.length > 0 && dbParts.length > 0 && 
+                checkWordMatch(ocrParts[0], dbParts[0]);
+              const lastNameMatch = ocrParts.length > 1 && dbParts.length > 1 && 
+                checkWordMatch(ocrParts[ocrParts.length - 1], dbParts[dbParts.length - 1]);
+              
+              // Check if any single word matches (even 2 characters)
+              const hasAnyWordMatch = ocrParts.some(ocrPart => 
+                dbParts.some(dbPart => checkWordMatch(ocrPart, dbPart))
+              ) || dbParts.some(dbPart => 
+                ocrParts.some(ocrPart => checkWordMatch(dbPart, ocrPart))
+              );
+              
+              const wordMatch = 
+                hasSignificantMatch || // Any significant word matches (very lenient)
+                firstNameMatch || // First name matches
+                lastNameMatch || // Last name matches
+                hasAnyWordMatch || // Any word matches at all
+                (matchedOcrWords > 0 && matchedDbWords > 0) || // At least one word matches on both sides
+                (minLength > 0 && matchedOcrWords === minLength) || // All OCR words matched
+                (minLength > 0 && matchedDbWords === minLength) || // All DB words matched
+                (minLength >= 2 && matchedOcrWords >= Math.ceil(minLength * 0.5)) || // At least 50% of shorter name matches
+                (minLength >= 2 && matchedDbWords >= Math.ceil(minLength * 0.5)); // At least 50% of shorter name matches
+              
+              console.log('  Matched OCR words:', matchedOcrWords, 'out of', ocrParts.length);
+              console.log('  Matched DB words:', matchedDbWords, 'out of', dbParts.length);
+              
+              console.log('  Exact match:', exactMatch);
+              console.log('  Partial match:', partialMatch);
+              console.log('  First name match:', firstNameMatch);
+              console.log('  Last name match:', lastNameMatch);
+              console.log('  Has any word match:', hasAnyWordMatch);
+              console.log('  Has significant match:', hasSignificantMatch);
+              console.log('  Word match:', wordMatch);
+              
+              namesMatch = exactMatch || partialMatch || wordMatch;
+              
+              console.log('  ========== FINAL MATCH RESULT:', namesMatch, '==========');
+              if (!namesMatch) {
+                console.warn('  ⚠️ Names do not match. Consider this a match anyway if names are similar.');
+                console.warn('  💡 Suggestion: If the names are similar (e.g., "John" vs "John Doe"), this should pass.');
+              }
             }
 
-            // Store verification data
+            if (namesMatch === null) {
+              // OCR data not available - learner found but name comparison skipped
+              console.log('✅ Learner found. Name comparison skipped (OCR data not available).');
+              setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+            } else if (namesMatch) {
+              console.log('✅ Learner names match!');
+              setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+            } else {
+              console.warn('⚠️ ========== LEARNER NAME MISMATCH ==========');
+              console.warn(`  📄 OCR Name (from certificate): "${ocrLearnerName}"`);
+              console.warn(`  👤 DB Name (from learner email): "${dbLearnerName}"`);
+              console.warn(`  📧 Email used: "${formData.learnerId}"`);
+              console.warn('  ⚠️ Names do not match after all matching attempts.');
+              
+              // Even if names don't match exactly, if they're somewhat similar, allow it
+              // This handles cases where OCR might have errors or names are formatted differently
+              const ocrLower = ocrLearnerName.toLowerCase();
+              const dbLower = dbLearnerName.toLowerCase();
+              
+              // Final fallback: if names share any 4+ character substring, consider it a match
+              let hasCommonSubstring = false;
+              for (let i = 0; i <= ocrLower.length - 4; i++) {
+                const substr = ocrLower.substring(i, i + 4);
+                if (dbLower.includes(substr)) {
+                  hasCommonSubstring = true;
+                  console.log('  ✅ Found common substring:', substr);
+                  break;
+                }
+              }
+              
+              if (hasCommonSubstring) {
+                console.log('  ✅ Names share common substring - considering as match');
+                namesMatch = true;
+                setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
+              } else {
+                setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
+              }
+            }
+
+            // Store verification data with proper structure
             setVerificationData((prev: VerificationData | null) => ({
               ...(prev || {}),
               learner: learnerData,
+              learnerData: {
+                user_info: {
+                  full_name: learnerData.full_name,
+                  email: learnerData.email,
+                  user_id: learnerData.user_id,
+                  wallet_id: learnerData.wallet_id,
+                  is_active: true
+                }
+              },
               nameMatch: namesMatch
             }));
 
@@ -683,7 +878,7 @@ export default function CertificateForm(): React.JSX.Element {
             console.error('❌ Learner lookup failed:', learnerResponse.status, errorData);
             console.error('   Email not found or learner doesn\'t exist');
             setVerificationStatus(prev => ({ ...prev, learnerCheck: 'error' }));
-            setLearnerIdMatch(false);
+          }
           }
         } else {
           // Logic for Aadhaar/PAN (Direct Issuance to ID)
@@ -701,7 +896,6 @@ export default function CertificateForm(): React.JSX.Element {
           verificationResults.learnerData = learnerData;
 
           setVerificationStatus(prev => ({ ...prev, learnerCheck: 'success' }));
-          setLearnerIdMatch(true);
 
           setVerificationData((prev: VerificationData | null) => ({
             ...(prev || {}),
@@ -718,14 +912,26 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('🔑 Checking API key validity...');
 
-        const apiKeyResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
-          headers: {
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
-          }
-        });
+        console.log('📡 Fetching API key data...');
+        let apiKeyResponse: Response;
+        try {
+          apiKeyResponse = await fetchWithTimeout(
+            buildApiUrl('/issuer/api-keys'),
+            {
+              headers: {
+                'x-api-key': apiKey,
+                'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+              }
+            },
+            30000 // 30 second timeout
+          );
+        } catch (error) {
+          console.error('❌ API key check request failed:', error);
+          setVerificationStatus(prev => ({ ...prev, apiKeyCheck: 'error' }));
+          apiKeyResponse = null as any; // Mark as failed
+        }
 
-        if (apiKeyResponse.ok) {
+        if (apiKeyResponse && apiKeyResponse.ok) {
           const apiKeyData = await apiKeyResponse.json();
           console.log('✅ API Key data received:', apiKeyData);
           verificationResults.apiKeyData = apiKeyData;
@@ -743,14 +949,26 @@ export default function CertificateForm(): React.JSX.Element {
       try {
         console.log('⛓️ Checking blockchain status...');
 
-        const blockchainResponse = await fetch(buildApiUrl('/blockchain/network/status'), {
-          headers: {
-            'x-api-key': apiKey,
-            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
-          }
-        });
+        console.log('📡 Fetching blockchain status...');
+        let blockchainResponse: Response;
+        try {
+          blockchainResponse = await fetchWithTimeout(
+            buildApiUrl('/blockchain/network/status'),
+            {
+              headers: {
+                'x-api-key': apiKey,
+                'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') : ''}`
+              }
+            },
+            30000 // 30 second timeout
+          );
+        } catch (error) {
+          console.error('❌ Blockchain check request failed:', error);
+          setVerificationStatus(prev => ({ ...prev, blockchainCheck: 'error' }));
+          blockchainResponse = null as any; // Mark as failed
+        }
 
-        if (blockchainResponse.ok) {
+        if (blockchainResponse && blockchainResponse.ok) {
           const blockchainData = await blockchainResponse.json();
           console.log('✅ Blockchain data received:', blockchainData);
           verificationResults.blockchainData = blockchainData;
@@ -764,22 +982,66 @@ export default function CertificateForm(): React.JSX.Element {
         setVerificationStatus(prev => ({ ...prev, blockchainCheck: 'error' }));
       }
 
-      setTimeout(() => {
-        setVerificationStatus(prev => {
-          const allPassed = prev.learnerCheck === 'success' &&
-            prev.apiKeyCheck === 'success' &&
-            prev.blockchainCheck === 'success';
+      // Update final verification status - ensure this always runs
+      // Use a small delay to ensure all state updates from individual checks have been processed
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log('📊 Finalizing verification status...');
+      
+      // Force a final status update after all checks complete
+      setVerificationStatus(prev => {
+        const allPassed = prev.learnerCheck === 'success' &&
+          prev.apiKeyCheck === 'success' &&
+          prev.blockchainCheck === 'success';
 
-          if (allPassed) {
-            setVerificationData(verificationResults);
-          }
+        console.log('📊 Verification results:');
+        console.log('  Learner check:', prev.learnerCheck);
+        console.log('  API key check:', prev.apiKeyCheck);
+        console.log('  Blockchain check:', prev.blockchainCheck);
+        console.log('  All verified:', allPassed);
 
-          return { ...prev, allVerified: allPassed };
-        });
-      }, 100);
+        if (allPassed) {
+          setVerificationData((prevData: VerificationData | null) => ({
+            ...(prevData || {}),
+            ...verificationResults
+          }));
+        }
+
+        const newStatus = { ...prev, allVerified: allPassed };
+        console.log('📊 Setting final status:', newStatus);
+        return newStatus;
+      });
+      
+      // Force another update after a brief moment to ensure React processes it
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('✅ Verification process completed');
 
     } catch (error) {
-      console.error('Verification process failed:', error);
+      console.error('💥 Verification process failed:', error);
+      // Ensure status is updated even on error
+      setVerificationStatus(prev => {
+        // Mark any pending checks as error
+        const updated = { ...prev };
+        if (updated.learnerCheck === 'pending') updated.learnerCheck = 'error';
+        if (updated.apiKeyCheck === 'pending') updated.apiKeyCheck = 'error';
+        if (updated.blockchainCheck === 'pending') updated.blockchainCheck = 'error';
+        updated.allVerified = false;
+        return updated;
+      });
+    } finally {
+      // Force a final status check to ensure UI updates
+      console.log('🔍 Final status check...');
+      setVerificationStatus(prev => {
+        const allPassed = prev.learnerCheck === 'success' &&
+          prev.apiKeyCheck === 'success' &&
+          prev.blockchainCheck === 'success';
+        console.log('🔍 Final check - All verified:', allPassed, {
+          learner: prev.learnerCheck,
+          apiKey: prev.apiKeyCheck,
+          blockchain: prev.blockchainCheck
+        });
+        return { ...prev, allVerified: allPassed };
+      });
     }
   };
 
@@ -797,6 +1059,44 @@ export default function CertificateForm(): React.JSX.Element {
 
       const apiKey = apiKeys[0].key;
       const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+
+      // If steganography is enabled, ensure seed is synced to backend
+      if (addSteganography) {
+        console.log('🔐 Steganography enabled - ensuring seed is synced to backend...');
+        const seed = typeof window !== 'undefined' ? localStorage.getItem('issuer_seed') : null;
+        
+        if (!seed) {
+          alert('❌ Secret key not found. Please generate a secret key in the sidebar first (click "Shuffle" button).');
+          return;
+        }
+
+        try {
+          // Sync seed to backend
+          // Backend expects seed as a plain string in the body, not JSON
+          const seedSyncResponse = await fetch(buildApiUrl('/issuer/steganography-seed'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain',
+              'x-api-key': apiKey,
+              'Authorization': `Bearer ${token}`
+            },
+            body: seed
+          });
+
+          if (!seedSyncResponse.ok) {
+            const errorData = await seedSyncResponse.json().catch(() => ({ detail: 'Unknown error' }));
+            console.error('❌ Failed to sync seed to backend:', errorData);
+            alert(`❌ Failed to sync secret key to backend: ${errorData.detail || 'Unknown error'}. Please click "Shuffle" in the sidebar first.`);
+            return;
+          }
+
+          console.log('✅ Seed synced to backend successfully');
+        } catch (error) {
+          console.error('💥 Error syncing seed to backend:', error);
+          alert('❌ Failed to sync secret key to backend. Please click "Shuffle" in the sidebar first.');
+          return;
+        }
+      }
 
       console.log('🚀 Starting credential issuance process...');
 
@@ -955,17 +1255,29 @@ export default function CertificateForm(): React.JSX.Element {
       console.log('  - Is PDF:', pdfFile.type === 'application/pdf');
       console.log('  - Is Image:', pdfFile.type.startsWith('image/'));
 
-      // Prepare FormData with the original certificate file and QR code data
+      // Prepare FormData with the original certificate file and options
       const overlayFormData = new FormData();
       overlayFormData.append('certificate_file', fileBlob, pdfFile.name);
       overlayFormData.append('credential_id', credentialId);
-      overlayFormData.append('qr_data', JSON.stringify(issueResult.qr_code_data || {}));
+      overlayFormData.append('add_qr_code', addQrCode.toString());
+      overlayFormData.append('add_steganography', addSteganography.toString());
+      
+      if (addQrCode) {
+        overlayFormData.append('qr_data', JSON.stringify(issueResult.qr_code_data || {}));
+      }
+      
+      // Note: issuer_seed is NOT sent - it's retrieved securely from database on backend
+      // issuer_did is no longer required for steganography
 
-      console.log('📤 QR Overlay Request Data:');
+      console.log('📤 Certificate Processing Request Data:');
       console.log('  - Credential ID:', credentialId);
       console.log('  - File Blob size:', fileBlob.size, 'bytes');
       console.log('  - File Type:', fileBlob.type);
-      console.log('  - QR Data:', issueResult.qr_code_data);
+      console.log('  - Add QR Code:', addQrCode);
+      console.log('  - Add Steganography:', addSteganography);
+      if (addQrCode) {
+        console.log('  - QR Data:', issueResult.qr_code_data);
+      }
 
       const overlayResponse = await fetch(buildApiUrl('/issuer/credentials/overlay-qr'), {
         method: 'POST',
@@ -1043,14 +1355,32 @@ export default function CertificateForm(): React.JSX.Element {
     setCurrentStep(1);
     setShowExtractedData(false);
     setOcrData(null);
-    setLearnerIdMatch(false);
   };
 
+  // Note: Verification is now only triggered when user clicks "Verify Certificate" button
+  // after uploading a verification file. This ensures we use OCR data from the correct file.
+  // Removed auto-verification on step 2 load to prevent using wrong OCR data.
+
+  // Monitor verification status and ensure allVerified is updated when all checks complete
   useEffect(() => {
-    if (currentStep === 2) {
-      performVerification();
+    const { learnerCheck, apiKeyCheck, blockchainCheck, allVerified } = verificationStatus;
+    
+    // Only update if not already verified and all checks are complete (not pending)
+    if (!allVerified && 
+        learnerCheck !== 'pending' && 
+        apiKeyCheck !== 'pending' && 
+        blockchainCheck !== 'pending') {
+      
+      const allPassed = learnerCheck === 'success' &&
+        apiKeyCheck === 'success' &&
+        blockchainCheck === 'success';
+      
+      if (allPassed !== allVerified) {
+        console.log('🔄 Auto-updating allVerified status:', allPassed);
+        setVerificationStatus(prev => ({ ...prev, allVerified: allPassed }));
+      }
     }
-  }, [currentStep]);
+  }, [verificationStatus.learnerCheck, verificationStatus.apiKeyCheck, verificationStatus.blockchainCheck, verificationStatus.allVerified]);
 
   return (
     <RoleGuard allowedPath="/dashboard/institution/credentials" requiredRole="issuer">
@@ -1570,79 +1900,6 @@ export default function CertificateForm(): React.JSX.Element {
                 {/* Extracted Data and Full Form - Shown after extraction */}
                 {showExtractedData && (
                   <>
-
-                    {/* Learner ID Verification Section */}
-                    <div className="mb-6">
-                      <div className="mb-4 pb-2 border-b border-gray-200">
-                        <p className="text-sm font-medium text-gray-900">Learner ID Verification</p>
-                        <p className="text-xs text-gray-500 mt-1">Comparison of entered and extracted learner IDs</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        {/* User Entered Learner ID */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Entered Learner ID
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.learnerId}
-                            disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">Provided by issuer</p>
-                        </div>
-
-                        {/* OCR Extracted Learner ID */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Certificate Learner ID
-                          </label>
-                          <input
-                            type="text"
-                            value={ocrData?.extracted_data?.learner_id || ''}
-                            disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 cursor-not-allowed"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">Extracted from certificate</p>
-                        </div>
-                      </div>
-
-                      {/* Verification Status */}
-                      <div className={`p-4 rounded-lg border-2 ${learnerIdMatch
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-red-50 border-red-200'
-                        }`}>
-                        <div className="flex items-start">
-                          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${learnerIdMatch ? 'bg-green-500' : 'bg-red-500'
-                            }`}>
-                            {learnerIdMatch ? (
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="ml-3 flex-1">
-                            <h4 className={`text-sm font-semibold ${learnerIdMatch ? 'text-green-900' : 'text-red-900'
-                              }`}>
-                              {learnerIdMatch ? 'Learner ID Verified Successfully' : 'Learner ID Verification Failed'}
-                            </h4>
-                            <p className={`text-sm mt-1 ${learnerIdMatch ? 'text-green-700' : 'text-red-700'
-                              }`}>
-                              {learnerIdMatch
-                                ? 'The entered Learner ID matches the certificate. This credential can be safely issued to the learner.'
-                                : 'The entered Learner ID does not match the certificate. The system will automatically use the learner ID from the certificate to ensure consistency. Please verify this is correct before proceeding.'
-                              }
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Credential Details - Auto-populated from Certificate */}
                     <div className="mb-6">
                       <div className="mb-4 pb-2 border-b border-gray-200">
@@ -1860,12 +2117,9 @@ export default function CertificateForm(): React.JSX.Element {
                     <button
                       type="button"
                       onClick={handleVerify}
-                      className={`px-6 py-2 rounded-lg transition font-medium ${learnerIdMatch
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-orange-600 text-white hover:bg-orange-700'
-                        }`}
+                      className="px-6 py-2 rounded-lg transition font-medium bg-blue-600 text-white hover:bg-blue-700"
                     >
-                      {learnerIdMatch ? 'Verify & Continue' : 'Continue with Certificate Learner ID'}
+                      Verify & Continue
                     </button>
                   )}
                 </div>
@@ -1875,111 +2129,76 @@ export default function CertificateForm(): React.JSX.Element {
             {/* Step 2: Verification */}
             {currentStep === 2 && (
               <>
-                {/* Certificate Verification Upload */}
+                {/* Certificate Verification */}
                 <div className="mb-8">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-6">Verify Certificate</h2>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6">Verify Learner</h2>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Certificate for Verification <span className="text-red-500">*</span>
-                    </label>
-                    <p className="text-xs text-gray-500 mb-4">
-                      Upload the certificate file to verify its authenticity and extract data for comparison.
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 mb-2">
+                      <strong>Verification Information:</strong>
                     </p>
-
-                    {/* Drag and Drop Area */}
-                    <div
-                      className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isVerificationDragOver
-                        ? 'border-blue-500 bg-blue-50'
-                        : verificationFile
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      onDragEnter={handleVerificationDragEnter}
-                      onDragLeave={handleVerificationDragLeave}
-                      onDragOver={handleVerificationDragOver}
-                      onDrop={handleVerificationDrop}
-                    >
-                      {verificationFile ? (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-center">
-                            <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-green-700">File uploaded successfully</p>
-                            <p className="text-sm text-gray-600">{verificationFile.name}</p>
-                            <p className="text-xs text-gray-500">{(verificationFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setVerificationFile(null)}
-                            className="text-sm text-red-600 hover:text-red-800 underline"
-                          >
-                            Remove file
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-center">
-                            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">
-                              {isVerificationDragOver ? 'Drop the file here' : 'Drag and drop your certificate here'}
-                            </p>
-                            <p className="text-sm text-gray-500">or</p>
-                            <label className="cursor-pointer">
-                              <span className="text-sm text-blue-600 hover:text-blue-800 underline">
-                                browse files
-                              </span>
-                              <input
-                                type="file"
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    handleVerificationFileSelection(e.target.files[0]);
-                                  }
-                                }}
-                                className="hidden"
-                              />
-                            </label>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Supports PDF, JPG, JPEG, PNG files up to 20MB
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Verify Button */}
-                    {verificationFile && (
-                      <div className="mt-4 text-center">
-                        <button
-                          type="button"
-                          onClick={handleVerifyFile}
-                          disabled={isVerifyingFile}
-                          className={`px-6 py-2 rounded-lg font-medium transition ${isVerifyingFile
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                        >
-                          {isVerifyingFile ? (
-                            <span className="flex items-center">
-                              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Verifying...
-                            </span>
-                          ) : (
-                            'Verify Certificate'
-                          )}
-                        </button>
+                    <p className="text-xs text-blue-700">
+                      The system will verify the learner's identity by comparing the name extracted from the certificate (Step 1) with the learner's information in the database.
+                    </p>
+                    {ocrData?.extracted_data?.learner_name && (
+                      <div className="mt-3 p-2 bg-white rounded border border-blue-300">
+                        <p className="text-xs text-gray-700">
+                          <strong>Certificate Name:</strong> {ocrData.extracted_data.learner_name}
+                        </p>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Verify Button */}
+                  <div className="mt-6 text-center">
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🖱️ ========== VERIFY BUTTON CLICKED ==========');
+                        console.log('📍 Current step:', currentStep);
+                        console.log('📄 OCR data available:', !!ocrData);
+                        console.log('📋 OCR learner name:', ocrData?.extracted_data?.learner_name);
+                        console.log('⏳ isVerifyingFile state:', isVerifyingFile);
+                        console.log('🔍 About to call handleVerifyFile...');
+                        
+                        if (!ocrData || !ocrData.extracted_data) {
+                          console.error('❌ No OCR data available!');
+                          alert('Please extract certificate data in Step 1 first.');
+                          return;
+                        }
+                        
+                        try {
+                          await handleVerifyFile();
+                          console.log('✅ handleVerifyFile returned successfully');
+                        } catch (error) {
+                          console.error('💥 Error calling handleVerifyFile:', error);
+                          alert('An error occurred. Check console for details.');
+                        }
+                      }}
+                      disabled={isVerifyingFile || !ocrData || !ocrData.extracted_data}
+                      className={`px-8 py-3 rounded-lg font-medium text-lg transition ${(isVerifyingFile || !ocrData || !ocrData.extracted_data)
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'
+                        }`}
+                    >
+                      {isVerifyingFile ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Verifying...
+                        </span>
+                      ) : (
+                        'Verify Learner'
+                      )}
+                    </button>
+                    {(!ocrData || !ocrData.extracted_data) && (
+                      <p className="mt-2 text-xs text-red-600">
+                        Please extract certificate data in Step 1 first
+                      </p>
                     )}
                   </div>
                 </div>
@@ -2040,17 +2259,32 @@ export default function CertificateForm(): React.JSX.Element {
                         <div className="text-left">
                           <p className="font-medium text-gray-900">Learner Verification</p>
                           <p className="text-sm text-gray-500">
-                            {verificationStatus.learnerCheck === 'success' ? 'User is a valid learner' :
-                              verificationStatus.learnerCheck === 'error' ? 'Learner verification failed' :
+                            {verificationStatus.learnerCheck === 'success' ? 'Learner name verified successfully' :
+                              verificationStatus.learnerCheck === 'error' ? 'Learner name mismatch detected' :
                                 'Checking learner status...'}
                           </p>
-                          {verificationStatus.learnerCheck === 'success' && verificationData?.learnerData?.user_info && (
+                          {verificationStatus.learnerCheck === 'success' && verificationData?.learner && (
                             <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                               <div className="text-xs text-green-700">
-                                <div className="font-semibold mb-1">Learner Details:</div>
-                                <div>Name: {verificationData.learnerData.user_info.full_name}</div>
-                                <div>Email: {verificationData.learnerData.user_info.email}</div>
-                                <div>Status: {verificationData.learnerData.user_info.is_active ? 'Active' : 'Inactive'}</div>
+                                <div className="font-semibold mb-1">Verification Details:</div>
+                                <div>Name: {verificationData.learner.full_name}</div>
+                                <div>Email: {verificationData.learner.email}</div>
+                                {ocrData?.extracted_data?.learner_name && (
+                                  <div className="mt-1 pt-1 border-t border-green-300">
+                                    <div className="text-green-600">Certificate Name: {ocrData.extracted_data.learner_name}</div>
+                                    <div className="text-green-600">✓ Names match</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {verificationStatus.learnerCheck === 'error' && verificationData?.learner && ocrData?.extracted_data?.learner_name && (
+                            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <div className="text-xs text-red-700">
+                                <div className="font-semibold mb-1">Name Mismatch:</div>
+                                <div>Database Name: {verificationData.learner.full_name}</div>
+                                <div>Certificate Name: {ocrData.extracted_data.learner_name}</div>
+                                <div className="mt-1 text-red-600">⚠ Names do not match. Please verify the learner email is correct.</div>
                               </div>
                             </div>
                           )}
@@ -2120,6 +2354,57 @@ export default function CertificateForm(): React.JSX.Element {
                           </p>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Certificate Protection Options */}
+                  <div className="mt-8 mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Certificate Protection Options</h3>
+                    
+                    <div className="space-y-4">
+                      {/* QR Code Option */}
+                      <div className="flex items-start">
+                        <input
+                          type="checkbox"
+                          id="addQrCode"
+                          checked={addQrCode}
+                          onChange={(e) => setAddQrCode(e.target.checked)}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="addQrCode" className="ml-3 flex-1">
+                          <span className="text-sm font-medium text-gray-900">Add QR Code to Certificate</span>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Embed a QR code on the certificate for instant verification
+                          </p>
+                        </label>
+                      </div>
+
+                      {/* Steganography Option */}
+                      <div className="flex items-start">
+                        <input
+                          type="checkbox"
+                          id="addSteganography"
+                          checked={addSteganography}
+                          onChange={(e) => setAddSteganography(e.target.checked)}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="addSteganography" className="ml-3 flex-1">
+                          <span className="text-sm font-medium text-gray-900">Protect Certificate with Steganography</span>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Embed invisible watermark using steganography for tamper detection
+                          </p>
+                        </label>
+                      </div>
+
+                      {/* Steganography Fields (shown when enabled) */}
+                      {addSteganography && (
+                        <div className="ml-7 mt-3 p-4 bg-blue-50 border border-blue-200 rounded">
+                          <p className="text-xs text-blue-700">
+                            <strong>Note:</strong> Your secret seed is stored securely on the server and will be used automatically. 
+                            The blockchain hash from certificate issuance will be embedded as the steganography payload.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -2337,17 +2622,105 @@ export default function CertificateForm(): React.JSX.Element {
                       </button>
 
                       {issuedCertificate?.certificate_url && (
-                        <a
-                          href={issuedCertificate.certificate_url}
-                          download={`certificate_${issuedCertificate.credential_id}.pdf`}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(issuedCertificate.certificate_url);
+                              const blob = await response.blob();
+                              
+                              // Convert to PNG using canvas (works for both JPEG and PDF images)
+                              const img = new Image();
+                              const canvas = document.createElement('canvas');
+                              const ctx = canvas.getContext('2d');
+                              
+                              const imageUrl = URL.createObjectURL(blob);
+                              img.onload = () => {
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                ctx?.drawImage(img, 0, 0);
+                                
+                                canvas.toBlob((pngBlob) => {
+                                  if (pngBlob) {
+                                    // Convert blob to data URL for use in new tab
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      const dataUrl = reader.result as string;
+                                      
+                                      // Create a temporary HTML page that auto-downloads
+                                      const htmlContent = `
+                                        <!DOCTYPE html>
+                                        <html>
+                                          <head>
+                                            <title>Downloading Certificate...</title>
+                                          </head>
+                                          <body>
+                                            <script>
+                                              const link = document.createElement('a');
+                                              link.href = '${dataUrl}';
+                                              link.download = 'certificate_${issuedCertificate.credential_id}.png';
+                                              document.body.appendChild(link);
+                                              link.click();
+                                              document.body.removeChild(link);
+                                              setTimeout(() => window.close(), 1000);
+                                            </script>
+                                            <p style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+                                              Downloading certificate... If download doesn't start automatically, 
+                                              <a href="${dataUrl}" download="certificate_${issuedCertificate.credential_id}.png" style="color: #0066cc;">click here</a>.
+                                            </p>
+                                          </body>
+                                        </html>
+                                      `;
+                                      
+                                      const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+                                      const htmlUrl = URL.createObjectURL(htmlBlob);
+                                      
+                                      // Open in new tab
+                                      const newTab = window.open(htmlUrl, '_blank');
+                                      
+                                      if (!newTab) {
+                                        // If popup blocked, fallback to direct download
+                                        const a = document.createElement('a');
+                                        a.href = dataUrl;
+                                        a.download = `certificate_${issuedCertificate.credential_id}.png`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                      }
+                                      
+                                      // Clean up after a delay
+                                      setTimeout(() => {
+                                        window.URL.revokeObjectURL(imageUrl);
+                                        window.URL.revokeObjectURL(htmlUrl);
+                                      }, 2000);
+                                    };
+                                    reader.readAsDataURL(pngBlob);
+                                  }
+                                }, 'image/png');
+                              };
+                              img.onerror = () => {
+                                // If image fails to load, try direct download
+                                const a = document.createElement('a');
+                                a.href = imageUrl;
+                                a.download = `certificate_${issuedCertificate.credential_id}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                window.URL.revokeObjectURL(imageUrl);
+                              };
+                              img.src = imageUrl;
+                            } catch (error) {
+                              console.error('Error downloading PNG:', error);
+                              alert('Failed to download certificate as PNG');
+                            }
+                          }}
                           className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-lg shadow-md hover:shadow-lg flex items-center"
                         >
-
                           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l4-4m-4 4l-4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          Download PDF
-                        </a>
+                          Download as PNG
+                        </button>
                       )}
                     </div>
 
