@@ -4,6 +4,8 @@ import React, { useState, ChangeEvent, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
+import CertificateTemplateSelector, { CertificateTemplate } from '@/components/certificate/CertificateTemplateSelector';
+import TemplatePreviewModal from '@/components/certificate/TemplatePreviewModal';
 import { 
   Plus, 
   Trash2, 
@@ -334,6 +336,12 @@ export default function BulkCredentialsPage() {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [dragOverEntryId, setDragOverEntryId] = useState<string | null>(null);
 
+  // Template selection states
+  const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate | null>(null);
+  const [showTemplateSelection, setShowTemplateSelection] = useState<boolean>(true);
+  const [showTemplatePreview, setShowTemplatePreview] = useState<boolean>(false);
+  const [previewTemplate, setPreviewTemplate] = useState<CertificateTemplate | null>(null);
+
   // File validation function
   const validateFile = (file: File): boolean => {
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
@@ -473,6 +481,22 @@ export default function BulkCredentialsPage() {
     setEntries(prev => prev.map(entry => 
       entry.id === id ? { ...entry, status, error, result, progress } : entry
     ));
+  };
+
+  // Template selection handlers
+  const handleTemplateSelect = (template: CertificateTemplate): void => {
+    setSelectedTemplate(template);
+    setShowTemplateSelection(false);
+  };
+
+  const handleTemplatePreview = (template: CertificateTemplate): void => {
+    setPreviewTemplate(template);
+    setShowTemplatePreview(true);
+  };
+
+  const handleBackToTemplateSelection = (): void => {
+    setShowTemplateSelection(true);
+    setSelectedTemplate(null);
   };
 
   // Process a single credential entry
@@ -778,9 +802,40 @@ export default function BulkCredentialsPage() {
               </p>
           </div>
 
-            {/* Form Section */}
-            {!showResults && (
+            {/* Template Selection Section */}
+            {showTemplateSelection && !showResults && (
               <div className="space-y-6">
+                <CertificateTemplateSelector
+                  selectedTemplate={selectedTemplate}
+                  onTemplateSelect={handleTemplateSelect}
+                  showPreview={true}
+                />
+              </div>
+            )}
+
+            {/* Form Section */}
+            {!showTemplateSelection && !showResults && selectedTemplate && (
+              <div className="space-y-6">
+                {/* Selected Template Header */}
+                <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={selectedTemplate.imageUrl} 
+                      alt={selectedTemplate.name}
+                      className="w-16 h-12 object-cover rounded border"
+                    />
+                    <div>
+                      <h3 className="font-semibold text-purple-900">{selectedTemplate.name}</h3>
+                      <p className="text-sm text-purple-700">{selectedTemplate.description}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleBackToTemplateSelection}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                  >
+                    Change Template
+                  </button>
+                </div>
                 {/* Main Drag and Drop Area */}
                 <div
                   onDragEnter={(e) => handleDragEnter(e)}
@@ -1183,6 +1238,15 @@ export default function BulkCredentialsPage() {
           )}
                   </div>
         </div>
+
+        {/* Template Preview Modal */}
+        <TemplatePreviewModal
+          template={previewTemplate}
+          open={showTemplatePreview}
+          onClose={() => setShowTemplatePreview(false)}
+          onSelect={handleTemplateSelect}
+          showSelectButton={true}
+        />
       </DashboardLayout>
     </RoleGuard>
   );

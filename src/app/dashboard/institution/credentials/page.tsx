@@ -6,6 +6,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import RoleGuard from '@/components/auth/RoleGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { buildApiUrl } from '@/config/api';
+import CertificateTemplateSelector, { CertificateTemplate } from '@/components/certificate/CertificateTemplateSelector';
+import TemplatePreviewModal from '@/components/certificate/TemplatePreviewModal';
 
 interface FormData {
   certificateTitle: string;
@@ -107,7 +109,7 @@ export default function CertificateForm(): React.JSX.Element {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [skillInput, setSkillInput] = useState<string>('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(0);
 
   // Drag and drop states
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
@@ -158,9 +160,17 @@ export default function CertificateForm(): React.JSX.Element {
   const [addQrCode, setAddQrCode] = useState<boolean>(true);
   const [addSteganography, setAddSteganography] = useState<boolean>(false);
 
+  // Template selection states
+  const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate | null>(null);
+  const [showTemplatePreview, setShowTemplatePreview] = useState<boolean>(false);
+  const [previewTemplate, setPreviewTemplate] = useState<CertificateTemplate | null>(null);
+
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
+    if (!selectedTemplate) {
+      newErrors.template = 'Please select a certificate template';
+    }
     if (!formData.learnerId.trim()) {
       newErrors.learnerId = 'Learner ID is required';
     }
@@ -212,6 +222,23 @@ export default function CertificateForm(): React.JSX.Element {
       ...prev,
       skills: prev.skills.filter(skill => skill !== skillToRemove)
     }));
+  };
+
+  // Template selection handlers
+  const handleTemplateSelect = (template: CertificateTemplate): void => {
+    setSelectedTemplate(template);
+    if (errors.template) {
+      setErrors(prev => ({ ...prev, template: '' }));
+    }
+    // Automatically proceed to next step after template selection
+    setTimeout(() => {
+      setCurrentStep(1);
+    }, 500); // Small delay for better UX
+  };
+
+  const handleTemplatePreview = (template: CertificateTemplate): void => {
+    setPreviewTemplate(template);
+    setShowTemplatePreview(true);
   };
 
   // File validation function
@@ -1352,7 +1379,7 @@ export default function CertificateForm(): React.JSX.Element {
     setFetchedAadharNo('');
     setPdfFile(null);
     setErrors({});
-    setCurrentStep(1);
+    setCurrentStep(0);
     setShowExtractedData(false);
     setOcrData(null);
   };
@@ -1390,7 +1417,22 @@ export default function CertificateForm(): React.JSX.Element {
 
             {/* Step Progress Indicator */}
             <div className="mb-8">
-              <div className="flex items-center justify-center space-x-8">
+              <div className="flex items-center justify-center space-x-6">
+                <div className="flex items-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 0
+                    ? currentStep === 0
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-purple-500 text-white'
+                    : 'bg-gray-100 text-gray-500'
+                    }`}>
+                    1
+                  </div>
+                  <span className={`ml-3 text-sm ${currentStep >= 0 ? 'text-gray-900' : 'text-gray-500'
+                    }`}>
+                    Choose Template
+                  </span>
+                </div>
+
                 <div className="flex items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1
                     ? currentStep === 1
@@ -1398,7 +1440,7 @@ export default function CertificateForm(): React.JSX.Element {
                       : 'bg-green-500 text-white'
                     : 'bg-gray-100 text-gray-500'
                     }`}>
-                    1
+                    2
                   </div>
                   <span className={`ml-3 text-sm ${currentStep >= 1 ? 'text-gray-900' : 'text-gray-500'
                     }`}>
@@ -1413,7 +1455,7 @@ export default function CertificateForm(): React.JSX.Element {
                       : 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-500'
                     }`}>
-                    2
+                    3
                   </div>
                   <span className={`ml-3 text-sm ${currentStep >= 2 ? 'text-gray-900' : 'text-gray-500'
                     }`}>
@@ -1424,11 +1466,11 @@ export default function CertificateForm(): React.JSX.Element {
                 <div className="flex items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3
                     ? currentStep === 3
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'bg-purple-500 text-white'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-orange-500 text-white'
                     : 'bg-gray-100 text-gray-500'
                     }`}>
-                    3
+                    4
                   </div>
                   <span className={`ml-3 text-sm ${currentStep >= 3 ? 'text-gray-900' : 'text-gray-500'
                     }`}>
@@ -1437,6 +1479,46 @@ export default function CertificateForm(): React.JSX.Element {
                 </div>
               </div>
             </div>
+
+            {/* Step 0: Template Selection */}
+            {currentStep === 0 && (
+              <div className="space-y-6">
+                <CertificateTemplateSelector
+                  selectedTemplate={selectedTemplate}
+                  onTemplateSelect={handleTemplateSelect}
+                  showPreview={true}
+                />
+                
+                {/* Template Selection Error */}
+                {errors.template && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-700 text-sm font-medium">{errors.template}</p>
+                  </div>
+                )}
+
+                {/* Continue Button */}
+                <div className="flex justify-center pt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedTemplate) {
+                        setCurrentStep(1);
+                      } else {
+                        setErrors(prev => ({ ...prev, template: 'Please select a certificate template' }));
+                      }
+                    }}
+                    disabled={!selectedTemplate}
+                    className={`px-8 py-3 rounded-lg font-medium text-lg transition-colors ${
+                      selectedTemplate
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Continue to Details
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Step 1: Fill Details with OCR Extraction */}
             {currentStep === 1 && (
@@ -2877,6 +2959,15 @@ export default function CertificateForm(): React.JSX.Element {
             </div>
           </div>
         )}
+
+        {/* Template Preview Modal */}
+        <TemplatePreviewModal
+          template={previewTemplate}
+          open={showTemplatePreview}
+          onClose={() => setShowTemplatePreview(false)}
+          onSelect={handleTemplateSelect}
+          showSelectButton={true}
+        />
       </DashboardLayout>
     </RoleGuard>
   );
