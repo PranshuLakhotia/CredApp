@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import {
   ChevronLeft,
@@ -19,12 +19,17 @@ import {
   FileText,
   MessageCircle,
   TrendingUp,
+  Shuffle,
+  Eye,
+  EyeOff,
+  Copy,
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { UserRole } from '@/types/auth';
 import ShareProfileModal from '@/components/modals/ShareProfileModal';
 import { LearnerService } from '@/services/learner.service';
 import { useTranslations } from '@/hooks/useTranslations';
+import { buildApiUrl } from '@/config/api';
 
 interface DashboardSidebarProps {
   sidebarExpanded: boolean;
@@ -32,6 +37,20 @@ interface DashboardSidebarProps {
   userRole: UserRole;
   onMobileClose?: () => void;
 }
+
+// Generate random base64 seed
+const generateRandomSeed = (): string => {
+  const array = new Uint8Array(32); // 32 bytes = 256 bits
+  if (typeof window !== 'undefined' && window.crypto) {
+    window.crypto.getRandomValues(array);
+  } else {
+    // Fallback for environments without crypto
+    for (let i = 0; i < array.length; i++) {
+      array[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  return btoa(String.fromCharCode(...array));
+};
 
 export default function DashboardSidebar({ 
   sidebarExpanded, 
@@ -43,9 +62,161 @@ export default function DashboardSidebar({
   const [openPages, setOpenPages] = useState(false);
   const [openCredentials, setOpenCredentials] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [issuerSeed, setIssuerSeed] = useState<string>('');
+  const [showSeed, setShowSeed] = useState<boolean>(false);
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('dashboard');
+
+  // Load or generate issuer seed and sync to backend
+  useEffect(() => {
+    if (userRole === 'institution') {
+      const syncSeedToBackend = async (seed: string) => {
+        try {
+          const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+          if (!token) return;
+          
+          const apiKeysResponse = await fetch(buildApiUrl('/issuer/api-keys'), {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (apiKeysResponse.ok) {
+            const apiKeysData = await apiKeysResponse.json();
+            const apiKey = apiKeysData.api_keys?.[0]?.key;
+            
+            if (apiKey) {
+              console.log('🔑 API Key found, syncing seed to backend...');
+              console.log('📤 Seed to sync:', seed.substring(0, 20) + '...');
+              
+              // Store seed securely on backend
+              // Backend expects seed as a plain string in the body, not JSON
+              const response = await fetch(buildApiUrl('/issuer/steganography-seed'), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'text/plain',
+                  'x-api-key': apiKey,
+                  'Authorization': `Bearer ${token}`
+                },
+                body: seed
+              });
+              
+              console.log('📡 Seed sync response status:', response.status);
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Failed to store seed on backend:', response.status);
+                console.error('❌ Error response:', errorText);
+                try {
+                  const errorData = JSON.parse(errorText);
+                  console.error('❌ Error Data:', errorData);
+                } catch {
+                  console.error('❌ Non-JSON error response');
+                }
+                console.warn('⚠️ Seed stored locally but not synced to backend. Please click "Shuffle" to retry.');
+              } else {
+                const responseData = await response.json().catch(() => ({}));
+                console.log('✅ Seed synced to backend successfully on mount:', responseData);
+              }
+            } else {
+              console.warn('⚠️ No API key found. Cannot sync seed to backend.');
+            }
+          }
+        } catch (error) {
+          console.error('Failed to sync seed to backend:', error);
+          // Continue anyway - seed is stored locally
+        }
+      };
+      
+      const storedSeed = localStorage.getItem('issuer_seed');
+      if (storedSeed) {
+        setIssuerSeed(storedSeed);
+        // Sync existing seed to backend
+        syncSeedToBackend(storedSeed);
+      } else {
+        const newSeed = generateRandomSeed();
+        setIssuerSeed(newSeed);
+        localStorage.setItem('issuer_seed', newSeed);
+        // Sync new seed to backend
+        syncSeedToBackend(newSeed);
+      }
+    }
+  }, [userRole]);
+
+  const handleShuffleSeed = async () => {
+    const newSeed = generateRandomSeed();
+    setIssuerSeed(newSeed);
+    localStorage.setItem('issuer_seed', newSeed);
+    
+    // Sync seed to backend securely
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      const apiKeys = await fetch(buildApiUrl('/issuer/api-keys'), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (apiKeys.ok) {
+        const apiKeysData = await apiKeys.json();
+        const apiKey = apiKeysData.api_keys?.[0]?.key;
+        
+        if (apiKey) {
+          console.log('🔑 API Key found, syncing new seed to backend...');
+          console.log('📤 New seed to sync:', newSeed.substring(0, 20) + '...');
+          
+          // Store seed securely on backend
+          // Backend expects seed as a plain string in the body, not JSON
+          const response = await fetch(buildApiUrl('/issuer/steganography-seed'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain',
+              'x-api-key': apiKey,
+              'Authorization': `Bearer ${token}`
+            },
+            body: newSeed
+          });
+          
+          console.log('📡 Seed sync response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Failed to sync seed to backend:', response.status);
+            console.error('❌ Error response:', errorText);
+            try {
+              const errorData = JSON.parse(errorText);
+              console.error('❌ Error Data:', errorData);
+              alert(`Warning: Failed to sync seed to backend: ${errorData.detail || 'Unknown error'}. Please try again.`);
+            } catch {
+              console.error('❌ Non-JSON error response');
+              alert(`Warning: Failed to sync seed to backend. Please try again.`);
+            }
+          } else {
+            const responseData = await response.json().catch(() => ({}));
+            console.log('✅ Seed synced to backend successfully:', responseData);
+            alert('✅ Secret key updated and synced to backend!');
+          }
+        } else {
+          console.warn('⚠️ No API key found. Seed will be stored locally only.');
+          alert('⚠️ No API key found. Please generate an API key first.');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to sync seed to backend:', error);
+      // Continue anyway - seed is stored locally
+    }
+    
+    // Dispatch custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('issuerSeedChanged', { detail: newSeed }));
+    }
+  };
+
+  const handleCopySeed = () => {
+    navigator.clipboard.writeText(issuerSeed);
+    // You could add a toast notification here
+  };
 
   const handleNavigation = (path: string) => {
     router.push(path);
@@ -215,6 +386,71 @@ export default function DashboardSidebar({
                 <Key size={16} className={pathname === '/dashboard/institution/api-keys' ? 'text-blue-600' : 'text-gray-600'} />
                 {sidebarExpanded && <span>API Keys</span>}
               </button>
+            </div>
+          )}
+
+          {/* SECRET KEY Section - Only for Institution */}
+          {userRole === 'institution' && (
+            <div className="mb-4 border-t border-gray-200 pt-4">
+              {sidebarExpanded ? (
+                <>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">
+                    SECRET KEY
+                  </h3>
+                  
+                  <div className="px-2 space-y-2">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-medium text-gray-700">Issuer Seed</label>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setShowSeed(!showSeed)}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                            title={showSeed ? 'Hide' : 'Show'}
+                          >
+                            {showSeed ? <EyeOff size={14} className="text-gray-600" /> : <Eye size={14} className="text-gray-600" />}
+                          </button>
+                          <button
+                            onClick={handleCopySeed}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                            title="Copy to clipboard"
+                          >
+                            <Copy size={14} className="text-gray-600" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showSeed ? 'text' : 'password'}
+                          value={issuerSeed}
+                          readOnly
+                          className="w-full px-2 py-1.5 text-xs font-mono bg-white border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                      <button
+                        onClick={handleShuffleSeed}
+                        className="mt-2 w-full flex items-center justify-center gap-2 px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+                      >
+                        <Shuffle size={14} />
+                        Shuffle
+                      </button>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Used for steganography protection. Keep this secure.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleShuffleSeed}
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                    title="Shuffle secret key"
+                  >
+                    <Shuffle size={16} className="text-gray-600" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

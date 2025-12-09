@@ -141,6 +141,13 @@ export default function VerifyCredentialsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  
+  // Steganography verification states
+  const [steganographyFile, setSteganographyFile] = useState<File | null>(null);
+  const [isStegDragOver, setIsStegDragOver] = useState(false);
+  const [stegVerificationResult, setStegVerificationResult] = useState<any>(null);
+  const [stegLoading, setStegLoading] = useState(false);
+  const [showStegResultDialog, setShowStegResultDialog] = useState(false);
 
   const handleSingleVerification = async () => {
     if (!credentialId.trim()) {
@@ -177,6 +184,91 @@ export default function VerifyCredentialsPage() {
       setError('Network error occurred during verification');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSteganographyVerification = async () => {
+    if (!steganographyFile) {
+      setError('Please upload a steganographed certificate image');
+      return;
+    }
+
+    setStegLoading(true);
+    setError(null);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      if (!token) {
+        setError('Authentication token not found');
+        return;
+      }
+
+      // Prepare form data - only the image file is needed
+      // The endpoint will use OCR to extract issuer name and find the credential automatically
+      const formData = new FormData();
+      formData.append('image', steganographyFile);
+
+      console.log('🔍 Starting automatic steganography verification...');
+      console.log('📤 Uploading image file:', steganographyFile.name);
+
+      // Call automatic fingerprint verification endpoint
+      // This endpoint extracts QR code, gets credential ID, retrieves issuer seed, and verifies
+      const response = await fetch(buildApiUrl('/fingerprint/verify-auto'), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      console.log('📡 Verification response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Verification result:', result);
+        
+        // Extract credential ID from result for blockchain lookup
+        const extractedCredentialId = result.credential_id || result.details?.credential_id_from_qr;
+        
+        // Also fetch detailed blockchain verification if credential ID is available
+        let blockchainData = null;
+        if (extractedCredentialId) {
+          try {
+            const blockchainResponse = await fetch(buildApiUrl(`/employer/credentials/${extractedCredentialId}`), {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            
+            if (blockchainResponse.ok) {
+              blockchainData = await blockchainResponse.json();
+            }
+          } catch (err) {
+            console.warn('Failed to fetch blockchain data:', err);
+          }
+        }
+
+        setStegVerificationResult({
+          ...result,
+          blockchainData,
+          extractedCredentialId,
+        });
+        setShowStegResultDialog(true);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Verification failed:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          setError(errorData.detail || 'Steganography verification failed');
+        } catch {
+          setError(errorText || 'Steganography verification failed');
+        }
+      }
+    } catch (error) {
+      console.error('💥 Steganography verification error:', error);
+      setError('Network error occurred during verification');
+    } finally {
+      setStegLoading(false);
     }
   };
 
@@ -588,6 +680,173 @@ export default function VerifyCredentialsPage() {
               }, 
               gap: 4 
             }}>
+              {/* Steganography Verification */}
+              <Box>
+                <Zoom in={true} timeout={800}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, display: 'flex', alignItems: 'center' }}>
+                        <Security sx={{ mr: 1, color: '#3b82f6' }} />
+                        Steganography Verification
+                      </Typography>
+
+                      <Box sx={{ mb: 3 }}>
+                        {/* Info Alert */}
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                          <AlertTitle>Steganography Verification</AlertTitle>
+                          Upload the steganographed certificate image. The system will automatically:
+                          <ul style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
+                            <li>Extract issuer name using OCR</li>
+                            <li>Look up issuer in database to get secret key</li>
+                            <li>Extract steganography payload (blockchain hash)</li>
+                            <li>Find credential using blockchain hash</li>
+                            <li>Verify steganography and blockchain</li>
+                          </ul>
+                        </Alert>
+
+                        {/* Drag and Drop Area for Image */}
+                        <Box
+                          onDragEnter={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsStegDragOver(true);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsStegDragOver(false);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsStegDragOver(false);
+                            const files = Array.from(e.dataTransfer.files);
+                            const imageFiles = files.filter(file => 
+                              file.type.startsWith('image/') || 
+                              file.name.toLowerCase().match(/\.(jpg|jpeg|png)$/i)
+                            );
+                            if (imageFiles.length > 0) {
+                              setSteganographyFile(imageFiles[0]);
+                            } else {
+                              setError('Please drop only image files (JPG, JPEG, PNG)');
+                            }
+                          }}
+                          sx={{
+                            border: '2px dashed',
+                            borderColor: isStegDragOver ? '#3b82f6' : steganographyFile ? '#3b82f6' : '#d1d5db',
+                            borderRadius: 2,
+                            p: 4,
+                            textAlign: 'center',
+                            bgcolor: isStegDragOver ? '#eff6ff' : steganographyFile ? '#eff6ff' : '#f9fafb',
+                            transition: 'all 0.2s ease-in-out',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              borderColor: '#3b82f6',
+                              bgcolor: '#eff6ff',
+                            },
+                            mb: 2,
+                          }}
+                        >
+                          {steganographyFile ? (
+                            <Box>
+                              <CheckCircle sx={{ fontSize: 48, color: '#3b82f6', mb: 2 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, color: '#3b82f6', mb: 1 }}>
+                                {steganographyFile.name}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Ready for verification
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Box>
+                              <Upload sx={{ fontSize: 48, color: isStegDragOver ? '#3b82f6' : '#6b7280', mb: 2 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                                {isStegDragOver ? 'Drop image file here' : 'Drag & drop steganographed certificate'}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                or click to browse files (JPG, JPEG, PNG)
+                              </Typography>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setSteganographyFile(file);
+                                  }
+                                }}
+                                style={{ display: 'none' }}
+                                id="steg-upload"
+                              />
+                              <label htmlFor="steg-upload">
+                                <Button
+                                  component="span"
+                                  variant="outlined"
+                                  sx={{
+                                    borderColor: '#3b82f6',
+                                    color: '#3b82f6',
+                                    '&:hover': {
+                                      borderColor: '#2563eb',
+                                      bgcolor: '#eff6ff',
+                                    },
+                                  }}
+                                >
+                                  <FileUpload sx={{ mr: 1 }} />
+                                  Select Image File
+                                </Button>
+                              </label>
+                            </Box>
+                          )}
+                        </Box>
+
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          size="large"
+                          onClick={handleSteganographyVerification}
+                          disabled={stegLoading || !steganographyFile}
+                          sx={{
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                            },
+                          }}
+                        >
+                          {stegLoading ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <LinearProgress sx={{ width: '100%', mr: 1 }} />
+                              Verifying...
+                            </Box>
+                          ) : (
+                            'Verify Certificate'
+                          )}
+                        </Button>
+                      </Box>
+
+                      <Box sx={{ p: 2, bgcolor: '#eff6ff', borderRadius: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                          <Security sx={{ mr: 1, fontSize: 16 }} />
+                          <strong>Verification Process:</strong>
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 0.5 }}>
+                          1. Extract steganography payload from image
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 3, mb: 0.5 }}>
+                          2. Verify against blockchain hash
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 3 }}>
+                          3. Check blockchain transaction status
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Zoom>
+              </Box>
+
               {/* PDF Verification */}
               <Box>
                 <Zoom in={true} timeout={800}>
@@ -1109,6 +1368,240 @@ export default function VerifyCredentialsPage() {
             <Button variant="contained" startIcon={<Download />}>
               Download Full Report
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Steganography Verification Result Dialog */}
+        <Dialog open={showStegResultDialog} onClose={() => setShowStegResultDialog(false)} maxWidth="md" fullWidth>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Security color="primary" />
+            Steganography Verification Result
+          </DialogTitle>
+          <DialogContent>
+            {stegVerificationResult && (
+              <Box>
+                {/* Status Header */}
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: 2 }}>
+                  <Avatar sx={{ bgcolor: stegVerificationResult.verified ? '#10b981' : '#ef4444', mr: 2 }}>
+                    {stegVerificationResult.verified ? (
+                      <CheckCircle sx={{ color: 'white' }} />
+                    ) : (
+                      <Cancel sx={{ color: 'white' }} />
+                    )}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {stegVerificationResult.verified ? 'Verification Successful' : 'Verification Failed'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Credential ID: {stegVerificationResult.credential_id || stegVerificationResult.extractedCredentialId || stegVerificationResult.details?.credential_id_from_qr || 'N/A'}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Steganography Verification Details */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                    Steganography Verification
+                  </Typography>
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, 
+                    gap: 2 
+                  }}>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Extraction Status</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.success ? 'Success' : 'Failed'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Payload Similarity</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.payload_similarity?.toFixed(2) || 'N/A'}%
+                        {stegVerificationResult.verification_threshold && (
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            (Threshold: {stegVerificationResult.verification_threshold}%)
+                          </Typography>
+                        )}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Signature Valid</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.signature_valid !== null 
+                          ? (stegVerificationResult.signature_valid ? 'Yes' : 'No')
+                          : 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Anchor Verified</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.anchor_verified !== null 
+                          ? (stegVerificationResult.anchor_verified ? 'Yes' : 'No')
+                          : 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Bit Error Rate</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.details?.bit_error_rate 
+                          ? (stegVerificationResult.details.bit_error_rate * 100).toFixed(2) + '%' 
+                          : stegVerificationResult.bit_error_rate 
+                          ? (stegVerificationResult.bit_error_rate * 100).toFixed(2) + '%'
+                          : 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Blocks Read</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.details?.blocks_read || stegVerificationResult.blocks_read || 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Blockchain Verified</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.details?.blockchain_verified !== undefined
+                          ? (stegVerificationResult.details.blockchain_verified ? 'Yes' : 'No')
+                          : 'N/A'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Revocation Status</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {stegVerificationResult.revocation_status || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Blockchain Verification */}
+                {(stegVerificationResult.blockchainData || stegVerificationResult.details?.blockchain_info) && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                      Blockchain Verification
+                    </Typography>
+                    <Box sx={{ p: 2, bgcolor: '#f0f9ff', borderRadius: 2 }}>
+                      {stegVerificationResult.blockchainData?.credential_info && (
+                        <>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <Security sx={{ color: '#3b82f6', fontSize: 20 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              Status: {stegVerificationResult.blockchainData.credential_info.status || 'Unknown'}
+                            </Typography>
+                          </Box>
+                          {stegVerificationResult.blockchainData.credential_info.credential_hash && (
+                            <Typography variant="body2" color="text.secondary">
+                              Hash: {stegVerificationResult.blockchainData.credential_info.credential_hash.substring(0, 20)}...
+                            </Typography>
+                          )}
+                          {stegVerificationResult.blockchainData.credential_info.transaction_hash && (
+                            <Typography variant="body2" color="text.secondary">
+                              Transaction: {stegVerificationResult.blockchainData.credential_info.transaction_hash.substring(0, 20)}...
+                            </Typography>
+                          )}
+                        </>
+                      )}
+                      {stegVerificationResult.details?.blockchain_info && (
+                        <>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <Security sx={{ color: '#3b82f6', fontSize: 20 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              Verified: {stegVerificationResult.details.blockchain_verified ? 'Yes' : 'No'}
+                            </Typography>
+                          </Box>
+                          {stegVerificationResult.details.blockchain_info.credential_hash && (
+                            <Typography variant="body2" color="text.secondary">
+                              Hash: {String(stegVerificationResult.details.blockchain_info.credential_hash).substring(0, 20)}...
+                            </Typography>
+                          )}
+                          {stegVerificationResult.details.blockchain_info.transaction_hash && (
+                            <Typography variant="body2" color="text.secondary">
+                              Transaction: {String(stegVerificationResult.details.blockchain_info.transaction_hash).substring(0, 20)}...
+                            </Typography>
+                          )}
+                        </>
+                      )}
+                      {stegVerificationResult.details?.credential_info && (
+                        <>
+                          <Typography variant="body2" sx={{ fontWeight: 500, mt: 1 }}>
+                            Credential: {stegVerificationResult.details.credential_info.credential_title || 'N/A'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Learner: {stegVerificationResult.details.credential_info.learner_name || 'N/A'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Issuer: {stegVerificationResult.details.credential_info.issuer_name || 'N/A'}
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Error Message */}
+                {stegVerificationResult.error && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    <AlertTitle>Verification Error</AlertTitle>
+                    {stegVerificationResult.error}
+                  </Alert>
+                )}
+
+                {/* Overall Status */}
+                <Box sx={{ p: 2, bgcolor: stegVerificationResult.verified ? '#f0fdf4' : '#fef2f2', borderRadius: 2 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                    Overall Verification Status:
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: stegVerificationResult.verified ? '#10b981' : '#ef4444' }}>
+                    {stegVerificationResult.verified 
+                      ? '✓ Certificate is Valid and Verified' 
+                      : '✗ Certificate Verification Failed'}
+                  </Typography>
+                  {stegVerificationResult.verified && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      The certificate has been verified through steganography and blockchain verification.
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowStegResultDialog(false)}>Close</Button>
+            {stegVerificationResult && (
+              <Button
+                startIcon={<Download />}
+                onClick={() => {
+                  const reportData = {
+                    verification_report: {
+                      credential_id: stegVerificationResult.credential_id || stegVerificationResult.extractedCredentialId,
+                      verified: stegVerificationResult.verified,
+                      payload_similarity: stegVerificationResult.payload_similarity,
+                      signature_valid: stegVerificationResult.signature_valid,
+                      anchor_verified: stegVerificationResult.anchor_valid,
+                      blockchain_verified: stegVerificationResult.details?.blockchain_verified,
+                      blockchain_data: stegVerificationResult.blockchainData,
+                      credential_info: stegVerificationResult.details?.credential_info,
+                      verification_timestamp: stegVerificationResult.verification_timestamp || new Date().toISOString(),
+                      details: stegVerificationResult.details,
+                    },
+                  };
+                  const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const credentialId = stegVerificationResult.credential_id || stegVerificationResult.extractedCredentialId || 'unknown';
+                  a.download = `steganography-verification-${credentialId}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                variant="contained"
+              >
+                Download Report
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
       </Box>
